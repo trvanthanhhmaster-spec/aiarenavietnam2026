@@ -12,7 +12,8 @@ final class SiteContentRepository
     public function __construct(
         private SupabaseClient $client,
         private string $cacheFile,
-        private int $cacheTtl
+        private int $cacheTtl,
+        private string $pageSlug
     ) {
     }
 
@@ -28,12 +29,12 @@ final class SiteContentRepository
 
         try {
             $pages = $this->client->select('pages', [
-                'slug' => 'eq.home',
+                'slug' => 'eq.' . $this->pageSlug,
                 'select' => 'name,brand_mark,brand_name,title,description,preview_note,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,ui',
                 'limit' => '1',
             ]);
             $branchRows = $this->client->select('experience_branches', [
-                'page_slug' => 'eq.home',
+                'page_slug' => 'eq.' . $this->pageSlug,
                 'is_active' => 'eq.true',
                 'select' => 'branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url,is_base',
                 'order' => 'sort_order.asc',
