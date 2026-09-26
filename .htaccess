@@ -1,0 +1,5 @@
+RewriteEngine On
+
+# Never expose Git metadata or other hidden files from the web root.
+RewriteRule (^|/)\.git(?:/|$) - [F,L]
+RewriteRule (^|/)\. - [F,L]
