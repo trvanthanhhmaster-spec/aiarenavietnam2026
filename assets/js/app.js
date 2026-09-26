@@ -31,12 +31,6 @@
   var noticeText = document.getElementById('noticeText');
   var retryBtn   = document.getElementById('retryBtn');
   var buttons    = Array.prototype.slice.call(controller.querySelectorAll('button.cell'));
-  document.querySelector('.try-now').addEventListener('click', function (event) {
-    event.preventDefault();
-    var available = buttons.filter(function (button) { return !button.disabled; });
-    if (available.length) available[0].focus({ preventScroll:true });
-    else say(copy('status_prepare'));
-  });
 
   var video = {};
   branchKeys.forEach(function (key) {
