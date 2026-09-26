@@ -153,7 +153,10 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
         </section>
     </main>
     <script>
-        window.VREMIX_STUDIO = <?= json_encode($catalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
+        window.VREMIX_STUDIO = <?= json_encode(
+            $catalog + ['generationEndpoint' => rtrim($database['url'], '/') . '/functions/v1/generate-look'],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        ) ?>;
     </script>
     <script src="assets/js/studio.js" defer></script>
 </body>
