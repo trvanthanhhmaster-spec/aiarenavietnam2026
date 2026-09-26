@@ -44,7 +44,6 @@ final class SupabaseClient
         $body = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         $error = curl_error($handle);
-        curl_close($handle);
 
         if ($body === false || $error !== '') {
             throw new RuntimeException('Supabase request failed: ' . $error);
