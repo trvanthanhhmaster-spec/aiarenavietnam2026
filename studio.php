@@ -15,6 +15,7 @@ Env::load(__DIR__ . '/.env');
 $database = require __DIR__ . '/config/database.php';
 $site = null;
 $catalog = null;
+$branches = [];
 
 try {
     if ($database['url'] === '' || $database['anon_key'] === '' || !extension_loaded('curl')) {
@@ -30,16 +31,25 @@ try {
     ))->getHomePage();
     $catalog = (new StudioRepository($client))->getCatalog();
     $site = $content['site'] ?? null;
+    $branches = $content['branches'] ?? [];
 } catch (Throwable $error) {
     error_log('[V-Remix] Studio bootstrap: ' . $error->getMessage());
 }
 
-if (!is_array($site) || !is_array($catalog)) {
+if (!is_array($site) || !is_array($catalog) || !is_array($branches)) {
     http_response_code(503);
     exit('Studio unavailable.');
 }
 
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+$baseBranch = null;
+foreach ($branches as $branch) {
+    if (!empty($branch['isBase'])) {
+        $baseBranch = $branch;
+        break;
+    }
+}
+$baseMedia = (string) (($baseBranch ?? reset($branches))['forwardUrl'] ?? '');
 ?>
 <!doctype html>
 <html lang="vi">
@@ -55,6 +65,12 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
     <link rel="stylesheet" href="assets/css/studio.css">
 </head>
 <body class="studio-page">
+    <div class="studio-backdrop" aria-hidden="true">
+        <?php if ($baseMedia !== ''): ?>
+            <video class="studio-backdrop__video" src="<?= $escape($baseMedia) ?>" autoplay muted loop playsinline preload="metadata"></video>
+        <?php endif; ?>
+        <div class="studio-backdrop__veil"></div>
+    </div>
     <main class="studio-shell">
         <header class="studio-header">
             <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($site['ui']['brand_aria_label'] ?? 'Trang chủ V-Remix') ?>">
@@ -64,9 +80,9 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
         </header>
 
         <section class="studio-intro" aria-labelledby="studioTitle">
-            <p class="eyebrow">V-Remix / Studio tùy biến</p>
+            <p class="eyebrow">V-Remix / Tầng 02 · Studio tùy biến</p>
             <h1 id="studioTitle">Phối một dáng Việt<br><em>theo cách của bạn.</em></h1>
-            <p>Chọn bối cảnh, cổ phục và một điểm nhấn hiện đại. Studio sẽ chuẩn bị một hướng phối có ngữ cảnh, câu chuyện và cảnh báo văn hóa rõ ràng.</p>
+            <p>Giữ tinh thần của dáng áo, mở ra một cách xuất hiện mới. Chọn bối cảnh, cổ phục và điểm nhấn hiện đại để chuẩn bị một bản phối có câu chuyện.</p>
         </section>
 
         <form class="studio-form" id="studioForm">
