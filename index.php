@@ -1,17 +1,24 @@
 <?php
 declare(strict_types=1);
+
+require __DIR__ . '/config/site.php';
+require __DIR__ . '/includes/partials/head.php';
 ?>
-<!doctype html>
-<html lang="vi">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AI Arena Vietnam 2026</title>
-</head>
-<body>
-    <main>
-        <h1>AI Arena Vietnam 2026</h1>
-        <p>Dự án đã được kết nối với XAMPP và Apache đang phục vụ thư mục này.</p>
-    </main>
+
+<div class="stage" id="stage">
+    <?php require __DIR__ . '/includes/partials/media.php'; ?>
+    <?php require __DIR__ . '/includes/partials/hero.php'; ?>
+    <?php require __DIR__ . '/includes/partials/controller.php'; ?>
+    <?php require __DIR__ . '/includes/partials/header.php'; ?>
+    <?php require __DIR__ . '/includes/partials/feedback.php'; ?>
+</div>
+
+<script>
+window.VREMIX_CONFIG = <?= json_encode(
+    ['branches' => $branches],
+    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+) ?>;
+</script>
+<script src="assets/js/app.js" defer></script>
 </body>
 </html>
