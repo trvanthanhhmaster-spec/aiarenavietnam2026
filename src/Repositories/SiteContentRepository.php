@@ -51,12 +51,18 @@ final class SiteContentRepository
                 if ($key === '') {
                     continue;
                 }
+                $forwardUrl = (string) ($row['forward_media_url'] ?? '');
+                $reverseUrl = (string) ($row['reverse_media_url'] ?? '');
+                if ($reverseUrl === '') {
+                    $reverseUrl = $forwardUrl;
+                }
                 $branches[$key] = [
                     'label' => (string) ($row['label'] ?? $key),
                     'fwdGuard' => (float) ($row['forward_guard'] ?? 0.08),
                     'revGuard' => (float) ($row['reverse_guard'] ?? 0.08),
-                    'forwardUrl' => (string) ($row['forward_media_url'] ?? ''),
-                    'reverseUrl' => (string) ($row['reverse_media_url'] ?? ''),
+                    'forwardUrl' => $forwardUrl,
+                    'reverseUrl' => $reverseUrl,
+                    'reverseShared' => empty($row['reverse_media_url']) || $row['reverse_media_url'] === $forwardUrl,
                     'isBase' => (bool) ($row['is_base'] ?? false),
                 ];
             }
@@ -112,6 +118,7 @@ final class SiteContentRepository
                 !is_array($branch)
                 || !isset($branch['forwardUrl'], $branch['reverseUrl'])
                 || !array_key_exists('isBase', $branch)
+                || !array_key_exists('reverseShared', $branch)
                 || $branch['forwardUrl'] === ''
                 || $branch['reverseUrl'] === ''
             ) {

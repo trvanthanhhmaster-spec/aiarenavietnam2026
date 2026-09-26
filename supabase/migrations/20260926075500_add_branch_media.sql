@@ -14,4 +14,4 @@ set forward_media_url = coalesce(
 
 alter table public.experience_branches
     alter column forward_media_url set not null,
-    alter column reverse_media_url set not null;
+    alter column reverse_media_url drop not null;

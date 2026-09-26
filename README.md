@@ -27,7 +27,7 @@ PHP đọc dữ liệu trang, branch, media và toàn bộ UI copy qua Supabase 
 Để thay video, mở Supabase Table Editor → `experience_branches`, rồi sửa:
 
 - `forward_media_url`: video chạy khi chọn dịp.
-- `reverse_media_url`: video chạy khi bấm `Chọn lại`.
+- `reverse_media_url`: video chạy khi bấm `Chọn lại`. Để trống để tự tua ngược `forward_media_url`.
 - `branch_key`: mã kỹ thuật tự chọn, không cần dùng các tên cũ.
 - `is_base`: đánh dấu đúng một branch làm khung cảnh ban đầu.
 

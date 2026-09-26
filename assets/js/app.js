@@ -259,6 +259,79 @@
     });
   }
 
+  // When no dedicated reverse asset exists, seek to the final frame and walk
+  // the same media element backwards with a frame-synchronised clock.
+  function startReverseClip(v, myToken) {
+    return new Promise(function (resolve, reject) {
+      var settled = false, timer = null, preparing = false;
+      function finish(error) {
+        if (settled) return;
+        settled = true;
+        if (timer !== null) window.clearTimeout(timer);
+        v.removeEventListener('loadedmetadata', prepare);
+        v.removeEventListener('loadeddata', prepare);
+        v.removeEventListener('seeked', revealFrame);
+        v.removeEventListener('error', failed);
+        if (error) reject(error); else resolve();
+      }
+      function failed() { finish(new Error('media')); }
+      function revealFrame() {
+        if (settled || myToken !== token) return;
+        v.removeEventListener('seeked', revealFrame);
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { finish(); });
+        });
+      }
+      function prepare() {
+        if (settled || myToken !== token || preparing || v.readyState < 1) return;
+        if (!isFinite(v.duration) || v.duration <= 0) return;
+        preparing = true;
+        v.pause();
+        v.addEventListener('seeked', revealFrame);
+        try { v.currentTime = Math.max(0, v.duration - 0.001); }
+        catch (error) { finish(error); }
+      }
+      v.addEventListener('loadedmetadata', prepare);
+      v.addEventListener('loadeddata', prepare);
+      v.addEventListener('error', failed);
+      addCleanup(function () { finish(new Error('cancelled')); });
+      timer = window.setTimeout(function () { finish(new Error('timeout')); }, FIRST_FRAME_TIMEOUT);
+      prepare();
+    });
+  }
+
+  function holdReverse(v, guard, myToken, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var done = false, rafId = null, last = performance.now();
+      function settle(error) {
+        if (done || myToken !== token) return;
+        done = true;
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        v.pause();
+        document.removeEventListener('visibilitychange', visibility);
+        if (error) reject(error); else resolve();
+      }
+      function visibility() {
+        if (document.hidden) last = performance.now();
+      }
+      function check(now) {
+        if (done || myToken !== token) return;
+        if (document.hidden) { rafId = requestAnimationFrame(check); return; }
+        if (onProgress) onProgress(v);
+        if (v.currentTime <= guard) { settle(); return; }
+        var elapsed = Math.min((now - last) / 1000, 0.1);
+        last = now;
+        try { v.currentTime = Math.max(0, v.currentTime - elapsed); }
+        catch (error) { settle(error); return; }
+        rafId = requestAnimationFrame(check);
+      }
+      v.addEventListener('error', function () { settle(new Error('media')); });
+      document.addEventListener('visibilitychange', visibility);
+      addCleanup(function () { done = true; cancelAnimationFrame(rafId); });
+      rafId = requestAnimationFrame(check);
+    });
+  }
+
   function reveal(v) {
     if (visibleEl === v) return;
     v.classList.add('is-visible');
@@ -445,6 +518,7 @@
     var key = btn.dataset.branch;
     var conf = BRANCHES[key];
     var v = video[key][dir];
+    var reverseShared = dir === 'reverse' && conf.reverseShared;
     var resuming = visibleEl === v && v.currentTime > 0.001;
     var guard = dir === 'forward' ? conf.fwdGuard : conf.revGuard;
 
@@ -480,14 +554,22 @@
     }
 
     var opening;
-    try { opening = resuming ? Promise.resolve(v.play()) : startClip(v, myToken); }
+    try {
+      opening = resuming
+        ? Promise.resolve(v.play())
+        : reverseShared
+          ? startReverseClip(v, myToken)
+          : startClip(v, myToken);
+    }
     catch (error) { opening = Promise.reject(error); }
     opening
       .then(function () {
         if (myToken !== token) throw new Error('cancelled');
         reveal(v);                                   // atomic layer switch
         playback = 'playing'; publish();
-        return holdAtEnd(v, guard, myToken, onProgress);
+        return reverseShared
+          ? holdReverse(v, guard, myToken, onProgress)
+          : holdAtEnd(v, guard, myToken, onProgress);
       })
       .then(function () {
         if (myToken !== token) return;

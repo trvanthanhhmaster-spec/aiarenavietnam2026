@@ -28,7 +28,7 @@ create table if not exists public.experience_branches (
     forward_guard numeric(4, 2) not null default 0.08,
     reverse_guard numeric(4, 2) not null default 0.08,
     forward_media_url text not null,
-    reverse_media_url text not null,
+    reverse_media_url text,
     is_base boolean not null default false,
     sort_order smallint not null default 0,
     is_active boolean not null default true,
