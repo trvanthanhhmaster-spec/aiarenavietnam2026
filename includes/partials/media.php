@@ -13,7 +13,11 @@ declare(strict_types=1);
     <div class="media-loading__texture"></div>
     <div class="media-loading__halo"></div>
     <div class="media-loading__content">
-        <span class="media-loading__brand"><?= htmlspecialchars((string) ($site['brand_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+        <?php
+        $brandWordmarkClass = 'media-loading__brand';
+        require __DIR__ . '/../components/brand-wordmark.php';
+        unset($brandWordmarkClass);
+        ?>
         <span class="media-loading__line"></span>
         <span class="media-loading__label"><?= htmlspecialchars((string) ($site['ui']['status_loading'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
     </div>

@@ -63,8 +63,8 @@
     transform:translateY(-2vh); text-align:center;
   }
   .media-loading__brand{
-    font-family:'Lora', Georgia, serif; font-size:clamp(28px, 3vw, 42px);
-    font-style:italic; letter-spacing:-.055em; opacity:.86;
+    width:clamp(142px, 16vw, 190px); opacity:.86;
+    filter:drop-shadow(0 2px 12px rgb(0 0 0 / .24));
   }
   .media-loading__line{
     width:54px; height:1px; background:rgb(255 255 255 / .6);
