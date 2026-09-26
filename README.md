@@ -29,6 +29,11 @@ PHP đọc dữ liệu trang, branch và toàn bộ UI copy qua Supabase REST AP
 
 - `forward_media_url`: video chạy khi chọn dịp.
 - `reverse_media_url`: video chạy khi bấm `Chọn lại`.
+- `branch_key`: mã kỹ thuật tự chọn, không cần dùng các tên cũ.
+- `is_base`: đánh dấu đúng một branch làm khung cảnh ban đầu.
+
+Thêm branch mới chỉ cần thêm một dòng trong `experience_branches`; controller, video elements,
+trạng thái tải và vị trí capsule sẽ tự sinh theo dữ liệu.
 
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 

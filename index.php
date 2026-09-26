@@ -39,7 +39,11 @@ require __DIR__ . '/includes/partials/head.php';
 ini_set('serialize_precision', '-1');
 ?>
 
-<div class="stage" id="stage">
+<div
+    class="stage"
+    id="stage"
+    style="--cell-count: <?= count($branches) + 1 ?>; --mobile-rows: <?= (int) ceil(count($branches) / 2) ?>"
+>
     <?php require __DIR__ . '/includes/partials/media.php'; ?>
     <?php require __DIR__ . '/includes/partials/hero.php'; ?>
     <?php require __DIR__ . '/includes/partials/controller.php'; ?>

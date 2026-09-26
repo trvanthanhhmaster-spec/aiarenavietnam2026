@@ -35,7 +35,7 @@ final class SiteContentRepository
             $branchRows = $this->client->select('experience_branches', [
                 'page_slug' => 'eq.home',
                 'is_active' => 'eq.true',
-                'select' => 'branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url',
+                'select' => 'branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url,is_base',
                 'order' => 'sort_order.asc',
             ]);
 
@@ -56,6 +56,7 @@ final class SiteContentRepository
                     'revGuard' => (float) ($row['reverse_guard'] ?? 0.08),
                     'forwardUrl' => (string) ($row['forward_media_url'] ?? ''),
                     'reverseUrl' => (string) ($row['reverse_media_url'] ?? ''),
+                    'isBase' => (bool) ($row['is_base'] ?? false),
                 ];
             }
 
@@ -109,6 +110,7 @@ final class SiteContentRepository
             if (
                 !is_array($branch)
                 || !isset($branch['forwardUrl'], $branch['reverseUrl'])
+                || !array_key_exists('isBase', $branch)
                 || $branch['forwardUrl'] === ''
                 || $branch['reverseUrl'] === ''
             ) {

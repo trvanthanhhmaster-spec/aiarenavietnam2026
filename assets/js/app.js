@@ -8,6 +8,8 @@
   var CONFIG   = window.VREMIX_CONFIG || {};
   var BRANCHES = CONFIG.branches || {};
   var UI       = CONFIG.ui || {};
+  var branchKeys = Object.keys(BRANCHES);
+  var expectedReadyCount = branchKeys.length * 2;
   var FIRST_FRAME_TIMEOUT = 12000;
 
   function copy(key, vars) {
@@ -35,7 +37,7 @@
   });
 
   var video = {};
-  Object.keys(BRANCHES).forEach(function (key) {
+  branchKeys.forEach(function (key) {
     video[key] = {
       forward: document.getElementById('v-' + key + '-f'),
       reverse: document.getElementById('v-' + key + '-r')
@@ -74,7 +76,7 @@
     readyCount++;
     if (visibleEl && !locked && playback === 'loading') { playback = 'ready'; publish(); }
     refreshEnabled();
-    if (readyCount === 8 && !locked && playback !== 'error') say(copy('status_ready'));
+    if (readyCount === expectedReadyCount && !locked && playback !== 'error') say(copy('status_ready'));
   }
   Object.keys(video).forEach(function (key) {
     ['forward', 'reverse'].forEach(function (dir) {
@@ -117,18 +119,14 @@
   });
 
   /* ---------------- capsule travel on hover / keyboard focus ------------- */
-  var POS = [
-    { left: '-5px', width: 'calc(20% + 5px)' },
-    { left: '20%',  width: '20%' },
-    { left: '40%',  width: '20%' },
-    { left: '60%',  width: '20%' },
-    { left: '80%',  width: 'calc(20% + 5px)' }
-  ];
   function moveCapsule(index) {
     if (controller.classList.contains('collapsed') || isMobile()) return;
-    var p = POS[index] || POS[0];
-    capsule.style.setProperty('--cap-left', p.left);
-    capsule.style.setProperty('--cap-width', p.width);
+    var total = buttons.length + 1;
+    var safeIndex = Math.max(0, Math.min(index, total - 1));
+    var cellWidth = 100 / total;
+    var edge = safeIndex === 0 || safeIndex === total - 1;
+    capsule.style.setProperty('--cap-left', safeIndex === 0 ? '-5px' : (cellWidth * safeIndex) + '%');
+    capsule.style.setProperty('--cap-width', edge ? 'calc(' + cellWidth + '% + 5px)' : cellWidth + '%');
     controller.classList.toggle('highlighting', index > 0);
   }
   function activeIndex() { return focusIndex >= 0 ? focusIndex : hoverIndex; }
@@ -270,9 +268,9 @@
 
   // The base scene is this clip's opening frame, held paused at 0 until the
   // first transition — no separate still asset is loaded.
-  var BASE_CLIP = 'colorway';
+  var BASE_CLIP = branchKeys.find(function (key) { return BRANCHES[key].isBase; }) || branchKeys[0];
   function showBaseFrame() {
-    if (visibleEl) return;
+    if (visibleEl || !BASE_CLIP || !video[BASE_CLIP]) return;
     var v = video[BASE_CLIP].forward;
     if (v.readyState < 2) return;
     v.classList.add('is-visible');
@@ -553,5 +551,7 @@
   publish();
   refreshEnabled();
   showBaseFrame();
-  video[BASE_CLIP].forward.addEventListener('loadeddata', showBaseFrame);
+  if (BASE_CLIP && video[BASE_CLIP]) {
+    video[BASE_CLIP].forward.addEventListener('loadeddata', showBaseFrame);
+  }
 })();
