@@ -9,6 +9,7 @@
   var resultStory = document.getElementById('resultStory');
   var resultGuardrail = document.getElementById('resultGuardrail');
   var resultPlaceholder = document.querySelector('.result-placeholder p');
+  var imageInput = document.getElementById('inputImage');
 
   function selected(name) {
     var input = form.querySelector('input[name="' + name + '"]:checked');
@@ -46,6 +47,13 @@
       colorSlug: selected('color'),
       styleSlug: selected('style')
     };
+    if (imageInput.files && imageInput.files[0]) {
+      if (imageInput.files[0].size > 8 * 1024 * 1024) {
+        resultPlaceholder.textContent = 'Ảnh quá lớn. Vui lòng chọn file nhỏ hơn 8 MB.';
+        return;
+      }
+      payload.inputImage = await readImage(imageInput.files[0]);
+    }
     try {
       var response = await fetch(catalog.generationEndpoint, {
         method: 'POST',
@@ -61,6 +69,17 @@
       resultPlaceholder.textContent = 'Chưa thể gọi Gemini trong môi trường hiện tại; bản preview vẫn giữ lựa chọn và guardrail từ catalog.';
     }
   });
+
+  function readImage(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        resolve({ mimeType: file.type, data: String(reader.result).split(',')[1] || '' });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 
   updateSummary();
 })();

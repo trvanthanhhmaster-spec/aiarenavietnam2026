@@ -136,6 +136,10 @@ $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, 
                         <?php endforeach; ?>
                     </div>
                 </fieldset>
+                <label class="upload-choice" for="inputImage">
+                    <span><strong>Thử trên ảnh của bạn</strong><small>JPG, PNG hoặc WebP · tối đa 8 MB · ảnh chỉ được gửi khi bạn bấm chuẩn bị bản phối.</small></span>
+                    <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
+                </label>
             </section>
 
             <section class="studio-submit">
