@@ -30,7 +30,7 @@ final class SiteContentRepository
         try {
             $pages = $this->client->select('pages', [
                 'slug' => 'eq.' . $this->pageSlug,
-                'select' => 'name,brand_mark,brand_name,title,description,preview_note,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,ui',
+                'select' => 'name,brand_mark,brand_name,title,description,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,ui',
                 'limit' => '1',
             ]);
             $branchRows = $this->client->select('experience_branches', [

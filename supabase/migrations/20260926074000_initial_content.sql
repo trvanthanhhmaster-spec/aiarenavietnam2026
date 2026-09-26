@@ -5,7 +5,6 @@ create table if not exists public.pages (
     name text not null,
     title text not null,
     description text not null,
-    preview_note text not null,
     hero_line_one text not null,
     hero_line_two text not null,
     hero_description_one text not null,
@@ -54,7 +53,7 @@ create policy "public can read active branches"
     using (is_active = true);
 
 insert into public.pages (
-    slug, name, title, description, preview_note,
+    slug, name, title, description,
     hero_line_one, hero_line_two, hero_description_one, hero_description_two,
     controller_label, cta_label, media_url
 ) values (
@@ -62,7 +61,6 @@ insert into public.pages (
     'V-Remix',
     'V-Remix — Việt phục, theo cách bạn',
     'Khám phá cách mặc Việt phục khi đi học, dạo phố, dự lễ hoặc chụp ảnh. Gần gũi hơn với trang phục Việt, tự tin hơn với phong cách của bạn.',
-    '',
     'Việt phục,',
     'theo cách bạn.',
     'Đi học, xuống phố hay dự lễ?',
@@ -75,7 +73,6 @@ on conflict (slug) do update set
     name = excluded.name,
     title = excluded.title,
     description = excluded.description,
-    preview_note = excluded.preview_note,
     hero_line_one = excluded.hero_line_one,
     hero_line_two = excluded.hero_line_two,
     hero_description_one = excluded.hero_description_one,
