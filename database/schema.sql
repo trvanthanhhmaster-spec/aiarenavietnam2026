@@ -3,6 +3,8 @@ create table if not exists public.pages (
     id uuid primary key default gen_random_uuid(),
     slug text not null unique,
     name text not null,
+    brand_mark text not null,
+    brand_name text not null,
     title text not null,
     description text not null,
     preview_note text not null,
@@ -49,12 +51,14 @@ create policy "public can read active branches"
     using (is_active = true);
 
 insert into public.pages (
-    slug, name, title, description, preview_note,
+    slug, name, brand_mark, brand_name, title, description, preview_note,
     hero_line_one, hero_line_two, hero_description_one, hero_description_two,
     controller_label, cta_label, ui, media_url
 ) values (
     'home',
     'V-Remix',
+    'V',
+    'Remix',
     'V-Remix — Việt phục, theo cách bạn',
     'Khám phá cách mặc Việt phục khi đi học, dạo phố, dự lễ hoặc chụp ảnh. Gần gũi hơn với trang phục Việt, tự tin hơn với phong cách của bạn.',
     'Bản xem thử · Video minh hoạ chưa theo từng dịp mặc.',
@@ -86,6 +90,8 @@ insert into public.pages (
 )
 on conflict (slug) do update set
     name = excluded.name,
+    brand_mark = excluded.brand_mark,
+    brand_name = excluded.brand_name,
     title = excluded.title,
     description = excluded.description,
     preview_note = excluded.preview_note,

@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 $site = [
     'name' => 'V-Remix',
+    'brand_mark' => 'V',
+    'brand_name' => 'Remix',
     'title' => 'V-Remix — Việt phục, theo cách bạn',
     'description' => 'Khám phá cách mặc Việt phục khi đi học, dạo phố, dự lễ hoặc chụp ảnh. Gần gũi hơn với trang phục Việt, tự tin hơn với phong cách của bạn.',
     'preview_note' => 'Bản xem thử · Video minh hoạ chưa theo từng dịp mặc.',
