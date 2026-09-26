@@ -6,6 +6,12 @@ $site = [
     'title' => 'V-Remix — Việt phục, theo cách bạn',
     'description' => 'Khám phá cách mặc Việt phục khi đi học, dạo phố, dự lễ hoặc chụp ảnh. Gần gũi hơn với trang phục Việt, tự tin hơn với phong cách của bạn.',
     'preview_note' => 'Bản xem thử · Video minh hoạ chưa theo từng dịp mặc.',
+    'hero_line_one' => 'Việt phục,',
+    'hero_line_two' => 'theo cách bạn.',
+    'hero_description_one' => 'Đi học, xuống phố hay dự lễ?',
+    'hero_description_two' => 'Khám phá cách phối đồ Việt vừa hợp dịp, vừa là bạn.',
+    'controller_label' => 'Bạn mặc đi đâu?',
+    'cta_label' => 'Khám phá ngay',
 ];
 
 $branches = [

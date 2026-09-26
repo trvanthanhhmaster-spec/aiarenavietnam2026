@@ -6,5 +6,7 @@
             <text class="brand__name" x="61" y="47">Remix</text>
         </svg>
     </a>
-    <a class="try-now" href="#controller">Khám phá ngay</a>
+    <a class="try-now" href="#controller">
+        <?= htmlspecialchars($site['cta_label'], ENT_QUOTES, 'UTF-8') ?>
+    </a>
 </header>

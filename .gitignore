@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+storage/cache/*.json
+!storage/cache/.gitkeep
 node_modules/
 vendor/
 __pycache__/
