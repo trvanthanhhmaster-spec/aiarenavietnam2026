@@ -31,6 +31,12 @@ create table if not exists public.experience_branches (
     unique (page_slug, branch_key)
 );
 
+-- Keep a fresh database compatible with the later media migration while making
+-- this seed safe to replay against an already-expanded project.
+alter table public.experience_branches
+    add column if not exists forward_media_url text,
+    add column if not exists reverse_media_url text;
+
 create index if not exists experience_branches_page_order_idx
     on public.experience_branches (page_slug, sort_order);
 
@@ -79,16 +85,21 @@ on conflict (slug) do update set
     media_url = excluded.media_url,
     updated_at = now();
 
-insert into public.experience_branches (page_slug, branch_key, label, forward_guard, reverse_guard, sort_order)
+insert into public.experience_branches (
+    page_slug, branch_key, label, forward_guard, reverse_guard,
+    forward_media_url, reverse_media_url, sort_order
+)
 values
-    ('home', 'scene', 'Đi học', 0.08, 0.18, 1),
-    ('home', 'light', 'Dạo phố', 0.08, 0.08, 2),
-    ('home', 'colorway', 'Dự lễ', 0.08, 0.08, 3),
-    ('home', 'fullLook', 'Chụp ảnh', 0.08, 0.08, 4)
+    ('home', 'dihoc', 'Đi học', 0.08, 0.18, (select media_url from public.pages where slug = 'home'), (select media_url from public.pages where slug = 'home'), 1),
+    ('home', 'daopho', 'Dạo phố', 0.08, 0.08, (select media_url from public.pages where slug = 'home'), (select media_url from public.pages where slug = 'home'), 2),
+    ('home', 'dule', 'Dự lễ', 0.08, 0.08, (select media_url from public.pages where slug = 'home'), (select media_url from public.pages where slug = 'home'), 3),
+    ('home', 'chupanh', 'Chụp ảnh', 0.08, 0.08, (select media_url from public.pages where slug = 'home'), (select media_url from public.pages where slug = 'home'), 4)
 on conflict (page_slug, branch_key) do update set
     label = excluded.label,
     forward_guard = excluded.forward_guard,
     reverse_guard = excluded.reverse_guard,
+    forward_media_url = coalesce(excluded.forward_media_url, public.experience_branches.forward_media_url),
+    reverse_media_url = coalesce(excluded.reverse_media_url, public.experience_branches.reverse_media_url),
     sort_order = excluded.sort_order,
     is_active = true,
     updated_at = now();
