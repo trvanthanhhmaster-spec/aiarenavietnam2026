@@ -62,7 +62,7 @@ insert into public.pages (
     'V-Remix',
     'V-Remix — Việt phục, theo cách bạn',
     'Khám phá cách mặc Việt phục khi đi học, dạo phố, dự lễ hoặc chụp ảnh. Gần gũi hơn với trang phục Việt, tự tin hơn với phong cách của bạn.',
-    'Bản xem thử · Video minh hoạ chưa theo từng dịp mặc.',
+    '',
     'Việt phục,',
     'theo cách bạn.',
     'Đi học, xuống phố hay dự lễ?',

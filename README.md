@@ -31,6 +31,11 @@ PHP đọc dữ liệu trang, branch, media và toàn bộ UI copy qua Supabase 
 - `forward_media_url`: video chạy khi chọn dịp.
 - `reverse_media_url`: video chạy khi bấm `Chọn lại`. Để trống để tự tua ngược `forward_media_url`.
 - `branch_key`: mã kỹ thuật tự chọn, không cần dùng các tên cũ.
+- `page_slug`: trang mà branch thuộc về, hiện tại là `home`.
+- `forward_guard`: số giây giữ ở cuối video forward để tránh lộ frame chuyển cảnh.
+- `reverse_guard`: số giây giữ ở đầu video reverse trước khi kết thúc chuyển cảnh.
+- `sort_order`: thứ tự hiển thị trên controller.
+- `is_active`: bật/tắt branch khỏi giao diện mà không xóa dữ liệu.
 - `is_base`: đánh dấu đúng một branch làm khung cảnh ban đầu.
 
 Thêm branch mới chỉ cần thêm một dòng trong `experience_branches`; controller, video elements,
