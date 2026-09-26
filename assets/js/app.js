@@ -302,33 +302,54 @@
 
   function holdReverse(v, guard, myToken, onProgress) {
     return new Promise(function (resolve, reject) {
-      var done = false, rafId = null, last = performance.now();
+      var done = false, rafId = null, seeking = false;
+      var lastFrameAt = performance.now();
+      var seekedHandler = null;
       function settle(error) {
         if (done || myToken !== token) return;
         done = true;
         if (rafId !== null) cancelAnimationFrame(rafId);
+        if (seekedHandler) v.removeEventListener('seeked', seekedHandler);
         v.pause();
         document.removeEventListener('visibilitychange', visibility);
         if (error) reject(error); else resolve();
       }
       function visibility() {
-        if (document.hidden) last = performance.now();
+        lastFrameAt = performance.now();
       }
-      function check(now) {
+      function scheduleNext() {
+        if (!done && myToken === token) rafId = requestAnimationFrame(step);
+      }
+      function step(now) {
         if (done || myToken !== token) return;
-        if (document.hidden) { rafId = requestAnimationFrame(check); return; }
+        if (document.hidden || seeking) { scheduleNext(); return; }
         if (onProgress) onProgress(v);
         if (v.currentTime <= guard) { settle(); return; }
-        var elapsed = Math.min((now - last) / 1000, 0.1);
-        last = now;
-        try { v.currentTime = Math.max(0, v.currentTime - elapsed); }
+
+        // Never queue seeks. Adapt between 30 fps and 15 fps based on how
+        // quickly the browser decoded the previous backwards frame.
+        var elapsed = Math.max(1 / 30, Math.min((now - lastFrameAt) / 1000, 1 / 15));
+        var target = Math.max(0, v.currentTime - elapsed);
+        seeking = true;
+        seekedHandler = function () {
+          v.removeEventListener('seeked', seekedHandler);
+          seekedHandler = null;
+          seeking = false;
+          lastFrameAt = performance.now();
+          requestAnimationFrame(scheduleNext);
+        };
+        v.addEventListener('seeked', seekedHandler);
+        try { v.currentTime = target; }
         catch (error) { settle(error); return; }
-        rafId = requestAnimationFrame(check);
       }
       v.addEventListener('error', function () { settle(new Error('media')); });
       document.addEventListener('visibilitychange', visibility);
-      addCleanup(function () { done = true; cancelAnimationFrame(rafId); });
-      rafId = requestAnimationFrame(check);
+      addCleanup(function () {
+        done = true;
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        if (seekedHandler) v.removeEventListener('seeked', seekedHandler);
+      });
+      scheduleNext();
     });
   }
 
