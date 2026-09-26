@@ -11,6 +11,8 @@
   var branchKeys = Object.keys(BRANCHES);
   var expectedReadyCount = branchKeys.length * 2;
   var FIRST_FRAME_TIMEOUT = 12000;
+  var LOADING_PREVIEW = new URLSearchParams(window.location.search).get('loader') === 'preview';
+  var LOADING_PREVIEW_DELAY = 2600;
 
   function copy(key, vars) {
     var text = UI[key] || '';
@@ -56,6 +58,7 @@
   var focusIndex = -1;
   var lastAttempt = null;   // for Retry
   var cleanups = [];
+  var loadingRevealTimer = null;
 
   function isMobile() { return window.matchMedia('(max-width: 700px)').matches; }
   function say(msg) { statusEl.textContent = msg; }
@@ -371,8 +374,16 @@
     visibleEl = v;
     v.pause();
     // The opening layer stays up until a decoded frame is actually visible.
-    // This prevents a black flash while keeping the first paint intentional.
-    stage.classList.add('media-ready');
+    // Preview mode adds a short hold so the local design state can be inspected.
+    if (LOADING_PREVIEW) {
+      if (loadingRevealTimer !== null) return;
+      loadingRevealTimer = window.setTimeout(function () {
+        stage.classList.add('media-ready');
+        loadingRevealTimer = null;
+      }, LOADING_PREVIEW_DELAY);
+    } else {
+      stage.classList.add('media-ready');
+    }
     playback = 'ready'; publish(); refreshEnabled();
   }
 
