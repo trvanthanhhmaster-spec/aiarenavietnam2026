@@ -1,4 +1,4 @@
-<div class="controller" id="controller" role="group" aria-label="Chọn dịp mặc để xem minh hoạ" aria-describedby="previewNote">
+<div class="controller" id="controller" role="group" aria-label="<?= htmlspecialchars($site['ui']['controller_aria_label'], ENT_QUOTES, 'UTF-8') ?>" aria-describedby="previewNote">
     <div class="track glass" id="track" aria-hidden="true"></div>
     <div class="capsule glass" id="capsule" aria-hidden="true"></div>
     <div class="cells" id="cells">

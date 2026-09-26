@@ -29,7 +29,7 @@ final class SiteContentRepository
         try {
             $pages = $this->client->select('pages', [
                 'slug' => 'eq.home',
-                'select' => 'name,title,description,preview_note,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,media_url',
+                'select' => 'name,title,description,preview_note,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,ui,media_url',
                 'limit' => '1',
             ]);
             $branchRows = $this->client->select('experience_branches', [
@@ -94,7 +94,15 @@ final class SiteContentRepository
         }
 
         $decoded = json_decode($contents, true);
-        return is_array($decoded) ? $decoded : null;
+        if (
+            !is_array($decoded)
+            || !isset($decoded['site']['ui'])
+            || !is_array($decoded['site']['ui'])
+        ) {
+            return null;
+        }
+
+        return $decoded;
     }
 
     /**

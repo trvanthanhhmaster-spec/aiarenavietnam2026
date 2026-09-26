@@ -52,7 +52,7 @@ ini_set('serialize_precision', '-1');
 
 <script>
 window.VREMIX_CONFIG = <?= json_encode(
-    ['branches' => $branches],
+    ['branches' => $branches, 'ui' => $site['ui']],
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
 ) ?>;
 </script>

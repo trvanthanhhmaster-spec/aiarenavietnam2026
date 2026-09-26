@@ -23,7 +23,7 @@ Mở `http://localhost/aiarenavietnam2026/` khi Apache/PHP của XAMPP đang ch�
 2. Sao chép `.env.example` thành `.env`, điền `SUPABASE_URL` và `SUPABASE_ANON_KEY`.
 3. Đặt `.env` ở thư mục gốc dự án. File này đã được loại khỏi Git.
 
-PHP đọc dữ liệu trang và các branch qua Supabase REST API, sau đó cache nội dung trong `storage/cache`. Khi chưa cấu hình Supabase hoặc API tạm thời lỗi, trang tự động dùng dữ liệu local trong `config/site.php`.
+PHP đọc dữ liệu trang, branch và toàn bộ UI copy qua Supabase REST API, sau đó cache nội dung trong `storage/cache`. Khi chưa cấu hình Supabase hoặc API tạm thời lỗi, trang tự động dùng dữ liệu local trong `config/site.php`.
 
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 

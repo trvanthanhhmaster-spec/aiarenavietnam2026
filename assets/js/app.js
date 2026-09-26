@@ -5,15 +5,18 @@
      One prepared forward clip and one paired reverse per branch.
      Hold guards are the asset pack's empirical defaults (PROMPT.md 9).
   ------------------------------------------------------------------ */
-  var BRANCHES = window.VREMIX_CONFIG && window.VREMIX_CONFIG.branches
-    ? window.VREMIX_CONFIG.branches
-    : {
-        scene:    { label: 'Đi học', fwdGuard: 0.08, revGuard: 0.18 },
-        light:    { label: 'Dạo phố', fwdGuard: 0.08, revGuard: 0.08 },
-        colorway: { label: 'Dự lễ', fwdGuard: 0.08, revGuard: 0.08 },
-        fullLook: { label: 'Chụp ảnh', fwdGuard: 0.08, revGuard: 0.08 }
-      };
+  var CONFIG   = window.VREMIX_CONFIG || {};
+  var BRANCHES = CONFIG.branches || {};
+  var UI       = CONFIG.ui || {};
   var FIRST_FRAME_TIMEOUT = 12000;
+
+  function copy(key, vars) {
+    var text = UI[key] || '';
+    Object.keys(vars || {}).forEach(function (name) {
+      text = text.replace(new RegExp('\\{' + name + '\\}', 'g'), vars[name]);
+    });
+    return text;
+  }
 
   var stage      = document.getElementById('stage');
   var controller = document.getElementById('controller');
@@ -28,7 +31,7 @@
     event.preventDefault();
     var available = buttons.filter(function (button) { return !button.disabled; });
     if (available.length) available[0].focus({ preventScroll:true });
-    else say('Hình ảnh đang được chuẩn bị. Bạn chờ một chút nhé.');
+    else say(copy('status_prepare'));
   });
 
   var video = {};
@@ -71,7 +74,7 @@
     readyCount++;
     if (visibleEl && !locked && playback === 'loading') { playback = 'ready'; publish(); }
     refreshEnabled();
-    if (readyCount === 8 && !locked && playback !== 'error') say('Mọi hiệu ứng chuyển cảnh đã sẵn sàng.');
+    if (readyCount === 8 && !locked && playback !== 'error') say(copy('status_ready'));
   }
   Object.keys(video).forEach(function (key) {
     ['forward', 'reverse'].forEach(function (dir) {
@@ -83,13 +86,13 @@
         v.dataset.failed = '1';
         if (!locked) {
           playback = 'error'; publish();
-          showError('Không tải được video. Vui lòng thử lại.');
+          showError(copy('error_video_load'));
         }
         refreshEnabled();
       });
     });
   });
-  say('Đang tải các hiệu ứng chuyển cảnh.');
+  say(copy('status_loading'));
 
   function branchReady(key) {
     return video[key].forward.readyState >= 2 && video[key].reverse.readyState >= 2 &&
@@ -134,7 +137,7 @@
     var option = document.createElement('span');
     option.className = 'option-text'; option.textContent = BRANCHES[btn.dataset.branch].label;
     var reset = document.createElement('span');
-    reset.className = 'reset-text'; reset.textContent = 'Chọn lại';
+    reset.className = 'reset-text'; reset.textContent = copy('reset_label');
     btn.textContent = ''; btn.appendChild(option); btn.appendChild(reset);
     var index = i + 1;
     btn.addEventListener('pointerenter', function () {
@@ -384,7 +387,7 @@
     btn.classList.remove('reveal-reset');
     void btn.offsetWidth;
     btn.classList.add('is-reset', 'reveal-reset');
-    btn.setAttribute('aria-label', 'Trở về để chọn dịp mặc khác');
+    btn.setAttribute('aria-label', copy('return_aria_label'));
   }
   function toOption(btn) {
     btn.classList.remove('is-reset', 'reveal-reset');
@@ -460,13 +463,13 @@
     if (dir === 'forward') {
       collapseTo(btn);
       setOthersInteractive(btn, false);
-      say('Đang mở bản xem thử cho lựa chọn ' + conf.label.toLocaleLowerCase('vi') + '.');
+      say(copy('status_opening', { label: conf.label.toLocaleLowerCase('vi') }));
     } else {
       // Reverse playback and the bar reopening run in parallel.
       expandFrom(btn);
       btn.classList.add('returning');
       toOption(btn);
-      say('Đang trở về khung cảnh ban đầu.');
+          say(copy('status_returning'));
     }
 
     var titleDone = (dir === 'reverse');
@@ -497,13 +500,13 @@
           setOthersInteractive(btn, false);
           btn.disabled = false;                      // Reset is now actionable
           btn.removeAttribute('aria-hidden'); btn.setAttribute('tabindex', '0');
-          say('Đã chọn ' + conf.label.toLocaleLowerCase('vi') + '. Đây là video minh hoạ. Nhấn Chọn lại để xem lựa chọn khác.');
+          say(copy('status_selected', { label: conf.label.toLocaleLowerCase('vi') }));
         } else {
           scene = 'base';
           showTitle();
           btn.classList.remove('returning');
           setOthersInteractive(btn, true);
-          say('Đã trở về khung cảnh ban đầu.');
+          say(copy('status_returned'));
         }
         locked = false;
         playback = 'ready'; publish(); runCleanups();
@@ -526,10 +529,10 @@
         buttons.forEach(function (b) { b.disabled = true; b.setAttribute('tabindex', '-1'); });
         showError(
           err.message === 'blocked'
-            ? 'Trình duyệt đã chặn phát video.'
+            ? copy('error_video_blocked')
             : err.message === 'timeout'
-              ? 'Video ' + conf.label.toLocaleLowerCase('vi') + ' tải quá lâu. Vui lòng thử lại.'
-              : 'Không phát được video ' + conf.label.toLocaleLowerCase('vi') + '.'
+              ? copy('error_video_timeout', { label: conf.label.toLocaleLowerCase('vi') })
+              : copy('error_video_playback', { label: conf.label.toLocaleLowerCase('vi') })
         );
         if (hadFocus) retryBtn.focus({ preventScroll: true });
       });

@@ -12,6 +12,7 @@ create table if not exists public.pages (
     hero_description_two text not null,
     controller_label text not null,
     cta_label text not null,
+    ui jsonb not null default '{}'::jsonb,
     media_url text not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -50,7 +51,7 @@ create policy "public can read active branches"
 insert into public.pages (
     slug, name, title, description, preview_note,
     hero_line_one, hero_line_two, hero_description_one, hero_description_two,
-    controller_label, cta_label, media_url
+    controller_label, cta_label, ui, media_url
 ) values (
     'home',
     'V-Remix',
@@ -63,6 +64,24 @@ insert into public.pages (
     'Khám phá cách phối đồ Việt vừa hợp dịp, vừa là bạn.',
     'Bạn mặc đi đâu?',
     'Khám phá ngay',
+    jsonb_build_object(
+        'controller_aria_label', 'Chọn dịp mặc để xem minh hoạ',
+        'brand_aria_label', 'Trang chủ V-Remix',
+        'retry_label', 'Thử lại',
+        'reset_label', 'Chọn lại',
+        'return_aria_label', 'Trở về để chọn dịp mặc khác',
+        'status_loading', 'Đang tải các hiệu ứng chuyển cảnh.',
+        'status_ready', 'Mọi hiệu ứng chuyển cảnh đã sẵn sàng.',
+        'status_prepare', 'Hình ảnh đang được chuẩn bị. Bạn chờ một chút nhé.',
+        'status_opening', 'Đang mở bản xem thử cho lựa chọn {label}.',
+        'status_selected', 'Đã chọn {label}. Đây là video minh hoạ. Nhấn Chọn lại để xem lựa chọn khác.',
+        'status_returning', 'Đang trở về khung cảnh ban đầu.',
+        'status_returned', 'Đã trở về khung cảnh ban đầu.',
+        'error_video_load', 'Không tải được video. Vui lòng thử lại.',
+        'error_video_blocked', 'Trình duyệt đã chặn phát video.',
+        'error_video_timeout', 'Video {label} tải quá lâu. Vui lòng thử lại.',
+        'error_video_playback', 'Không phát được video {label}.'
+    ),
     'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4'
 )
 on conflict (slug) do update set
@@ -76,6 +95,7 @@ on conflict (slug) do update set
     hero_description_two = excluded.hero_description_two,
     controller_label = excluded.controller_label,
     cta_label = excluded.cta_label,
+    ui = excluded.ui,
     media_url = excluded.media_url,
     updated_at = now();
 
