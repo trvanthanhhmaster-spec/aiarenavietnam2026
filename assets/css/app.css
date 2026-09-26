@@ -21,13 +21,62 @@
   .stage{
     position:relative; isolation:isolate;
     width:100%; height:100vh; height:100dvh;
-    overflow:hidden; background:#000;
+    overflow:hidden;
+    background:
+      radial-gradient(80% 70% at 52% 42%, rgb(42 69 86 / .72), transparent 68%),
+      linear-gradient(145deg, #07131c 0%, #102c3b 47%, #061018 100%);
   }
 
   /* ---------- media layer (z 0) ---------- */
   .media{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; z-index:0; pointer-events:none; }
   video.media{ visibility:hidden; }
   video.media.is-visible{ visibility:visible; }
+
+  /* Opening frame: a designed state for the short decode gap before video. */
+  .media-loading{
+    position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none;
+    display:grid; place-items:center;
+    color:rgb(245 249 250 / .9);
+    opacity:1; visibility:visible;
+    transition:opacity 900ms var(--retake-ease), visibility 0s linear 900ms;
+  }
+  .stage.media-ready .media-loading{
+    opacity:0; visibility:hidden;
+  }
+  .media-loading__texture{
+    position:absolute; inset:-20%;
+    background:
+      radial-gradient(38% 42% at 18% 30%, rgb(172 214 219 / .11), transparent 72%),
+      radial-gradient(32% 45% at 82% 72%, rgb(206 167 135 / .10), transparent 72%),
+      repeating-linear-gradient(115deg, transparent 0 21px, rgb(255 255 255 / .018) 22px, transparent 23px);
+    opacity:.85;
+    animation:loadingDrift 14s ease-in-out infinite alternate;
+  }
+  .media-loading__halo{
+    position:absolute; width:min(62vw, 720px); aspect-ratio:1;
+    border-radius:50%;
+    background:radial-gradient(circle, rgb(208 235 231 / .13), rgb(208 235 231 / 0) 67%);
+    filter:blur(2px); animation:loadingPulse 4.6s ease-in-out infinite;
+  }
+  .media-loading__content{
+    position:relative; display:flex; flex-direction:column; align-items:center; gap:14px;
+    transform:translateY(-2vh); text-align:center;
+  }
+  .media-loading__brand{
+    font-family:'Lora', Georgia, serif; font-size:clamp(28px, 3vw, 42px);
+    font-style:italic; letter-spacing:-.055em; opacity:.86;
+  }
+  .media-loading__line{
+    width:54px; height:1px; background:rgb(255 255 255 / .6);
+    transform-origin:left center; animation:loadingLine 2.2s var(--retake-ease) infinite;
+  }
+  .media-loading__label{
+    max-width:260px; font-size:11px; line-height:1.5; letter-spacing:.08em;
+    text-transform:uppercase; color:rgb(238 246 247 / .68);
+  }
+  @keyframes loadingDrift{ from{ transform:translate3d(-1%, -1%, 0) scale(1); } to{ transform:translate3d(1%, 1%, 0) scale(1.04); } }
+  @keyframes loadingPulse{ 0%,100%{ opacity:.55; transform:scale(.94); } 50%{ opacity:.95; transform:scale(1.04); } }
+  @keyframes loadingLine{ 0%,100%{ transform:scaleX(.35); opacity:.3; } 50%{ transform:scaleX(1); opacity:.9; } }
 
   /* ---------- hero copy (z 10) ---------- */
   .hero{ position:absolute; inset:0; z-index:10; pointer-events:none; }
@@ -299,7 +348,8 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .capsule,.track,.cell,.hero h1 span,.hero p,.try-now{ transition-duration:1ms !important; transition-delay:0ms !important; }
+    .media-loading,.capsule,.track,.cell,.hero h1 span,.hero p,.try-now{ transition-duration:1ms !important; transition-delay:0ms !important; }
+    .media-loading__texture,.media-loading__halo,.media-loading__line{ animation:none !important; }
     .cell.reveal-reset{ animation-duration:1ms; }
     .cell.returning .option-text{ animation-duration:1ms; animation-delay:0ms; }
     .cell.returning .reset-text{ animation-duration:1ms; }

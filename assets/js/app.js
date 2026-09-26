@@ -370,6 +370,9 @@
     v.classList.add('is-visible');
     visibleEl = v;
     v.pause();
+    // The opening layer stays up until a decoded frame is actually visible.
+    // This prevents a black flash while keeping the first paint intentional.
+    stage.classList.add('media-ready');
     playback = 'ready'; publish(); refreshEnabled();
   }
 
