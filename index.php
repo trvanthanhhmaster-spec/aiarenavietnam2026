@@ -28,9 +28,6 @@ if (
         if ($content !== null) {
             $site = array_replace($site, $content['site']);
             $branches = $content['branches'];
-            if ($content['media_url'] !== '') {
-                $mediaUrl = $content['media_url'];
-            }
         }
     } catch (Throwable $error) {
         error_log('[V-Remix] Supabase bootstrap: ' . $error->getMessage());

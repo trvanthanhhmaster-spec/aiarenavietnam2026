@@ -17,7 +17,7 @@ final class SiteContentRepository
     }
 
     /**
-     * @return array{site: array<string, mixed>, branches: array<string, array<string, mixed>>, media_url: string}|null
+     * @return array{site: array<string, mixed>, branches: array<string, array<string, mixed>>}|null
      */
     public function getHomePage(): ?array
     {
@@ -29,13 +29,13 @@ final class SiteContentRepository
         try {
             $pages = $this->client->select('pages', [
                 'slug' => 'eq.home',
-                'select' => 'name,brand_mark,brand_name,title,description,preview_note,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,ui,media_url',
+                'select' => 'name,brand_mark,brand_name,title,description,preview_note,hero_line_one,hero_line_two,hero_description_one,hero_description_two,controller_label,cta_label,ui',
                 'limit' => '1',
             ]);
             $branchRows = $this->client->select('experience_branches', [
                 'page_slug' => 'eq.home',
                 'is_active' => 'eq.true',
-                'select' => 'branch_key,label,forward_guard,reverse_guard',
+                'select' => 'branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url',
                 'order' => 'sort_order.asc',
             ]);
 
@@ -54,6 +54,8 @@ final class SiteContentRepository
                     'label' => (string) ($row['label'] ?? $key),
                     'fwdGuard' => (float) ($row['forward_guard'] ?? 0.08),
                     'revGuard' => (float) ($row['reverse_guard'] ?? 0.08),
+                    'forwardUrl' => (string) ($row['forward_media_url'] ?? ''),
+                    'reverseUrl' => (string) ($row['reverse_media_url'] ?? ''),
                 ];
             }
 
@@ -62,9 +64,8 @@ final class SiteContentRepository
             }
 
             $content = [
-                'site' => array_diff_key($page, ['media_url' => true]),
+                'site' => $page,
                 'branches' => $branches,
-                'media_url' => (string) ($page['media_url'] ?? ''),
             ];
             $this->writeCache($content);
 
@@ -76,7 +77,7 @@ final class SiteContentRepository
     }
 
     /**
-     * @return array{site: array<string, mixed>, branches: array<string, array<string, mixed>>, media_url: string}|null
+     * @return array{site: array<string, mixed>, branches: array<string, array<string, mixed>>}|null
      */
     private function readCache(bool $ignoreExpiry = false): ?array
     {
@@ -98,8 +99,21 @@ final class SiteContentRepository
             !is_array($decoded)
             || !isset($decoded['site']['ui'])
             || !is_array($decoded['site']['ui'])
+            || !isset($decoded['branches'])
+            || !is_array($decoded['branches'])
         ) {
             return null;
+        }
+
+        foreach ($decoded['branches'] as $branch) {
+            if (
+                !is_array($branch)
+                || !isset($branch['forwardUrl'], $branch['reverseUrl'])
+                || $branch['forwardUrl'] === ''
+                || $branch['reverseUrl'] === ''
+            ) {
+                return null;
+            }
         }
 
         return $decoded;

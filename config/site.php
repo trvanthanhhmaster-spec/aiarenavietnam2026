@@ -34,11 +34,11 @@ $site = [
     ],
 ];
 
-$branches = [
-    'scene' => ['label' => 'Đi học', 'fwdGuard' => 0.08, 'revGuard' => 0.18],
-    'light' => ['label' => 'Dạo phố', 'fwdGuard' => 0.08, 'revGuard' => 0.08],
-    'colorway' => ['label' => 'Dự lễ', 'fwdGuard' => 0.08, 'revGuard' => 0.08],
-    'fullLook' => ['label' => 'Chụp ảnh', 'fwdGuard' => 0.08, 'revGuard' => 0.08],
-];
+$defaultMediaUrl = 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4';
 
-$mediaUrl = 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4';
+$branches = [
+    'scene' => ['label' => 'Đi học', 'fwdGuard' => 0.08, 'revGuard' => 0.18, 'forwardUrl' => $defaultMediaUrl, 'reverseUrl' => $defaultMediaUrl],
+    'light' => ['label' => 'Dạo phố', 'fwdGuard' => 0.08, 'revGuard' => 0.08, 'forwardUrl' => $defaultMediaUrl, 'reverseUrl' => $defaultMediaUrl],
+    'colorway' => ['label' => 'Dự lễ', 'fwdGuard' => 0.08, 'revGuard' => 0.08, 'forwardUrl' => $defaultMediaUrl, 'reverseUrl' => $defaultMediaUrl],
+    'fullLook' => ['label' => 'Chụp ảnh', 'fwdGuard' => 0.08, 'revGuard' => 0.08, 'forwardUrl' => $defaultMediaUrl, 'reverseUrl' => $defaultMediaUrl],
+];

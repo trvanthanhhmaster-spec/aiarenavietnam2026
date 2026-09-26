@@ -27,6 +27,8 @@ create table if not exists public.experience_branches (
     label text not null,
     forward_guard numeric(4, 2) not null default 0.08,
     reverse_guard numeric(4, 2) not null default 0.08,
+    forward_media_url text not null,
+    reverse_media_url text not null,
     sort_order smallint not null default 0,
     is_active boolean not null default true,
     created_at timestamptz not null default now(),
@@ -105,16 +107,21 @@ on conflict (slug) do update set
     media_url = excluded.media_url,
     updated_at = now();
 
-insert into public.experience_branches (page_slug, branch_key, label, forward_guard, reverse_guard, sort_order)
+insert into public.experience_branches (
+    page_slug, branch_key, label, forward_guard, reverse_guard,
+    forward_media_url, reverse_media_url, sort_order
+)
 values
-    ('home', 'scene', 'Đi học', 0.08, 0.18, 1),
-    ('home', 'light', 'Dạo phố', 0.08, 0.08, 2),
-    ('home', 'colorway', 'Dự lễ', 0.08, 0.08, 3),
-    ('home', 'fullLook', 'Chụp ảnh', 0.08, 0.08, 4)
+    ('home', 'scene', 'Đi học', 0.08, 0.18, 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 1),
+    ('home', 'light', 'Dạo phố', 0.08, 0.08, 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 2),
+    ('home', 'colorway', 'Dự lễ', 0.08, 0.08, 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 3),
+    ('home', 'fullLook', 'Chụp ảnh', 0.08, 0.08, 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 'https://pub-17538b171cce44888cd5fc146559c986.r2.dev/folder01/Create_continuous_five-second_tr%E2%80%A6_1080p_20260926121852.mp4', 4)
 on conflict (page_slug, branch_key) do update set
     label = excluded.label,
     forward_guard = excluded.forward_guard,
     reverse_guard = excluded.reverse_guard,
+    forward_media_url = excluded.forward_media_url,
+    reverse_media_url = excluded.reverse_media_url,
     sort_order = excluded.sort_order,
     is_active = true,
     updated_at = now();

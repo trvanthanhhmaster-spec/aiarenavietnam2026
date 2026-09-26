@@ -25,6 +25,11 @@ Mở `http://localhost/aiarenavietnam2026/` khi Apache/PHP của XAMPP đang ch�
 
 PHP đọc dữ liệu trang, branch và toàn bộ UI copy qua Supabase REST API, sau đó cache nội dung trong `storage/cache`. Khi chưa cấu hình Supabase hoặc API tạm thời lỗi, trang tự động dùng dữ liệu local trong `config/site.php`.
 
+Để thay video, mở Supabase Table Editor → `experience_branches`, rồi sửa:
+
+- `forward_media_url`: video chạy khi chọn dịp.
+- `reverse_media_url`: video chạy khi bấm `Chọn lại`.
+
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 
 ```bash
