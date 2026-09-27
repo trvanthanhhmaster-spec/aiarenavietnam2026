@@ -448,7 +448,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .studio-intro__note { max-width: 280px; font-size: 11px; }
   .studio-hotspot { width: 48px; height: 48px; }
   .studio-hotspot__label { font-size: 10px; }
-  .studio-dock { right: 16px; bottom: 105px; left: 16px; padding: 15px; max-height: 250px; }
+  .studio-dock { right: 16px; bottom: 143px; left: 16px; padding: 15px; max-height: 250px; }
   .studio-dock h2 { font-size: 21px; }
   .studio-rail { right: 16px; bottom: 16px; left: 16px; flex-wrap: wrap; gap: 9px; min-height: 92px; padding: 11px; }
   .studio-rail__copy { flex: 1 1 calc(100% - 145px); }
