@@ -35,6 +35,11 @@
   var resultImages = document.getElementById('resultImages');
   var resultVideo = document.getElementById('resultVideo');
   var resultDownload = document.getElementById('resultDownload');
+  var submitButton = form.querySelector('.studio-submit');
+  var submitLabel = submitButton.innerHTML;
+  var activeJobKey = 'vremix.active-generation-job.v1';
+  var generationPending = false;
+  var lastOutputFingerprint = '';
 
   var modes = [
     {
@@ -75,6 +80,73 @@
     style: firstSlug(catalog.styles),
     accessories: []
   };
+
+  function createRequestId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (character) {
+      var random = Math.random() * 16 | 0;
+      var value = character === 'x' ? random : (random & 0x3 | 0x8);
+      return value.toString(16);
+    });
+  }
+
+  function readActiveJob() {
+    try {
+      var value = JSON.parse(window.localStorage.getItem(activeJobKey) || 'null');
+      if (!value || !value.requestId || !value.startedAt) return null;
+      if (Date.now() - Number(value.startedAt) > 24 * 60 * 60 * 1000) {
+        window.localStorage.removeItem(activeJobKey);
+        return null;
+      }
+      return value;
+    } catch (error) {
+      window.localStorage.removeItem(activeJobKey);
+      return null;
+    }
+  }
+
+  function saveActiveJob(value) {
+    window.localStorage.setItem(activeJobKey, JSON.stringify(value));
+  }
+
+  function clearActiveJob() {
+    window.localStorage.removeItem(activeJobKey);
+  }
+
+  function syncSubmitButton() {
+    submitButton.disabled = generationPending && !result.hidden;
+    submitButton.innerHTML = generationPending
+      ? 'Xem tiến trình <span aria-hidden="true">↗</span>'
+      : submitLabel;
+  }
+
+  function restoreSelection(selection) {
+    if (!selection) return;
+    if (lookup(catalog.events, selection.event).slug) state.event = selection.event;
+    if (lookup(catalog.garments, selection.garment).slug) state.garment = selection.garment;
+    if (lookup(catalog.colors, selection.color).slug) state.color = selection.color;
+    if (lookup(catalog.styles, selection.style).slug) state.style = selection.style;
+    state.accessories = Array.isArray(selection.accessories)
+      ? selection.accessories.filter(function (slug) {
+        return Boolean(lookup(catalog.accessories, slug).slug);
+      })
+      : [];
+    if (selection.generationType) outputType.value = selection.generationType;
+    updateSummary();
+  }
+
+  function prepareResultCopy() {
+    var garment = lookup(catalog.garments, state.garment);
+    var occasion = lookup(catalog.events, state.event);
+    resultTitle.textContent = garment.name
+      ? garment.name + ', trong một nhịp hiện đại.'
+      : 'Đang chuẩn bị một dáng Việt mới.';
+    resultStory.textContent = garment.origin_note || 'Thông tin nguồn gốc sẽ được bổ sung từ kho tri thức đã duyệt.';
+    resultGuardrail.textContent = occasion.cultural_context || 'Giữ nguyên những chi tiết nhận diện trước khi hiện đại hoá.';
+    resultGenZTip.textContent = 'Ưu tiên một điểm nhấn hiện đại để dáng áo vẫn là trung tâm.';
+  }
 
   function firstSlug(items) {
     return items && items[0] ? String(items[0].slug || '') : '';
@@ -299,22 +371,43 @@
 
   form.addEventListener('submit', function (event) {
     event.preventDefault();
+    if (generationPending) {
+      showResult();
+      return;
+    }
+    var activeJob = readActiveJob();
+    if (activeJob) {
+      resumeGeneration(activeJob);
+      return;
+    }
     generateLook();
   });
 
   async function generateLook() {
-    var garment = lookup(catalog.garments, state.garment);
-    var occasion = lookup(catalog.events, state.event);
+    if (generationPending) return;
     showResult();
     setResultState('queued', 'Đang xếp hàng bản phối.');
-    resultTitle.textContent = garment.name
-      ? garment.name + ', trong một nhịp hiện đại.'
-      : 'Đang chuẩn bị một dáng Việt mới.';
-    resultStory.textContent = garment.origin_note || 'Thông tin nguồn gốc sẽ được bổ sung từ kho tri thức đã duyệt.';
-    resultGuardrail.textContent = occasion.cultural_context || 'Giữ nguyên những chi tiết nhận diện trước khi hiện đại hoá.';
-    resultGenZTip.textContent = 'Ưu tiên một điểm nhấn hiện đại để dáng áo vẫn là trung tâm.';
+    prepareResultCopy();
 
+    var requestId = createRequestId();
+    var activeJob = {
+      requestId: requestId,
+      jobId: null,
+      startedAt: Date.now(),
+      selection: {
+        event: state.event,
+        garment: state.garment,
+        color: state.color,
+        style: state.style,
+        accessories: state.accessories.slice(),
+        generationType: outputType.value
+      }
+    };
+    saveActiveJob(activeJob);
+    generationPending = true;
+    syncSubmitButton();
     var payload = {
+      clientRequestId: requestId,
       eventSlug: state.event,
       garmentSlug: state.garment,
       accessorySlugs: state.accessories.slice(),
@@ -323,21 +416,22 @@
       generationType: outputType.value
     };
 
-    var file = imageInput.files && imageInput.files[0];
-    if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        setResultState('failed', 'Ảnh vượt quá 8 MB. Hãy đóng kết quả và chọn ảnh khác.');
-        return;
-      }
-      payload.inputImage = await readImage(file);
-    }
-
-    if (!catalog.generationEndpoint) {
-      setResultState('failed', 'Edge Function chưa được cấu hình. Bản preview đang dùng nội dung từ catalog.');
-      return;
-    }
-
+    var terminalFailure = false;
     try {
+      var file = imageInput.files && imageInput.files[0];
+      if (file) {
+        if (file.size > 8 * 1024 * 1024) {
+          terminalFailure = true;
+          throw new Error('Ảnh vượt quá 8 MB. Hãy chọn ảnh nhỏ hơn 8 MB.');
+        }
+        payload.inputImage = await readImage(file);
+      }
+
+      if (!catalog.generationEndpoint) {
+        terminalFailure = true;
+        throw new Error('Edge Function chưa được cấu hình. Bản preview đang dùng nội dung từ catalog.');
+      }
+
       setResultState('processing', 'Gemini đang kiểm tra bối cảnh, câu chuyện và giới hạn văn hoá.');
       var response = await fetch(catalog.generationEndpoint, {
         method: 'POST',
@@ -345,20 +439,64 @@
         body: JSON.stringify(payload)
       });
       var body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Generation failed.');
-      var completed = body.status === 'completed' ? body : await pollJob(body.jobId);
+      if (!response.ok) {
+        terminalFailure = body.status === 'failed';
+        throw new Error(body.error || 'Generation failed.');
+      }
+      if (body.jobId) {
+        activeJob.jobId = body.jobId;
+        saveActiveJob(activeJob);
+      }
+      applyOutput(body.output || {});
+      var completed = body.status === 'completed' ? body : await pollJob(activeJob);
       if (completed.status !== 'completed') {
+        terminalFailure = true;
         throw new Error(completed.error || 'Generation job did not complete.');
       }
       applyOutput(completed.output || {});
-      setResultState('completed', completed.output && completed.output.video
-        ? 'Video Veo và tài sản bản phối đã sẵn sàng.'
-        : 'Bản phối AI và lookbook 9:16 đã sẵn sàng.');
+      clearActiveJob();
+      generationPending = false;
+      syncSubmitButton();
+      setResultState('completed', resultMessage(completed.output || {}));
     } catch (error) {
+      if (terminalFailure) clearActiveJob();
+      generationPending = false;
+      syncSubmitButton();
       var message = humanizeGenerationError(error && error.message
         ? error.message
         : 'Không thể hoàn tất generation job.');
       setResultState('failed', message + ' Bạn có thể đóng kết quả và thử lại sau.');
+    }
+  }
+
+  async function resumeGeneration(activeJob) {
+    if (generationPending) {
+      showResult();
+      return;
+    }
+    restoreSelection(activeJob.selection);
+    showResult();
+    prepareResultCopy();
+    setResultState('processing', 'Đang nối lại generation job sau khi tải lại trang.');
+    generationPending = true;
+    syncSubmitButton();
+    try {
+      var completed = await pollJob(activeJob, true);
+      if (completed.status !== 'completed') {
+        clearActiveJob();
+        throw new Error(completed.error || 'Generation job did not complete.');
+      }
+      applyOutput(completed.output || {});
+      clearActiveJob();
+      setResultState('completed', resultMessage(completed.output || {}));
+    } catch (error) {
+      var message = humanizeGenerationError(error && error.message
+        ? error.message
+        : 'Không thể nối lại generation job.');
+      setResultState('failed', message + ' Bạn có thể thử lại bằng cùng nút tạo.');
+    } finally {
+      generationPending = false;
+      syncSubmitButton();
     }
   }
 
@@ -376,32 +514,69 @@
     return text;
   }
 
-  async function pollJob(jobId) {
-    if (!jobId) throw new Error('Generation job did not return an id.');
+  async function pollJob(activeJob, immediate) {
+    if (!activeJob || (!activeJob.jobId && !activeJob.requestId)) {
+      throw new Error('Generation job did not return an id.');
+    }
     // Veo jobs commonly take longer than a minute; keep the overlay alive
     // while the backend continues polling the provider operation.
     var maxAttempts = 180;
     var intervalMs = 2000;
     for (var attempt = 0; attempt < maxAttempts; attempt += 1) {
-      await new Promise(function (resolve) { setTimeout(resolve, intervalMs); });
-      var response = await fetch(catalog.generationEndpoint + '?jobId=' + encodeURIComponent(jobId), {
+      if (!(immediate && attempt === 0)) {
+        await new Promise(function (resolve) { setTimeout(resolve, intervalMs); });
+      }
+      var query = activeJob.jobId
+        ? 'jobId=' + encodeURIComponent(activeJob.jobId)
+        : 'requestId=' + encodeURIComponent(activeJob.requestId);
+      var response = await fetch(catalog.generationEndpoint + '?' + query, {
         headers: { Accept: 'application/json' }
       });
       var body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Unable to read generation job.');
+      if (!response.ok) {
+        if (response.status === 404 && !activeJob.jobId && attempt < 10) continue;
+        throw new Error(body.error || 'Unable to read generation job.');
+      }
+      if (body.jobId && !activeJob.jobId) {
+        activeJob.jobId = body.jobId;
+        saveActiveJob(activeJob);
+      }
+      if (body.output) {
+        applyOutput(body.output);
+      }
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
-      setResultState('processing', 'Job ' + (attempt + 1) + '/' + maxAttempts + ': Gemini/Veo đang dựng tài sản đầu ra.');
+      setResultState('processing', body.output && body.output.lookbook && body.output.lookbook.items && body.output.lookbook.items.length
+        ? 'Lookbook đã sẵn sàng; video đang được hoàn thiện.'
+        : 'Job ' + (attempt + 1) + '/' + maxAttempts + ': Gemini/Veo đang dựng tài sản đầu ra.');
     }
     throw new Error('Generation job vẫn đang được xử lý. Hãy mở lại kết quả sau ít phút để xem video.');
   }
 
+  function resultMessage(output) {
+    if (output.video && output.video.url) return 'Video Veo và tài sản bản phối đã sẵn sàng.';
+    if (output.videoError) return 'Lookbook đã sẵn sàng; video chưa hoàn tất nên bạn vẫn có thể dùng ảnh.';
+    return 'Bản phối AI và lookbook 9:16 đã sẵn sàng.';
+  }
+
   function applyOutput(output) {
-    resultStory.textContent = output.story || resultStory.textContent;
-    resultGuardrail.textContent = output.guardrail || resultGuardrail.textContent;
-    resultGenZTip.textContent = output.genZTip || resultGenZTip.textContent;
     var items = output.lookbook && Array.isArray(output.lookbook.items)
       ? output.lookbook.items.filter(function (item) { return item && item.url; })
       : [];
+    var fingerprint = JSON.stringify({
+      story: output.story || '',
+      guardrail: output.guardrail || '',
+      genZTip: output.genZTip || '',
+      images: items.map(function (item) { return item.url; }),
+      video: output.video && output.video.url || '',
+      videoStatus: output.videoStatus || '',
+      videoError: output.videoError || ''
+    });
+    if (fingerprint === lastOutputFingerprint) return;
+    lastOutputFingerprint = fingerprint;
+
+    resultStory.textContent = output.story || resultStory.textContent;
+    resultGuardrail.textContent = output.guardrail || resultGuardrail.textContent;
+    resultGenZTip.textContent = output.genZTip || resultGenZTip.textContent;
 
     resultImages.innerHTML = '';
     resultImages.hidden = items.length === 0;
@@ -417,7 +592,7 @@
       resultVideo.removeAttribute('poster');
       resultVideo.load();
     }
-    resultPlaceholderVisual.hidden = items.length > 0;
+    resultPlaceholderVisual.hidden = items.length > 0 || Boolean(video);
     resultVisualLabel.hidden = items.length > 0 || Boolean(video);
     resultDownload.hidden = items.length === 0 && !video;
 
@@ -455,9 +630,11 @@
     resultVideo.hidden = true;
     resultVideo.load();
     resultVisual.classList.remove('has-images', 'has-video');
+    lastOutputFingerprint = '';
     resultPlaceholderVisual.hidden = false;
     resultVisualLabel.hidden = false;
     resultDownload.hidden = true;
+    syncSubmitButton();
     resultClose.focus();
   }
 
@@ -465,6 +642,7 @@
     result.hidden = true;
     document.body.style.overflow = '';
     experience.setAttribute('aria-busy', 'false');
+    syncSubmitButton();
     form.querySelector('.studio-submit').focus();
   }
 
@@ -500,4 +678,6 @@
   renderDock();
   updateSummary();
   prepareMedia();
+  var pendingJob = readActiveJob();
+  if (pendingJob) resumeGeneration(pendingJob);
 })();

@@ -7,6 +7,7 @@ const corsHeaders = {
 const storageBucket = "generated-lookbooks";
 
 type LookRequest = {
+  clientRequestId?: string;
   eventSlug?: string;
   garmentSlug?: string;
   accessorySlugs?: string[];
@@ -19,6 +20,8 @@ type LookRequest = {
 type GenerationOutput = Record<string, any> & {
   generationType?: "image" | "video" | "both";
   providerOperation?: string;
+  videoStatus?: "processing" | "completed" | "failed";
+  videoError?: string;
   video?: { path: string; url: string; mimeType: string } | null;
 };
 
@@ -53,6 +56,21 @@ function isSafeImage(image: LookRequest["inputImage"]) {
   return !image
     || (["image/jpeg", "image/png", "image/webp"].includes(image.mimeType)
       && image.data.length <= 8_000_000);
+}
+
+function isUuid(value: unknown) {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function persistedInput(input: LookRequest) {
+  const { inputImage, ...selection } = input;
+  return {
+    ...selection,
+    inputImage: inputImage
+      ? { mimeType: inputImage.mimeType, supplied: true }
+      : null,
+  };
 }
 
 type ProviderConfig = {
@@ -148,18 +166,26 @@ async function activePrompt(): Promise<PromptVersion> {
 }
 
 async function createJob(input: LookRequest, promptVersionId: string) {
-  const response = await rest("generation_jobs", {
+  const requestId = input.clientRequestId as string;
+  const existing = await getJobByRequestId(requestId);
+  if (existing) return { id: existing.id as string, existing: true };
+
+  const response = await rest("generation_jobs?on_conflict=client_request_id", {
     method: "POST",
-    headers: { Prefer: "return=representation" },
+    headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
     body: JSON.stringify({
       status: "queued",
-      input,
+      client_request_id: requestId,
+      input: persistedInput(input),
       prompt_version_id: promptVersionId,
     }),
   });
   const rows = await response.json();
-  if (!rows[0]?.id) throw new Error("Unable to create generation job.");
-  return rows[0] as { id: string };
+  if (rows[0]?.id) return { id: rows[0].id as string, existing: false };
+
+  const concurrent = await getJobByRequestId(requestId);
+  if (!concurrent?.id) throw new Error("Unable to create generation job.");
+  return { id: concurrent.id as string, existing: true };
 }
 
 async function updateJob(jobId: string, status: string, output: unknown, errorMessage?: string) {
@@ -178,9 +204,30 @@ async function updateJob(jobId: string, status: string, output: unknown, errorMe
 async function getJob(jobId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `id=eq.${encodeURIComponent(jobId)}&select=id,status,output,error_message,created_at,updated_at,completed_at&limit=1`,
+    `id=eq.${encodeURIComponent(jobId)}&select=id,client_request_id,status,output,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
+}
+
+async function getJobByRequestId(requestId: string) {
+  const rows = await selectCatalog(
+    "generation_jobs",
+    `client_request_id=eq.${encodeURIComponent(requestId)}&select=id,client_request_id,status,output,error_message,created_at,updated_at,completed_at&limit=1`,
+  );
+  return rows[0] || null;
+}
+
+function jobResponse(job: Record<string, any>) {
+  return {
+    jobId: job.id,
+    requestId: job.client_request_id,
+    status: job.status,
+    output: job.output || {},
+    error: job.error_message || null,
+    createdAt: job.created_at,
+    updatedAt: job.updated_at,
+    completedAt: job.completed_at,
+  };
 }
 
 async function askGemini(
@@ -531,9 +578,29 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
     },
   };
   if (generationType === "video" || generationType === "both") {
-    output.providerOperation = await startVideoOperation(imagePrompt, input.inputImage);
+    try {
+      output.providerOperation = await startVideoOperation(imagePrompt, input.inputImage);
+      output.videoStatus = "processing";
+    } catch (error) {
+      if (!assets.length) throw error;
+      output.videoStatus = "failed";
+      output.videoError = error instanceof Error ? error.message : "Unable to start Veo generation.";
+    }
   }
   return output;
+}
+
+function hasLookbook(output: GenerationOutput) {
+  return Array.isArray(output.lookbook?.items) && output.lookbook.items.length > 0;
+}
+
+async function completeWithoutVideo(jobId: string, output: GenerationOutput, message: string) {
+  delete output.providerOperation;
+  output.video = null;
+  output.videoStatus = "failed";
+  output.videoError = message;
+  await updateJob(jobId, "completed", output);
+  return await getJob(jobId);
 }
 
 async function refreshVideoJob(job: Record<string, any>) {
@@ -543,6 +610,7 @@ async function refreshVideoJob(job: Record<string, any>) {
   const operation = await readVideoOperation(output.providerOperation);
   if (operation.error) {
     const message = operation.error.message || "Veo generation failed.";
+    if (hasLookbook(output)) return await completeWithoutVideo(job.id, output, message);
     await updateJob(job.id, "failed", output, message);
     return await getJob(job.id);
   }
@@ -551,13 +619,23 @@ async function refreshVideoJob(job: Record<string, any>) {
   const bytes = findVideoBytes(operation.response);
   const uri = bytes ? null : findVideoUri(operation.response);
   if (!bytes && !uri) {
-    await updateJob(job.id, "failed", output, "Veo completed without a video asset.");
+    const message = "Veo completed without a video asset.";
+    if (hasLookbook(output)) return await completeWithoutVideo(job.id, output, message);
+    await updateJob(job.id, "failed", output, message);
     return await getJob(job.id);
   }
-  output.video = bytes
-    ? await storeVideoBytes(job.id, bytes)
-    : await storeVideo(job.id, uri as string);
+  try {
+    output.video = bytes
+      ? await storeVideoBytes(job.id, bytes)
+      : await storeVideo(job.id, uri as string);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to store Veo video.";
+    if (hasLookbook(output)) return await completeWithoutVideo(job.id, output, message);
+    throw error;
+  }
   delete output.providerOperation;
+  output.videoStatus = "completed";
+  delete output.videoError;
   await updateJob(job.id, "completed", output);
   return await getJob(job.id);
 }
@@ -568,11 +646,15 @@ Deno.serve(async (request) => {
   const url = new URL(request.url);
   if (request.method === "GET") {
     const jobId = url.searchParams.get("jobId");
-    if (!jobId) return json({ error: "jobId is required." }, 400);
+    const requestId = url.searchParams.get("requestId");
+    if (!jobId && !requestId) return json({ error: "jobId or requestId is required." }, 400);
+    if (requestId && !isUuid(requestId)) return json({ error: "requestId must be a UUID." }, 400);
     try {
-      const current = await getJob(jobId);
+      const current = jobId
+        ? await getJob(jobId)
+        : await getJobByRequestId(requestId as string);
       const job = current ? await refreshVideoJob(current) : null;
-      return job ? json({ jobId: job.id, ...job }) : json({ error: "Job not found." }, 404);
+      return job ? json(jobResponse(job)) : json({ error: "Job not found." }, 404);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Unable to read job." }, 502);
     }
@@ -591,24 +673,37 @@ Deno.serve(async (request) => {
     return json({ error: "generationType must be image, video or both." }, 400);
   }
   input.generationType = generationType;
+  if (!isUuid(input.clientRequestId)) {
+    return json({ error: "clientRequestId must be a UUID." }, 400);
+  }
   if (!input.eventSlug || !input.garmentSlug || !isSafeImage(input.inputImage)) {
     return json({ error: "A valid event, garment and optional image are required." }, 400);
   }
 
-  let job: { id: string } | null = null;
+  let job: { id: string; existing: boolean } | null = null;
   try {
     const promptVersion = await activePrompt();
     job = await createJob(input, promptVersion.id);
+    if (job.existing) {
+      const current = await getJob(job.id);
+      const resumed = current ? await refreshVideoJob(current) : null;
+      if (!resumed) throw new Error("Existing generation job could not be loaded.");
+      return json(jobResponse(resumed), resumed.status === "processing" || resumed.status === "queued" ? 202 : 200);
+    }
     const output = await processLook(job, input, promptVersion);
     if (output.providerOperation) {
       await updateJob(job.id, "processing", output);
-      return json({ jobId: job.id, status: "processing", output }, 202);
+      const processing = await getJob(job.id);
+      if (!processing) throw new Error("Generation job disappeared after starting.");
+      return json(jobResponse(processing), 202);
     }
     await updateJob(job.id, "completed", output);
-    return json({ jobId: job.id, status: "completed", output });
+    const completed = await getJob(job.id);
+    if (!completed) throw new Error("Generation job disappeared after completion.");
+    return json(jobResponse(completed));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Generation failed.";
-    if (job) {
+    if (job && !job.existing) {
       try {
         await updateJob(job.id, "failed", {}, message);
       } catch {

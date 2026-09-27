@@ -126,6 +126,10 @@ Quyet dinh provider:
 - Tach trang thai image va video de video khong chan lookbook.
 - Them retry co kiem soat va thong bao loi tieng Viet nhat quan.
 
+Trang thai hien tai: da trien khai idempotency theo `clientRequestId`, resume
+theo `jobId`/`requestId`, chong submit trung, va cho phep anh hien thi khi video
+con dang xu ly. Phan cancel job va test browser full-flow van con lai.
+
 ### Milestone B - Khoa chat luong ket qua
 
 - Dinh nghia JSON schema cho output Gemini.

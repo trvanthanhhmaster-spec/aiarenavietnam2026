@@ -9,7 +9,16 @@ the job status endpoint. Final assets are stored in the private
 `generated-lookbooks` Storage bucket and returned as signed 24-hour URLs.
 
 `GET /functions/v1/generate-look?jobId=<id>` returns the sanitized job status
-and output. The browser never receives a provider key or a service-role key.
+and output. A request can also be resumed with
+`GET /functions/v1/generate-look?requestId=<clientRequestId>`. Every POST
+requires a UUID `clientRequestId`; retries with the same value resolve to the
+same database job instead of starting another provider request. Uploaded image
+bytes are used in memory and are not persisted inside `generation_jobs.input`.
+The browser never receives a provider key or a service-role key.
+
+For `generationType=both`, the image lookbook is stored before Veo starts. A
+Veo provider or Storage failure is recorded in `output.videoError` while the
+usable image job completes successfully.
 
 Vertex AI configuration, used to charge the linked Google Cloud project:
 
