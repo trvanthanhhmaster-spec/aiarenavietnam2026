@@ -27,6 +27,12 @@ the first image from the normal lookbook. The persisted output records
 `videoFirstFrame.source=generated-lookbook` and its Storage path, so the
 identity anchor can be audited without persisting base64 bytes in Postgres.
 
+Image requests are locked to a vertical `9:16` canvas in both
+`generationConfig.imageConfig.aspectRatio` and the prompt. The Studio result
+surface also uses a `9:16` frame and a portrait scroll rail for lookbook
+variants, so a provider's near-9:16 pixel size is never presented as a
+landscape result.
+
 If the Gemini copy call fails but the image provider remains available, the
 function builds Story Card, Cultural Guardrail and image prompt only from the
 approved catalog facts. The response marks this path with

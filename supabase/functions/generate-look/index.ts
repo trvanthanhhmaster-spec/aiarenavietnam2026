@@ -1,5 +1,6 @@
 import { parseGeminiCopy } from "./copy-schema.ts";
 import { fallbackCopy, fallbackImagePrompt } from "./fallback-copy.ts";
+import { buildImageRequest } from "./image-request.ts";
 import { buildVideoRequest, type VideoFirstFrame } from "./video-request.ts";
 
 const corsHeaders = {
@@ -304,27 +305,10 @@ async function generateImages(
   );
   for (let index = 0; index < variantCount; index += 1) {
     const variant = variants[index];
-    const parts: Record<string, unknown>[] = [{
-      text: `${prompt}\nCreate variation ${index + 1}: ${variant}. Keep the same selected garment, styling and person identity across the lookbook.`,
-    }];
-    if (inputImage) {
-      parts.push({
-        inline_data: {
-          mime_type: inputImage.mimeType,
-          data: inputImage.data,
-        },
-      });
-    }
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          responseModalities: ["TEXT", "IMAGE"],
-          imageConfig: { aspectRatio: "9:16" },
-        },
-      }),
+      body: JSON.stringify(buildImageRequest(prompt, `${index + 1}: ${variant}`, inputImage)),
     });
     if (!response.ok) {
       const error = await providerError(response, "Gemini image model");

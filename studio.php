@@ -79,7 +79,10 @@ $studioData = $catalog + [
                 <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
             </a>
             <span class="studio-header-middle">Việt phục / interactive studio</span>
-            <a class="studio-back" href="index.php#stage"><span aria-hidden="true">←</span> Tầng 01</a>
+            <div class="studio-header-actions">
+                <a class="studio-admin" href="admin.php">Quản trị</a>
+                <a class="studio-back" href="index.php#stage"><span aria-hidden="true">←</span> Tầng 01</a>
+            </div>
         </header>
 
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">

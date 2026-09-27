@@ -83,7 +83,7 @@ Story Card hay nút tải lookbook.
 | Video generation | Đã chạy được qua Vertex bridge | API-key Gemini route thiếu prepaid balance; video đang bị ưu tiên quá mức |
 | Job polling | Đã có | Đã chống submit trùng và resume sau reload; cancel provider vẫn còn |
 | Download | Đã có lookbook composite 1080×1920 | Gallery và chia sẻ để sau Audition |
-| Auth/admin/share | Chưa có | Để sau Audition |
+| Auth/admin/share | Admin local đã có | Supabase Auth, thư viện riêng và chia sẻ public vẫn để sau Audition |
 | VPS/domain | Chưa có | Chỉ làm sau khi P0 và demo script đã khóa |
 
 ## 5. Kiến trúc Audition
@@ -168,6 +168,11 @@ video-only cũng tạo một lookbook frame trước. Live `both` đã kiểm th
 công: operation hoàn tất, MP4 H.264/AAC 8 giây 720×1280 được lưu vào Storage;
 browser có fallback về ảnh nếu video media không tải được.
 
+Ảnh Studio được khóa dọc `9:16` ở request Gemini, prompt và result overlay.
+Admin control room đã có tại `admin.php`: thiết lập mật khẩu lần đầu trên
+localhost, sửa catalog/media/prompt/source qua Supabase server-side và xem
+generation jobs mà không lộ service-role key ở client.
+
 ### Milestone E - Deploy
 
 - Deploy VPS/domain.
@@ -190,7 +195,7 @@ browser có fallback về ảnh nếu video media không tải được.
 ## 8. Nguyên tắc thay đổi
 
 - Mỗi task phải gắn với một milestone trong tài liệu này.
-- Không mở rộng Auth/admin/partner trước khi P0 đạt.
+- Không mở rộng Auth/partner/share trước khi P0 đạt; admin local chỉ phục vụ biên tập catalog và vận hành demo.
 - Không tối ưu provider video trước khi luồng ảnh và fallback ổn định.
 - Mỗi thay đổi: kiểm tra local -> commit -> push GitHub -> đồng bộ XAMPP.
 - Nếu một thử nghiệm provider thất bại, phải quay về cấu hình demo đã kiểm thử.

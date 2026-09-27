@@ -67,6 +67,15 @@ sau đó gửi chính ảnh đầu tiên sang Veo qua Cloud Run Vertex bridge. C
 `video` tạo một first frame; chế độ `both` dùng ảnh đầu tiên của lookbook. Video
 lỗi hoặc timeout không làm thất bại phần ảnh đã hoàn tất.
 
+Kết quả ảnh luôn được yêu cầu theo canvas dọc `9:16` ở cả request Gemini,
+prompt và khung hiển thị Studio. Provider có thể trả kích thước pixel gần
+9:16 (ví dụ `768×1344`), nhưng không còn bị trình bày như một khung ngang.
+
+Mở `admin.php` từ localhost để thiết lập mật khẩu quản trị lần đầu. Admin
+chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa secret
+vào HTML/JavaScript. Có thể sửa catalog Studio, media tầng 1, nguồn văn hoá,
+prompt versions và xem generation jobs.
+
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 
 ```bash
@@ -83,5 +92,6 @@ node --check assets/js/studio.js
 deno check supabase/functions/generate-look/index.ts
 deno test supabase/functions/generate-look/copy-schema_test.ts \
   supabase/functions/generate-look/fallback-copy_test.ts \
+  supabase/functions/generate-look/image-request_test.ts \
   supabase/functions/generate-look/video-request_test.ts
 ```
