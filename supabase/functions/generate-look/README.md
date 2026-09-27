@@ -15,6 +15,7 @@ Vertex AI configuration, used to charge the linked Google Cloud project:
 
 ```text
 GOOGLE_AI_PROVIDER=vertex
+GOOGLE_VIDEO_PROVIDER=vertex
 GOOGLE_VERTEX_API_KEY
 GOOGLE_CLOUD_PROJECT=ai-arena-vietnam-2026
 GOOGLE_CLOUD_LOCATION=global
@@ -22,16 +23,25 @@ GOOGLE_CLOUD_VIDEO_LOCATION=us-central1
 GEMINI_TEXT_MODEL=gemini-2.5-flash
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 GEMINI_VIDEO_MODEL=veo-3.1-fast-generate-001
+VERTEX_VIDEO_BRIDGE_URL
+VERTEX_VIDEO_BRIDGE_SECRET
 ```
 
 Gemini Developer API fallback:
 
 ```text
+GOOGLE_VIDEO_PROVIDER=gemini
 GEMINI_API_KEY
 GEMINI_TEXT_MODEL=gemini-2.5-flash
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
-GEMINI_VIDEO_MODEL=veo-3.1-fast-generate-preview
+GEMINI_VIDEO_MODEL=veo-3.1-generate-preview
 ```
+
+The Gemini Developer API video route uses API-key authentication, but it
+requires Gemini API billing/prepaid balance. Google Cloud credits attached to
+the Vertex project do not automatically fund that separate Gemini API balance.
+When `GOOGLE_VIDEO_PROVIDER` is omitted, video follows `GOOGLE_AI_PROVIDER`
+and the deployed project uses the Vertex bridge.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are supplied by Supabase's
 managed Edge Function environment. The function validates all selections

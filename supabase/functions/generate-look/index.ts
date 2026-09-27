@@ -65,7 +65,12 @@ type ProviderConfig = {
 };
 
 function providerConfig(video = false): ProviderConfig {
-  const vertex = (Deno.env.get("GOOGLE_AI_PROVIDER") || "").toLowerCase() === "vertex";
+  const provider = (
+    video
+      ? Deno.env.get("GOOGLE_VIDEO_PROVIDER") || Deno.env.get("GOOGLE_AI_PROVIDER")
+      : Deno.env.get("GOOGLE_AI_PROVIDER")
+  )?.toLowerCase();
+  const vertex = provider === "vertex";
   const apiKey = Deno.env.get(vertex ? "GOOGLE_VERTEX_API_KEY" : "GEMINI_API_KEY");
   if (!apiKey) {
     throw new Error(vertex
@@ -76,8 +81,8 @@ function providerConfig(video = false): ProviderConfig {
   const project = Deno.env.get("GOOGLE_CLOUD_PROJECT");
   const location = Deno.env.get(video ? "GOOGLE_CLOUD_VIDEO_LOCATION" : "GOOGLE_CLOUD_LOCATION") || "global";
   if (!project) throw new Error("GOOGLE_CLOUD_PROJECT is missing for Vertex AI.");
-  const bridgeUrl = video ? Deno.env.get("VERTEX_VIDEO_BRIDGE_URL") : undefined;
-  const bridgeSecret = video ? Deno.env.get("VERTEX_VIDEO_BRIDGE_SECRET") : undefined;
+  const bridgeUrl = video && vertex ? Deno.env.get("VERTEX_VIDEO_BRIDGE_URL") : undefined;
+  const bridgeSecret = video && vertex ? Deno.env.get("VERTEX_VIDEO_BRIDGE_SECRET") : undefined;
   if (bridgeUrl && !bridgeSecret) throw new Error("VERTEX_VIDEO_BRIDGE_SECRET is missing.");
   return { apiKey, vertex: true, project, location, bridgeUrl, bridgeSecret };
 }
@@ -296,7 +301,7 @@ async function generateImages(
 async function startVideoOperation(prompt: string, inputImage?: LookRequest["inputImage"]) {
   const config = providerConfig(true);
   const model = Deno.env.get("GEMINI_VIDEO_MODEL")
-    || (config.vertex ? "veo-3.1-fast-generate-001" : "veo-3.1-fast-generate-preview");
+    || (config.vertex ? "veo-3.1-fast-generate-001" : "veo-3.1-generate-preview");
 
   const instance: Record<string, unknown> = {
     prompt: `${prompt}\nCreate a restrained eight-second fashion film. Preserve the selected Vietnamese garment construction and subject identity. Use slow natural movement, stable camera motion, no text, no logo and no wardrobe morphing.`,
