@@ -355,7 +355,10 @@
         ? 'Video Veo và tài sản bản phối đã sẵn sàng.'
         : 'Bản phối AI và lookbook 9:16 đã sẵn sàng.');
     } catch (error) {
-      setResultState('failed', 'Gemini chưa phản hồi. Studio giữ lại bản preview và nội dung từ catalog để bạn không mất lựa chọn.');
+      var message = error && error.message
+        ? error.message
+        : 'Không thể hoàn tất generation job.';
+      setResultState('failed', message + ' Bạn có thể đóng kết quả và thử lại sau.');
     }
   }
 

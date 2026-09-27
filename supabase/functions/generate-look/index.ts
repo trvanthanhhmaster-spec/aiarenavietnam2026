@@ -55,6 +55,20 @@ function isSafeImage(image: LookRequest["inputImage"]) {
       && image.data.length <= 8_000_000);
 }
 
+async function providerError(response: Response, provider: string) {
+  let detail = "";
+  try {
+    const body = await response.clone().json();
+    detail = body?.error?.message || body?.message || "";
+  } catch {
+    detail = await response.text();
+  }
+  if (response.status === 429 && /limit:\s*0|quota|billing/i.test(detail)) {
+    return new Error(`${provider} has no available quota. Enable billing or use an API key with image/video quota.`);
+  }
+  return new Error(`${provider} returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 280)}` : "."}`);
+}
+
 async function rest(path: string, init: RequestInit = {}) {
   const { url, key } = serviceConfig();
   const response = await fetch(`${url}/rest/v1/${path}`, {
@@ -158,7 +172,7 @@ async function askGemini(
       generationConfig: { responseMimeType: "application/json", temperature: 0.35 },
     }),
   });
-  if (!response.ok) throw new Error(`Gemini returned HTTP ${response.status}.`);
+  if (!response.ok) throw await providerError(response, "Gemini");
   const body = await response.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned an empty response.");
@@ -217,7 +231,7 @@ async function generateImages(
         },
       }),
     });
-    if (!response.ok) throw new Error(`Gemini image model returned HTTP ${response.status}.`);
+    if (!response.ok) throw await providerError(response, "Gemini image model");
     const body = await response.json();
     const imagePart = body?.candidates?.[0]?.content?.parts?.find((part: any) =>
       part.inlineData?.data || part.inline_data?.data
@@ -259,7 +273,7 @@ async function startVideoOperation(prompt: string, inputImage?: LookRequest["inp
       },
     }),
   });
-  if (!response.ok) throw new Error(`Veo returned HTTP ${response.status}.`);
+  if (!response.ok) throw await providerError(response, "Veo");
   const body = await response.json();
   if (!body?.name) throw new Error("Veo returned no operation id.");
   return String(body.name);
@@ -271,7 +285,7 @@ async function readVideoOperation(operationName: string) {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${encodeURIComponent(apiKey)}`,
   );
-  if (!response.ok) throw new Error(`Unable to read Veo operation (HTTP ${response.status}).`);
+  if (!response.ok) throw await providerError(response, "Veo operation");
   return response.json();
 }
 
@@ -298,7 +312,7 @@ async function downloadVideo(uri: string) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("Gemini video generation is not configured.");
   const response = await fetch(uri, { headers: { "x-goog-api-key": apiKey } });
-  if (!response.ok) throw new Error(`Unable to download Veo video (HTTP ${response.status}).`);
+  if (!response.ok) throw await providerError(response, "Veo video download");
   return {
     bytes: await response.arrayBuffer(),
     mimeType: response.headers.get("content-type") || "video/mp4",
