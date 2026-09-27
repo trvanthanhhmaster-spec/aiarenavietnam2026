@@ -355,11 +355,21 @@
         ? 'Video Veo và tài sản bản phối đã sẵn sàng.'
         : 'Bản phối AI và lookbook 9:16 đã sẵn sàng.');
     } catch (error) {
-      var message = error && error.message
+      var message = humanizeGenerationError(error && error.message
         ? error.message
-        : 'Không thể hoàn tất generation job.';
+        : 'Không thể hoàn tất generation job.');
       setResultState('failed', message + ' Bạn có thể đóng kết quả và thử lại sau.');
     }
+  }
+
+  function humanizeGenerationError(message) {
+    var text = String(message || '');
+    if (/no available quota|resource_exhausted|enable billing/i.test(text)) {
+      var provider = /veo|video/i.test(text) ? 'video Veo' : 'ảnh Gemini';
+      return 'Nhà cung cấp AI chưa cấp quota cho ' + provider +
+        '. Hãy bật billing cho Google AI/API project hoặc đổi sang API key có quota rồi thử lại.';
+    }
+    return text;
   }
 
   async function pollJob(jobId) {
