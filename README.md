@@ -2,6 +2,11 @@
 
 Landing page V-Remix chạy bằng PHP trên XAMPP.
 
+Kế hoạch ưu tiên cho bản thi nằm tại
+[`docs/AUDITION_PLAN.md`](docs/AUDITION_PLAN.md). Trong giai đoạn Audition,
+lookbook ảnh và nội dung văn hóa là luồng bắt buộc; video là lớp nâng cao và
+không được chặn kết quả chính.
+
 ## Cấu trúc
 
 - `index.php`: entry point, chỉ ghép các partial theo thứ tự render.
@@ -47,9 +52,10 @@ Mở `http://localhost/aiarenavietnam2026/studio.php` để chọn sự kiện, 
 phong cách và phụ kiện. Catalog được đọc từ `studio_events`, `studio_garments`,
 `studio_accessories` và `studio_options`; không cần sửa PHP khi thêm lựa chọn mới.
 
-Migration Studio cũng tạo `generation_jobs` và `studio_prompt_versions` làm contract
-cho Supabase Edge Function/Gemini ở bước tiếp theo. Bản hiện tại đã có Story Card và
-Cultural Guardrail từ dữ liệu catalog; không giả vờ gọi AI khi Edge Function chưa được cấu hình.
+Migration Studio tạo `generation_jobs` và `studio_prompt_versions` làm contract
+cho Supabase Edge Function. Bản hiện tại đã gọi Gemini server-side để tạo Story
+Card, Cultural Guardrail, prompt ảnh, lookbook và video tùy chọn. Asset hoàn tất
+được lưu trong Supabase Storage và trả về bằng signed URL.
 
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 
