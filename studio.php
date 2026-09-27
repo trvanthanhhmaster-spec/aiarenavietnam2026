@@ -121,6 +121,14 @@ $studioData = $catalog + [
                     <span><strong>Ảnh đại diện</strong><small id="uploadName">Tuỳ chọn</small></span>
                     <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                 </label>
+                <label class="studio-output">
+                    <span>Đầu ra</span>
+                    <select id="outputType" aria-label="Chọn loại đầu ra">
+                        <option value="image">Ảnh lookbook</option>
+                        <option value="video">Video Veo</option>
+                        <option value="both">Ảnh + video</option>
+                    </select>
+                </label>
                 <button class="studio-submit" type="submit">Tạo bản phối <span aria-hidden="true">↗</span></button>
             </form>
         </section>
@@ -152,6 +160,7 @@ $studioData = $catalog + [
                     <span class="result-orb" id="resultPlaceholderVisual"></span>
                     <span class="result-orb__label" id="resultVisualLabel">AI LOOK / ĐANG CHUẨN BỊ</span>
                     <div class="studio-result__images" id="resultImages" hidden></div>
+                    <video class="studio-result__video" id="resultVideo" controls playsinline preload="metadata" hidden></video>
                 </div>
                 <div class="studio-result__copy">
                     <p id="resultProgress">Đang kiểm tra lựa chọn và chuẩn bị prompt có phiên bản.</p>

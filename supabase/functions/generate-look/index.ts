@@ -12,7 +12,14 @@ type LookRequest = {
   accessorySlugs?: string[];
   colorSlug?: string;
   styleSlug?: string;
+  generationType?: "image" | "video" | "both";
   inputImage?: { mimeType: string; data: string };
+};
+
+type GenerationOutput = Record<string, any> & {
+  generationType?: "image" | "video" | "both";
+  providerOperation?: string;
+  video?: { path: string; url: string; mimeType: string } | null;
 };
 
 type PromptVersion = {
@@ -224,6 +231,92 @@ async function generateImages(
   }));
 }
 
+async function startVideoOperation(prompt: string, inputImage?: LookRequest["inputImage"]) {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  const model = Deno.env.get("GEMINI_VIDEO_MODEL") || "veo-3.1-fast-generate-preview";
+  if (!apiKey) throw new Error("Gemini video generation is not configured.");
+
+  const instance: Record<string, unknown> = {
+    prompt: `${prompt}\nCreate a restrained eight-second fashion film. Preserve the selected Vietnamese garment construction and subject identity. Use slow natural movement, stable camera motion, no text, no logo and no wardrobe morphing.`,
+  };
+  if (inputImage) {
+    instance.image = {
+      bytesBase64Encoded: inputImage.data,
+      mimeType: inputImage.mimeType,
+    };
+  }
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predictLongRunning?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instances: [instance],
+      parameters: {
+        aspectRatio: "9:16",
+        durationSeconds: 8,
+        sampleCount: 1,
+        personGeneration: "allow_adult",
+      },
+    }),
+  });
+  if (!response.ok) throw new Error(`Veo returned HTTP ${response.status}.`);
+  const body = await response.json();
+  if (!body?.name) throw new Error("Veo returned no operation id.");
+  return String(body.name);
+}
+
+async function readVideoOperation(operationName: string) {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("Gemini video generation is not configured.");
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${encodeURIComponent(apiKey)}`,
+  );
+  if (!response.ok) throw new Error(`Unable to read Veo operation (HTTP ${response.status}).`);
+  return response.json();
+}
+
+function findVideoUri(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  if ("uri" in value && typeof (value as Record<string, unknown>).uri === "string") {
+    return (value as Record<string, string>).uri;
+  }
+  for (const child of Object.values(value as Record<string, unknown>)) {
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const found = findVideoUri(item);
+        if (found) return found;
+      }
+    } else {
+      const found = findVideoUri(child);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+async function downloadVideo(uri: string) {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("Gemini video generation is not configured.");
+  const response = await fetch(uri, { headers: { "x-goog-api-key": apiKey } });
+  if (!response.ok) throw new Error(`Unable to download Veo video (HTTP ${response.status}).`);
+  return {
+    bytes: await response.arrayBuffer(),
+    mimeType: response.headers.get("content-type") || "video/mp4",
+  };
+}
+
+async function storeVideo(jobId: string, uri: string) {
+  await ensureStorageBucket();
+  const video = await downloadVideo(uri);
+  const path = `${jobId}/lookbook-video.mp4`;
+  await uploadBytes(path, video.bytes, video.mimeType);
+  return {
+    path,
+    url: await signedUrl(path),
+    mimeType: video.mimeType,
+  };
+}
+
 async function ensureStorageBucket() {
   const { url, key } = serviceConfig();
   const response = await fetch(`${url}/storage/v1/bucket`, {
@@ -240,9 +333,8 @@ async function ensureStorageBucket() {
   }
 }
 
-async function uploadImage(path: string, bytes: string, mimeType: string) {
+async function uploadBytes(path: string, body: BodyInit, mimeType: string) {
   const { url, key } = serviceConfig();
-  const binary = Uint8Array.from(atob(bytes), (character) => character.charCodeAt(0));
   const response = await fetch(`${url}/storage/v1/object/${storageBucket}/${path}`, {
     method: "POST",
     headers: {
@@ -251,9 +343,14 @@ async function uploadImage(path: string, bytes: string, mimeType: string) {
       "Content-Type": mimeType,
       "x-upsert": "true",
     },
-    body: binary,
+    body,
   });
-  if (!response.ok) throw new Error(`Unable to store generated image (HTTP ${response.status}).`);
+  if (!response.ok) throw new Error(`Unable to store generated asset (HTTP ${response.status}).`);
+}
+
+async function uploadImage(path: string, bytes: string, mimeType: string) {
+  const binary = Uint8Array.from(atob(bytes), (character) => character.charCodeAt(0));
+  await uploadBytes(path, binary, mimeType);
 }
 
 async function signedUrl(path: string) {
@@ -304,10 +401,16 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
   const catalog = { event: event[0], garment: garment[0], accessories, options };
   const copy = await askGemini(input, catalog, promptVersion);
   const imagePrompt = copy.imagePrompt || fallbackImagePrompt(input, catalog);
-  const generated = await generateImages(imagePrompt, input.inputImage);
-  const assets = await storeLookbook(job.id, generated);
-  return {
+  const generationType = input.generationType || "image";
+  let assets: GeneratedAsset[] = [];
+  if (generationType === "image" || generationType === "both") {
+    const generated = await generateImages(imagePrompt, input.inputImage);
+    assets = await storeLookbook(job.id, generated);
+  }
+
+  const output: GenerationOutput = {
     ...copy,
+    generationType,
     promptVersion: { id: promptVersion.id, version: promptVersion.version, model: promptVersion.model },
     imagePrompt,
     imageUrl: assets[0]?.url || null,
@@ -316,6 +419,33 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
       items: assets,
     },
   };
+  if (generationType === "video" || generationType === "both") {
+    output.providerOperation = await startVideoOperation(imagePrompt, input.inputImage);
+  }
+  return output;
+}
+
+async function refreshVideoJob(job: Record<string, any>) {
+  const output: GenerationOutput = { ...(job.output || {}) };
+  if (job.status !== "processing" || !output.providerOperation) return job;
+
+  const operation = await readVideoOperation(output.providerOperation);
+  if (operation.error) {
+    const message = operation.error.message || "Veo generation failed.";
+    await updateJob(job.id, "failed", output, message);
+    return await getJob(job.id);
+  }
+  if (!operation.done) return job;
+
+  const uri = findVideoUri(operation.response);
+  if (!uri) {
+    await updateJob(job.id, "failed", output, "Veo completed without a video asset.");
+    return await getJob(job.id);
+  }
+  output.video = await storeVideo(job.id, uri);
+  delete output.providerOperation;
+  await updateJob(job.id, "completed", output);
+  return await getJob(job.id);
 }
 
 Deno.serve(async (request) => {
@@ -326,7 +456,8 @@ Deno.serve(async (request) => {
     const jobId = url.searchParams.get("jobId");
     if (!jobId) return json({ error: "jobId is required." }, 400);
     try {
-      const job = await getJob(jobId);
+      const current = await getJob(jobId);
+      const job = current ? await refreshVideoJob(current) : null;
       return job ? json({ jobId: job.id, ...job }) : json({ error: "Job not found." }, 404);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Unable to read job." }, 502);
@@ -341,6 +472,11 @@ Deno.serve(async (request) => {
     return json({ error: "Invalid JSON request." }, 400);
   }
 
+  const generationType = input.generationType || "image";
+  if (!["image", "video", "both"].includes(generationType)) {
+    return json({ error: "generationType must be image, video or both." }, 400);
+  }
+  input.generationType = generationType;
   if (!input.eventSlug || !input.garmentSlug || !isSafeImage(input.inputImage)) {
     return json({ error: "A valid event, garment and optional image are required." }, 400);
   }
@@ -350,6 +486,10 @@ Deno.serve(async (request) => {
     const promptVersion = await activePrompt();
     job = await createJob(input, promptVersion.id);
     const output = await processLook(job, input, promptVersion);
+    if (output.providerOperation) {
+      await updateJob(job.id, "processing", output);
+      return json({ jobId: job.id, status: "processing", output }, 202);
+    }
     await updateJob(job.id, "completed", output);
     return json({ jobId: job.id, status: "completed", output });
   } catch (error) {

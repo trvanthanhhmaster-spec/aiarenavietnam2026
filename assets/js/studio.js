@@ -20,6 +20,7 @@
   var srStatus = document.getElementById('studioSrStatus');
   var imageInput = document.getElementById('inputImage');
   var uploadName = document.getElementById('uploadName');
+  var outputType = document.getElementById('outputType');
   var result = document.getElementById('studioResult');
   var resultClose = document.getElementById('resultClose');
   var resultState = document.getElementById('resultState');
@@ -32,6 +33,7 @@
   var resultPlaceholderVisual = document.getElementById('resultPlaceholderVisual');
   var resultVisualLabel = document.getElementById('resultVisualLabel');
   var resultImages = document.getElementById('resultImages');
+  var resultVideo = document.getElementById('resultVideo');
   var resultDownload = document.getElementById('resultDownload');
 
   var modes = [
@@ -317,7 +319,8 @@
       garmentSlug: state.garment,
       accessorySlugs: state.accessories.slice(),
       colorSlug: state.color,
-      styleSlug: state.style
+      styleSlug: state.style,
+      generationType: outputType.value
     };
 
     var file = imageInput.files && imageInput.files[0];
@@ -348,7 +351,9 @@
         throw new Error(completed.error || 'Generation job did not complete.');
       }
       applyOutput(completed.output || {});
-      setResultState('completed', 'Bản phối AI và lookbook 9:16 đã sẵn sàng.');
+      setResultState('completed', completed.output && completed.output.video
+        ? 'Video Veo và tài sản bản phối đã sẵn sàng.'
+        : 'Bản phối AI và lookbook 9:16 đã sẵn sàng.');
     } catch (error) {
       setResultState('failed', 'Gemini chưa phản hồi. Studio giữ lại bản preview và nội dung từ catalog để bạn không mất lựa chọn.');
     }
@@ -356,7 +361,7 @@
 
   async function pollJob(jobId) {
     if (!jobId) throw new Error('Generation job did not return an id.');
-    for (var attempt = 0; attempt < 20; attempt += 1) {
+    for (var attempt = 0; attempt < 40; attempt += 1) {
       await new Promise(function (resolve) { setTimeout(resolve, 1500); });
       var response = await fetch(catalog.generationEndpoint + '?jobId=' + encodeURIComponent(jobId), {
         headers: { Accept: 'application/json' }
@@ -364,7 +369,7 @@
       var body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Unable to read generation job.');
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
-      setResultState('processing', 'Job ' + (attempt + 1) + '/20: ảnh đang được lưu vào lookbook.');
+      setResultState('processing', 'Job ' + (attempt + 1) + '/40: Gemini/Veo đang dựng tài sản đầu ra.');
     }
     throw new Error('Generation job timed out.');
   }
@@ -380,10 +385,20 @@
     resultImages.innerHTML = '';
     resultImages.hidden = items.length === 0;
     resultVisual.classList.toggle('has-images', items.length > 0);
+    var video = output.video && output.video.url ? output.video : null;
+    resultVideo.hidden = !video;
+    resultVisual.classList.toggle('has-video', Boolean(video));
+    if (video) {
+      resultVideo.src = video.url;
+      resultVideo.poster = items[0] ? items[0].url : '';
+    } else {
+      resultVideo.removeAttribute('src');
+      resultVideo.removeAttribute('poster');
+      resultVideo.load();
+    }
     resultPlaceholderVisual.hidden = items.length > 0;
-    resultVisualLabel.hidden = items.length > 0;
-    resultDownload.hidden = items.length === 0;
-    if (items.length === 0) return;
+    resultVisualLabel.hidden = items.length > 0 || Boolean(video);
+    resultDownload.hidden = items.length === 0 && !video;
 
     items.forEach(function (item, index) {
       var image = document.createElement('img');
@@ -392,8 +407,13 @@
       image.loading = index === 0 ? 'eager' : 'lazy';
       resultImages.appendChild(image);
     });
-    resultDownload.href = items[0].url;
-    resultDownload.textContent = 'Tải ảnh 9:16 ' + String.fromCharCode(8595);
+    if (video) {
+      resultDownload.href = video.url;
+      resultDownload.textContent = 'Tải video MP4 ' + String.fromCharCode(8595);
+    } else if (items[0]) {
+      resultDownload.href = items[0].url;
+      resultDownload.textContent = 'Tải ảnh 9:16 ' + String.fromCharCode(8595);
+    }
   }
 
   function setResultState(value, message) {
@@ -408,7 +428,12 @@
     document.body.style.overflow = 'hidden';
     resultImages.innerHTML = '';
     resultImages.hidden = true;
-    resultVisual.classList.remove('has-images');
+    resultVideo.pause();
+    resultVideo.removeAttribute('src');
+    resultVideo.removeAttribute('poster');
+    resultVideo.hidden = true;
+    resultVideo.load();
+    resultVisual.classList.remove('has-images', 'has-video');
     resultPlaceholderVisual.hidden = false;
     resultVisualLabel.hidden = false;
     resultDownload.hidden = true;
