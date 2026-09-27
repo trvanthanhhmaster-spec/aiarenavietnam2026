@@ -148,12 +148,17 @@ $studioData = $catalog + [
                 <button class="icon-button icon-button--light" id="resultClose" type="button" aria-label="Đóng kết quả">×</button>
             </div>
             <div class="studio-result__grid">
-                <div class="studio-result__visual"><span class="result-orb"></span><span class="result-orb__label">AI LOOK</span></div>
+                <div class="studio-result__visual">
+                    <span class="result-orb" id="resultPlaceholderVisual"></span>
+                    <span class="result-orb__label" id="resultVisualLabel">AI LOOK / ĐANG CHUẨN BỊ</span>
+                    <div class="studio-result__images" id="resultImages" hidden></div>
+                </div>
                 <div class="studio-result__copy">
                     <p id="resultProgress">Đang kiểm tra lựa chọn và chuẩn bị prompt có phiên bản.</p>
                     <div class="result-story"><span>Story Card</span><p id="resultStory">—</p></div>
                     <div class="result-story"><span>Cultural Guardrail</span><p id="resultGuardrail">—</p></div>
                     <div class="result-story"><span>Mẹo Gen Z</span><p id="resultGenZTip">—</p></div>
+                    <a class="result-download" id="resultDownload" href="#" download hidden>Tải lookbook 9:16 <span aria-hidden="true">↓</span></a>
                 </div>
             </div>
         </section>

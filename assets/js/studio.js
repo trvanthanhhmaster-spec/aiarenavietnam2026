@@ -28,6 +28,11 @@
   var resultStory = document.getElementById('resultStory');
   var resultGuardrail = document.getElementById('resultGuardrail');
   var resultGenZTip = document.getElementById('resultGenZTip');
+  var resultVisual = document.querySelector('.studio-result__visual');
+  var resultPlaceholderVisual = document.getElementById('resultPlaceholderVisual');
+  var resultVisualLabel = document.getElementById('resultVisualLabel');
+  var resultImages = document.getElementById('resultImages');
+  var resultDownload = document.getElementById('resultDownload');
 
   var modes = [
     {
@@ -338,13 +343,57 @@
       });
       var body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Generation failed.');
-      resultStory.textContent = body.output && body.output.story ? body.output.story : resultStory.textContent;
-      resultGuardrail.textContent = body.output && body.output.guardrail ? body.output.guardrail : resultGuardrail.textContent;
-      resultGenZTip.textContent = body.output && body.output.genZTip ? body.output.genZTip : resultGenZTip.textContent;
-      setResultState('completed', 'Phần tư vấn đã hoàn tất. Image prompt đã sẵn sàng cho job sinh ảnh tiếp theo.');
+      var completed = body.status === 'completed' ? body : await pollJob(body.jobId);
+      if (completed.status !== 'completed') {
+        throw new Error(completed.error || 'Generation job did not complete.');
+      }
+      applyOutput(completed.output || {});
+      setResultState('completed', 'Bản phối AI và lookbook 9:16 đã sẵn sàng.');
     } catch (error) {
       setResultState('failed', 'Gemini chưa phản hồi. Studio giữ lại bản preview và nội dung từ catalog để bạn không mất lựa chọn.');
     }
+  }
+
+  async function pollJob(jobId) {
+    if (!jobId) throw new Error('Generation job did not return an id.');
+    for (var attempt = 0; attempt < 20; attempt += 1) {
+      await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+      var response = await fetch(catalog.generationEndpoint + '?jobId=' + encodeURIComponent(jobId), {
+        headers: { Accept: 'application/json' }
+      });
+      var body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Unable to read generation job.');
+      if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
+      setResultState('processing', 'Job ' + (attempt + 1) + '/20: ảnh đang được lưu vào lookbook.');
+    }
+    throw new Error('Generation job timed out.');
+  }
+
+  function applyOutput(output) {
+    resultStory.textContent = output.story || resultStory.textContent;
+    resultGuardrail.textContent = output.guardrail || resultGuardrail.textContent;
+    resultGenZTip.textContent = output.genZTip || resultGenZTip.textContent;
+    var items = output.lookbook && Array.isArray(output.lookbook.items)
+      ? output.lookbook.items.filter(function (item) { return item && item.url; })
+      : [];
+
+    resultImages.innerHTML = '';
+    resultImages.hidden = items.length === 0;
+    resultVisual.classList.toggle('has-images', items.length > 0);
+    resultPlaceholderVisual.hidden = items.length > 0;
+    resultVisualLabel.hidden = items.length > 0;
+    resultDownload.hidden = items.length === 0;
+    if (items.length === 0) return;
+
+    items.forEach(function (item, index) {
+      var image = document.createElement('img');
+      image.src = item.url;
+      image.alt = 'Phương án lookbook ' + (index + 1);
+      image.loading = index === 0 ? 'eager' : 'lazy';
+      resultImages.appendChild(image);
+    });
+    resultDownload.href = items[0].url;
+    resultDownload.textContent = 'Tải ảnh 9:16 ' + String.fromCharCode(8595);
   }
 
   function setResultState(value, message) {
@@ -357,6 +406,12 @@
   function showResult() {
     result.hidden = false;
     document.body.style.overflow = 'hidden';
+    resultImages.innerHTML = '';
+    resultImages.hidden = true;
+    resultVisual.classList.remove('has-images');
+    resultPlaceholderVisual.hidden = false;
+    resultVisualLabel.hidden = false;
+    resultDownload.hidden = true;
     resultClose.focus();
   }
 
