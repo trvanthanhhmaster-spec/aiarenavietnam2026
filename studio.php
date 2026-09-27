@@ -50,133 +50,118 @@ foreach ($branches as $branch) {
     }
 }
 $baseMedia = (string) (($baseBranch ?? reset($branches))['forwardUrl'] ?? '');
+$studioData = $catalog + [
+    'generationEndpoint' => rtrim($database['url'], '/') . '/functions/v1/generate-look',
+    'baseMedia' => $baseMedia,
+];
 ?>
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#10252d">
     <title>Studio — <?= $escape($site['title'] ?? 'V-Remix') ?></title>
-    <meta name="description" content="Studio phối Việt phục V-Remix theo sự kiện, phục trang và phong cách cá nhân.">
+    <meta name="description" content="Studio phối Việt phục V-Remix theo bối cảnh, dáng áo và điểm nhấn cá nhân.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css">
     <link rel="stylesheet" href="assets/css/studio.css">
 </head>
 <body class="studio-page">
-    <div class="studio-backdrop" aria-hidden="true">
-        <?php if ($baseMedia !== ''): ?>
-            <video class="studio-backdrop__video" src="<?= $escape($baseMedia) ?>" autoplay muted loop playsinline preload="metadata"></video>
-        <?php endif; ?>
-        <div class="studio-backdrop__veil"></div>
-    </div>
-    <main class="studio-shell">
-        <header class="studio-header">
+    <main class="studio-experience" id="studioExperience" aria-busy="false">
+        <header class="studio-masthead">
             <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($site['ui']['brand_aria_label'] ?? 'Trang chủ V-Remix') ?>">
                 <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
             </a>
-            <a class="studio-back" href="index.php#stage">Quay lại trải nghiệm</a>
+            <span class="studio-header-middle">Việt phục / interactive studio</span>
+            <a class="studio-back" href="index.php#stage"><span aria-hidden="true">←</span> Tầng 01</a>
         </header>
 
-        <section class="studio-intro" aria-labelledby="studioTitle">
-            <p class="eyebrow">V-Remix / Tầng 02 · Studio tùy biến</p>
-            <h1 id="studioTitle">Phối một dáng Việt<br><em>theo cách của bạn.</em></h1>
-            <p>Giữ tinh thần của dáng áo, mở ra một cách xuất hiện mới. Chọn bối cảnh, cổ phục và điểm nhấn hiện đại để chuẩn bị một bản phối có câu chuyện.</p>
-        </section>
-
-        <form class="studio-form" id="studioForm">
-            <section class="studio-step" aria-labelledby="eventHeading">
-                <div class="step-heading"><span>01</span><h2 id="eventHeading">Bạn mặc đi đâu?</h2></div>
-                <div class="choice-grid choice-grid--events">
-                    <?php foreach ($catalog['events'] as $index => $event): ?>
-                        <label class="choice-card">
-                            <input type="radio" name="event" value="<?= $escape($event['slug'] ?? '') ?>" <?= $index === 0 ? 'checked' : '' ?>>
-                            <span class="choice-card__body"><strong><?= $escape($event['label'] ?? '') ?></strong><small><?= $escape($event['description'] ?? '') ?></small></span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-
-            <section class="studio-step" aria-labelledby="garmentHeading">
-                <div class="step-heading"><span>02</span><h2 id="garmentHeading">Chọn một nhóm cổ phục</h2></div>
-                <div class="choice-grid choice-grid--garments">
-                    <?php foreach ($catalog['garments'] as $index => $garment): ?>
-                        <label class="choice-card choice-card--garment">
-                            <input type="radio" name="garment" value="<?= $escape($garment['slug'] ?? '') ?>" <?= $index === 0 ? 'checked' : '' ?>>
-                            <span class="choice-card__body">
-                                <strong><?= $escape($garment['name'] ?? '') ?></strong>
-                                <small><?= $escape($garment['category'] ?? '') ?> · <?= $escape($garment['description'] ?? '') ?></small>
-                                <em><?= $escape($garment['origin_note'] ?? '') ?></em>
-                            </span>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-
-            <section class="studio-step" aria-labelledby="detailHeading">
-                <div class="step-heading"><span>03</span><h2 id="detailHeading">Thêm điểm nhấn</h2></div>
-                <div class="studio-detail-grid">
-                    <fieldset>
-                        <legend>Màu chủ đạo</legend>
-                        <div class="swatch-list">
-                            <?php foreach ($catalog['colors'] as $index => $color): ?>
-                                <label class="swatch-choice">
-                                    <input type="radio" name="color" value="<?= $escape($color['slug'] ?? '') ?>" <?= $index === 0 ? 'checked' : '' ?>>
-                                    <span style="--swatch:<?= $escape($color['value'] ?? '#243652') ?>"></span>
-                                    <small><?= $escape($color['label'] ?? '') ?></small>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Phong cách</legend>
-                        <div class="select-list">
-                            <?php foreach ($catalog['styles'] as $index => $style): ?>
-                                <label class="select-choice">
-                                    <input type="radio" name="style" value="<?= $escape($style['slug'] ?? '') ?>" <?= $index === 0 ? 'checked' : '' ?>>
-                                    <span><?= $escape($style['label'] ?? '') ?></span>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                    </fieldset>
-                </div>
-                <fieldset>
-                    <legend>Phụ kiện hiện đại</legend>
-                    <div class="accessory-grid">
-                        <?php foreach ($catalog['accessories'] as $accessory): ?>
-                            <label class="accessory-choice">
-                                <input type="checkbox" name="accessories[]" value="<?= $escape($accessory['slug'] ?? '') ?>">
-                                <span><strong><?= $escape($accessory['name'] ?? '') ?></strong><small><?= $escape($accessory['description'] ?? '') ?></small></span>
-                            </label>
-                        <?php endforeach; ?>
+        <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">
+            <div class="studio-plane" id="studioPlane">
+                <div class="studio-frame">
+                    <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
+                    <div class="studio-media-placeholder" aria-hidden="true">
+                        <span class="studio-media-placeholder__orb"></span>
+                        <span class="studio-media-placeholder__line"></span>
                     </div>
-                </fieldset>
-                <label class="upload-choice" for="inputImage">
-                    <span><strong>Thử trên ảnh của bạn</strong><small>JPG, PNG hoặc WebP · tối đa 8 MB · ảnh chỉ được gửi khi bạn bấm chuẩn bị bản phối.</small></span>
+                    <div class="studio-frame__veil" aria-hidden="true"></div>
+                </div>
+                <div class="studio-hotspots" id="studioHotspots"></div>
+            </div>
+
+            <div class="studio-intro" id="studioIntro">
+                <p class="studio-kicker">V-Remix / Tầng 02</p>
+                <h1>Phối một dáng Việt<br><em>theo cách bạn.</em></h1>
+                <p class="studio-intro__note">Chạm vào một điểm để bắt đầu. Giữ tinh thần của dáng áo, mở ra một cách xuất hiện mới.</p>
+            </div>
+
+            <aside class="studio-dock" id="studioDock" aria-hidden="true" aria-labelledby="dockTitle">
+                <div class="studio-dock__header">
+                    <div>
+                        <p class="studio-dock__index" id="dockIndex">01 / 04</p>
+                        <h2 id="dockTitle">Bối cảnh</h2>
+                    </div>
+                    <button class="icon-button" id="dockClose" type="button" aria-label="Đóng bảng lựa chọn">×</button>
+                </div>
+                <p class="studio-dock__description" id="dockDescription"></p>
+                <div class="studio-dock__content" id="dockContent"></div>
+                <div class="studio-dock__hint" id="dockHint">Chọn một phương án để cập nhật bản phối.</div>
+            </aside>
+
+            <form class="studio-rail" id="studioForm">
+                <div class="studio-rail__copy">
+                    <span class="studio-rail__status"><i></i><span id="studioStatus">Bản phối đang ở trạng thái nháp</span></span>
+                    <p id="selectionSummary">Chọn bối cảnh để bắt đầu.</p>
+                </div>
+                <label class="studio-upload" for="inputImage">
+                    <span class="studio-upload__icon" aria-hidden="true">＋</span>
+                    <span><strong>Ảnh đại diện</strong><small id="uploadName">Tuỳ chọn</small></span>
                     <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                 </label>
-            </section>
+                <button class="studio-submit" type="submit">Tạo bản phối <span aria-hidden="true">↗</span></button>
+            </form>
+        </section>
 
-            <section class="studio-submit">
-                <div><p class="eyebrow">Bản phối đầu tiên</p><p id="selectionSummary">Chọn các thành phần để chuẩn bị bản phối.</p></div>
-                <button type="submit" class="studio-cta">Chuẩn bị bản phối <span>→</span></button>
-            </section>
-        </form>
+        <footer class="studio-footer">
+            <div class="studio-footer__notes" aria-label="Bốn điểm bắt đầu">
+                <button type="button" data-mode="event"><span>01</span><strong>Bối cảnh</strong><small id="footerEvent">Chọn nơi bạn sẽ xuất hiện</small></button>
+                <button type="button" data-mode="garment"><span>02</span><strong>Cổ phục</strong><small id="footerGarment">Chọn dáng áo làm gốc</small></button>
+                <button type="button" data-mode="style"><span>03</span><strong>Phối sắc</strong><small id="footerStyle">Màu và tinh thần tổng thể</small></button>
+                <button type="button" data-mode="accessory"><span>04</span><strong>Phụ kiện</strong><small id="footerAccessory">Thêm một nhịp hiện đại</small></button>
+            </div>
+            <div class="studio-footer__baseline">
+                <span>V-Remix — Việt phục Remix</span>
+                <span>Data từ catalog đã duyệt · Gemini qua Edge Function</span>
+            </div>
+        </footer>
 
         <section class="studio-result" id="studioResult" aria-live="polite" hidden>
-            <div class="result-placeholder"><span class="result-placeholder__orb"></span><p>Studio đã ghi nhận lựa chọn. Lớp sinh ảnh Gemini sẽ được nối vào job nền ở bước tiếp theo.</p></div>
-            <div class="result-cards">
-                <article><span>Story Card</span><h2 id="resultGarment">—</h2><p id="resultStory">—</p></article>
-                <article><span>Cultural Guardrail</span><h2>Giữ đúng tinh thần phục trang</h2><p id="resultGuardrail">—</p></article>
+            <div class="studio-result__backdrop" aria-hidden="true"></div>
+            <div class="studio-result__header">
+                <div>
+                    <p class="studio-kicker">Bản phối / <span id="resultState">queued</span></p>
+                    <h2 id="resultTitle">Đang chuẩn bị một dáng Việt mới.</h2>
+                </div>
+                <button class="icon-button icon-button--light" id="resultClose" type="button" aria-label="Đóng kết quả">×</button>
+            </div>
+            <div class="studio-result__grid">
+                <div class="studio-result__visual"><span class="result-orb"></span><span class="result-orb__label">AI LOOK</span></div>
+                <div class="studio-result__copy">
+                    <p id="resultProgress">Đang kiểm tra lựa chọn và chuẩn bị prompt có phiên bản.</p>
+                    <div class="result-story"><span>Story Card</span><p id="resultStory">—</p></div>
+                    <div class="result-story"><span>Cultural Guardrail</span><p id="resultGuardrail">—</p></div>
+                    <div class="result-story"><span>Mẹo Gen Z</span><p id="resultGenZTip">—</p></div>
+                </div>
             </div>
         </section>
+
+        <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
     <script>
-        window.VREMIX_STUDIO = <?= json_encode(
-            $catalog + ['generationEndpoint' => rtrim($database['url'], '/') . '/functions/v1/generate-look'],
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
-        ) ?>;
+        window.VREMIX_STUDIO = <?= json_encode($studioData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
     <script src="assets/js/studio.js" defer></script>
 </body>
