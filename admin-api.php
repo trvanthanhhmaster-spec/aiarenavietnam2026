@@ -18,7 +18,9 @@ $respond = static function (mixed $body, int $status = 200): never {
     exit;
 };
 
-$auth = new AdminAuth(__DIR__ . '/storage/admin-auth.json');
+Env::load(__DIR__ . '/.env');
+$adminAuthFile = (string) (getenv('ADMIN_AUTH_FILE') ?: __DIR__ . '/storage/admin-auth.json');
+$auth = new AdminAuth($adminAuthFile);
 $auth->boot();
 if (!$auth->isAuthenticated()) {
     $respond(['error' => 'Phiên quản trị đã hết hạn.'], 401);
@@ -29,7 +31,6 @@ if (!$auth->verifyCsrf($csrf)) {
     $respond(['error' => 'CSRF token không hợp lệ. Hãy tải lại trang quản trị.'], 403);
 }
 
-Env::load(__DIR__ . '/.env');
 $supabaseUrl = rtrim((string) getenv('SUPABASE_URL'), '/');
 $serviceRoleKey = (string) getenv('SUPABASE_SERVICE_ROLE_KEY');
 if ($supabaseUrl === '' || $serviceRoleKey === '') {

@@ -74,7 +74,9 @@ prompt và khung hiển thị Studio. Provider có thể trả kích thước pi
 Mở `admin.php` từ localhost để thiết lập mật khẩu quản trị lần đầu. Admin
 chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa secret
 vào HTML/JavaScript. Có thể sửa catalog Studio, media tầng 1, nguồn văn hoá,
-prompt versions và xem generation jobs.
+prompt versions và xem generation jobs. Với XAMPP, đặt `ADMIN_AUTH_FILE` và
+`SUPABASE_CACHE_FILE` ở thư mục runtime ngoài document root (ví dụ `/tmp`) để
+PHP user `daemon` có quyền ghi mà không phải mở quyền cho source tree.
 
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 

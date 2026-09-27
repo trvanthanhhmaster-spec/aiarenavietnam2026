@@ -8,7 +8,8 @@ use App\Support\AdminAuth;
 use App\Support\Env;
 
 Env::load(__DIR__ . '/.env');
-$auth = new AdminAuth(__DIR__ . '/storage/admin-auth.json');
+$adminAuthFile = (string) (getenv('ADMIN_AUTH_FILE') ?: __DIR__ . '/storage/admin-auth.json');
+$auth = new AdminAuth($adminAuthFile);
 $auth->boot();
 $message = '';
 $error = '';
