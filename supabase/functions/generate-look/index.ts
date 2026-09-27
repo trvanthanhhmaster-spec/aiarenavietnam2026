@@ -66,6 +66,9 @@ async function providerError(response: Response, provider: string) {
   if (response.status === 429 && /limit:\s*0|quota|billing/i.test(detail)) {
     return new Error(`${provider} has no available quota. Enable billing or use an API key with image/video quota.`);
   }
+  if (response.status === 402 && /prepayment credits are depleted|billing/i.test(detail)) {
+    return new Error(`${provider} has no prepaid Gemini API balance. Add billing credits in AI Studio or use Vertex AI billing.`);
+  }
   return new Error(`${provider} returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 280)}` : "."}`);
 }
 

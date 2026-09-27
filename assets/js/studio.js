@@ -369,6 +369,10 @@
       return 'Nhà cung cấp AI chưa cấp quota cho ' + provider +
         '. Hãy bật billing cho Google AI/API project hoặc đổi sang API key có quota rồi thử lại.';
     }
+    if (/no prepaid gemini api balance|prepayment credits are depleted/i.test(text)) {
+      return 'Gemini API chưa có số dư trả trước. Credits Google Cloud không tự chuyển sang AI Studio; ' +
+        'hãy nạp billing trong AI Studio hoặc chuyển backend sang Vertex AI.';
+    }
     return text;
   }
 
