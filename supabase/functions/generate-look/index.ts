@@ -55,6 +55,42 @@ function isSafeImage(image: LookRequest["inputImage"]) {
       && image.data.length <= 8_000_000);
 }
 
+type ProviderConfig = {
+  apiKey: string;
+  vertex: boolean;
+  project?: string;
+  location?: string;
+};
+
+function providerConfig(video = false): ProviderConfig {
+  const vertex = (Deno.env.get("GOOGLE_AI_PROVIDER") || "").toLowerCase() === "vertex";
+  const apiKey = Deno.env.get(vertex ? "GOOGLE_VERTEX_API_KEY" : "GEMINI_API_KEY");
+  if (!apiKey) {
+    throw new Error(vertex
+      ? "Vertex AI is not configured for this environment."
+      : "Gemini is not configured for this environment.");
+  }
+  if (!vertex) return { apiKey, vertex: false };
+  const project = Deno.env.get("GOOGLE_CLOUD_PROJECT");
+  const location = Deno.env.get(video ? "GOOGLE_CLOUD_VIDEO_LOCATION" : "GOOGLE_CLOUD_LOCATION") || "global";
+  if (!project) throw new Error("GOOGLE_CLOUD_PROJECT is missing for Vertex AI.");
+  return { apiKey, vertex: true, project, location };
+}
+
+function modelEndpoint(config: ProviderConfig, model: string, method: string) {
+  if (config.vertex) {
+    return `https://aiplatform.googleapis.com/v1/projects/${encodeURIComponent(config.project || "")}/locations/${encodeURIComponent(config.location || "global")}/publishers/google/models/${encodeURIComponent(model)}:${method}?key=${encodeURIComponent(config.apiKey)}`;
+  }
+  return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${method}?key=${encodeURIComponent(config.apiKey)}`;
+}
+
+function operationEndpoint(config: ProviderConfig, operationName: string) {
+  const base = config.vertex
+    ? "https://aiplatform.googleapis.com/v1/"
+    : "https://generativelanguage.googleapis.com/v1beta/";
+  return `${base}${operationName}?key=${encodeURIComponent(config.apiKey)}`;
+}
+
 async function providerError(response: Response, provider: string) {
   let detail = "";
   try {
@@ -142,11 +178,9 @@ async function askGemini(
   catalog: Record<string, unknown>,
   promptVersion: PromptVersion,
 ) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
   const model = Deno.env.get("GEMINI_TEXT_MODEL") || "gemini-2.5-flash";
-  if (!apiKey) throw new Error("Gemini is not configured for this environment.");
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const config = providerConfig();
+  const endpoint = modelEndpoint(config, model, "generateContent");
   const prompt = [
     promptVersion.system_prompt,
     "Return JSON with keys: story, guardrail, genZTip, imagePrompt, confidence.",
@@ -200,18 +234,18 @@ async function generateImages(
   prompt: string,
   inputImage?: LookRequest["inputImage"],
 ): Promise<{ bytes: string; mimeType: string }[]> {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
   const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
-  if (!apiKey) throw new Error("Gemini image generation is not configured.");
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const config = providerConfig();
+  const endpoint = modelEndpoint(config, model, "generateContent");
   const variants = [
     "front-facing editorial hero",
     "three-quarter fashion portrait",
     "full-body walking composition",
     "detail-led lookbook composition",
   ];
-  return Promise.all(variants.map(async (variant, index) => {
+  const images: { bytes: string; mimeType: string }[] = [];
+  for (let index = 0; index < variants.length; index += 1) {
+    const variant = variants[index];
     const parts: Record<string, unknown>[] = [{
       text: `${prompt}\nCreate variation ${index + 1}: ${variant}. Keep the same selected garment, styling and person identity across the lookbook.`,
     }];
@@ -234,24 +268,29 @@ async function generateImages(
         },
       }),
     });
-    if (!response.ok) throw await providerError(response, "Gemini image model");
+    if (!response.ok) {
+      const error = await providerError(response, "Gemini image model");
+      // Preserve a usable first look when later lookbook variants hit provider limits.
+      if (images.length > 0 && /no available quota|resource exhausted/i.test(error.message)) break;
+      throw error;
+    }
     const body = await response.json();
     const imagePart = body?.candidates?.[0]?.content?.parts?.find((part: any) =>
       part.inlineData?.data || part.inline_data?.data
     );
     const image = imagePart?.inlineData || imagePart?.inline_data;
     if (!image?.data) throw new Error("Gemini image model returned no image.");
-    return {
+    images.push({
       bytes: image.data,
       mimeType: image.mimeType || image.mime_type || "image/png",
-    };
-  }));
+    });
+  }
+  return images;
 }
 
 async function startVideoOperation(prompt: string, inputImage?: LookRequest["inputImage"]) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
   const model = Deno.env.get("GEMINI_VIDEO_MODEL") || "veo-3.1-fast-generate-preview";
-  if (!apiKey) throw new Error("Gemini video generation is not configured.");
+  const config = providerConfig(true);
 
   const instance: Record<string, unknown> = {
     prompt: `${prompt}\nCreate a restrained eight-second fashion film. Preserve the selected Vietnamese garment construction and subject identity. Use slow natural movement, stable camera motion, no text, no logo and no wardrobe morphing.`,
@@ -262,7 +301,7 @@ async function startVideoOperation(prompt: string, inputImage?: LookRequest["inp
       mimeType: inputImage.mimeType,
     };
   }
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predictLongRunning?key=${encodeURIComponent(apiKey)}`;
+  const endpoint = modelEndpoint(config, model, "predictLongRunning");
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -282,21 +321,18 @@ async function startVideoOperation(prompt: string, inputImage?: LookRequest["inp
 }
 
 async function readVideoOperation(operationName: string) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) throw new Error("Gemini video generation is not configured.");
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${encodeURIComponent(apiKey)}`,
-  );
+  const response = await fetch(operationEndpoint(providerConfig(true), operationName));
   if (!response.ok) throw await providerError(response, "Veo operation");
   return response.json();
 }
 
 function findVideoUri(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
-  if ("uri" in value && typeof (value as Record<string, unknown>).uri === "string") {
-    return (value as Record<string, string>).uri;
+  const record = value as Record<string, unknown>;
+  for (const key of ["uri", "gcsUri", "videoUri"]) {
+    if (typeof record[key] === "string") return record[key] as string;
   }
-  for (const child of Object.values(value as Record<string, unknown>)) {
+  for (const child of Object.values(record)) {
     if (Array.isArray(child)) {
       for (const item of child) {
         const found = findVideoUri(item);
@@ -311,9 +347,8 @@ function findVideoUri(value: unknown): string | null {
 }
 
 async function downloadVideo(uri: string) {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) throw new Error("Gemini video generation is not configured.");
-  const response = await fetch(uri, { headers: { "x-goog-api-key": apiKey } });
+  const config = providerConfig(true);
+  const response = await fetch(uri, { headers: { "x-goog-api-key": config.apiKey } });
   if (!response.ok) throw await providerError(response, "Veo video download");
   return {
     bytes: await response.arrayBuffer(),
