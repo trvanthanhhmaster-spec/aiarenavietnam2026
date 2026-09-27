@@ -289,8 +289,9 @@ async function generateImages(
 }
 
 async function startVideoOperation(prompt: string, inputImage?: LookRequest["inputImage"]) {
-  const model = Deno.env.get("GEMINI_VIDEO_MODEL") || "veo-3.1-fast-generate-preview";
   const config = providerConfig(true);
+  const model = Deno.env.get("GEMINI_VIDEO_MODEL")
+    || (config.vertex ? "veo-3.1-fast-generate-001" : "veo-3.1-fast-generate-preview");
 
   const instance: Record<string, unknown> = {
     prompt: `${prompt}\nCreate a restrained eight-second fashion film. Preserve the selected Vietnamese garment construction and subject identity. Use slow natural movement, stable camera motion, no text, no logo and no wardrobe morphing.`,

@@ -21,7 +21,7 @@ GOOGLE_CLOUD_LOCATION=global
 GOOGLE_CLOUD_VIDEO_LOCATION=us-central1
 GEMINI_TEXT_MODEL=gemini-2.5-flash
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
-GEMINI_VIDEO_MODEL=veo-3.1-fast-generate-preview
+GEMINI_VIDEO_MODEL=veo-3.1-fast-generate-001
 ```
 
 Gemini Developer API fallback:
