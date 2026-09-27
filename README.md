@@ -57,6 +57,11 @@ cho Supabase Edge Function. Bản hiện tại đã gọi Gemini server-side đ�
 Card, Cultural Guardrail, prompt ảnh, lookbook và video tùy chọn. Asset hoàn tất
 được lưu trong Supabase Storage và trả về bằng signed URL.
 
+Luồng ảnh tạo tối đa bốn biến thể tuần tự và giữ lại các ảnh đã thành công nếu
+provider lỗi ở biến thể sau. Khi Gemini text tạm lỗi, Edge Function dùng đúng dữ
+liệu catalog đã duyệt cho Story Card/Guardrail và đánh dấu
+`copySource=catalog-fallback`; provider key không bao giờ được gửi về client.
+
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 
 ```bash
@@ -71,5 +76,6 @@ php -l studio.php
 node --check assets/js/app.js
 node --check assets/js/studio.js
 deno check supabase/functions/generate-look/index.ts
-deno test supabase/functions/generate-look/copy-schema_test.ts
+deno test supabase/functions/generate-look/copy-schema_test.ts \
+  supabase/functions/generate-look/fallback-copy_test.ts
 ```

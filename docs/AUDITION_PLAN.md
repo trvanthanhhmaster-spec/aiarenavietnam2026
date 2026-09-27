@@ -76,13 +76,13 @@ Story Card hay nút tải lookbook.
 | --- | --- | --- |
 | Tầng 1 data-driven | Đã có | Cần visual QA đầy đủ trên desktop/mobile và mọi branch |
 | Supabase catalog | Đã có ban đầu | Nội dung văn hóa còn ngắn, chưa có bộ nguồn đã duyệt thực tế |
-| Studio selector | Đã có | Cần test thao tác, responsive và accessibility theo kịch bản demo |
-| Gemini text/prompt | Đã có một prompt v1 | Chưa có eval cases, schema validation và prompt regression |
-| Image generation | Đã nối provider | Cần đánh giá chất lượng, identity consistency và fallback asset |
-| Lookbook | Hiển thị tối đa bốn ảnh | Chưa có persistence riêng, resume và gallery |
+| Studio selector | Đã có | Đã kiểm thử thao tác, responsive và accessibility cơ bản |
+| Gemini text/prompt | Đã có một prompt v1 | Đã có schema validation; eval provider thật và prompt regression vẫn còn |
+| Image generation | Đã nối provider | Đã kiểm thử thật 4 ảnh 9:16; identity consistency cần đánh giá thêm |
+| Lookbook | Hiển thị tối đa bốn ảnh | Job có persistence/resume; composite và gallery để sau Audition |
 | Video generation | Đã chạy được qua Vertex bridge | API-key Gemini route thiếu prepaid balance; video đang bị ưu tiên quá mức |
-| Job polling | Đã có | Reload mất job; chưa chống submit trùng; chưa có cancel |
-| Download | Đã có cho một asset | Chưa có lookbook composite 9:16 hoàn chỉnh |
+| Job polling | Đã có | Đã chống submit trùng và resume sau reload; cancel provider vẫn còn |
+| Download | Đã có lookbook composite 1080×1920 | Gallery và chia sẻ để sau Audition |
 | Auth/admin/share | Chưa có | Để sau Audition |
 | VPS/domain | Chưa có | Chỉ làm sau khi P0 và demo script đã khóa |
 
@@ -127,8 +127,9 @@ Quyết định provider:
 - Thêm retry có kiểm soát và thông báo lỗi tiếng Việt nhất quán.
 
 Trạng thái hiện tại: đã triển khai idempotency theo `clientRequestId`, resume
-theo `jobId`/`requestId`, chống submit trùng, và cho phép ảnh hiển thị khi video
-còn đang xử lý. Phần cancel job và test browser full-flow vẫn còn lại.
+theo `jobId`/`requestId`, chống submit trùng, giữ job khi polling timeout, và cho
+phép ảnh hiển thị khi video còn đang xử lý. Phần cancel provider vẫn còn lại;
+Studio đã được kiểm thử bằng browser trên mobile.
 
 ### Milestone B - Khóa chất lượng kết quả
 
@@ -138,10 +139,10 @@ còn đang xử lý. Phần cancel job và test browser full-flow vẫn còn l�
 - Kiểm tra prompt version và output không bịa thông tin lịch sử.
 - Tạo fallback lookbook được duyệt cho kịch bản demo.
 
-Trạng thái hiện tại: đã thêm schema parser và test cho `story`, `guardrail`,
-`genZTip`, `imagePrompt`, `confidence`; prompt v1 trên Supabase đã được đồng bộ
-với contract này. Bộ eval văn hóa, nguồn được duyệt và fallback lookbook vẫn còn
-lại.
+Trạng thái hiện tại: đã thêm schema parser, test contract và bộ fallback eval
+4 x 4 cho bốn loại trang phục và bốn bối cảnh; prompt v1 trên Supabase đã được
+đồng bộ với contract này. Eval provider thật và việc gắn nguồn được duyệt cho
+từng garment vẫn còn lại.
 
 ### Milestone C - Khóa trải nghiệm trình bày
 
@@ -149,6 +150,10 @@ lại.
 - Kiểm thử media loading, error state, keyboard và reduced motion.
 - Xuất một lookbook composite 9:16 thay vì chỉ tải một ảnh đơn.
 - Viết demo script 90 giây và chạy thử từ đầu đến cuối.
+
+Trạng thái hiện tại: đã kiểm thử browser trên mobile, không có overflow ngang,
+Lighthouse accessibility Studio đạt 100, resume sau reload hiển thị ảnh thật, và
+nút tải tạo file PNG `1080×1920` đúng tỉ lệ 9:16.
 
 ### Milestone D - Video tùy chọn
 

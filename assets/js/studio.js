@@ -40,6 +40,8 @@
   var activeJobKey = 'vremix.active-generation-job.v1';
   var generationPending = false;
   var lastOutputFingerprint = '';
+  var currentLookbookItems = [];
+  var currentVideo = null;
 
   var modes = [
     {
@@ -222,6 +224,7 @@
     var open = Boolean(state.openMode);
     dock.classList.toggle('is-open', open);
     dock.setAttribute('aria-hidden', String(!open));
+    dock.inert = !open;
     intro.classList.toggle('is-muted', open);
 
     Array.prototype.forEach.call(hotspots.querySelectorAll('.studio-hotspot'), function (button) {
@@ -483,7 +486,9 @@
     try {
       var completed = await pollJob(activeJob, true);
       if (completed.status !== 'completed') {
-        clearActiveJob();
+        if (completed.status === 'failed' || completed.status === 'cancelled') {
+          clearActiveJob();
+        }
         throw new Error(completed.error || 'Generation job did not complete.');
       }
       applyOutput(completed.output || {});
@@ -555,6 +560,12 @@
   function resultMessage(output) {
     if (output.video && output.video.url) return 'Video Veo và tài sản bản phối đã sẵn sàng.';
     if (output.videoError) return 'Lookbook đã sẵn sàng; video chưa hoàn tất nên bạn vẫn có thể dùng ảnh.';
+    if (output.imageSource === 'catalog-fallback') {
+      return 'Đang dùng ảnh catalog đã duyệt làm fallback; bạn có thể thử lại để tạo ảnh AI mới.';
+    }
+    if (output.copySource === 'catalog-fallback') {
+      return 'Lookbook đã sẵn sàng; Story Card đang dùng dữ liệu catalog đã duyệt vì Gemini tạm thời không phản hồi.';
+    }
     return 'Bản phối AI và lookbook 9:16 đã sẵn sàng.';
   }
 
@@ -580,8 +591,10 @@
 
     resultImages.innerHTML = '';
     resultImages.hidden = items.length === 0;
+    currentLookbookItems = items.slice(0, 4);
     resultVisual.classList.toggle('has-images', items.length > 0);
     var video = output.video && output.video.url ? output.video : null;
+    currentVideo = video;
     resultVideo.hidden = !video;
     resultVisual.classList.toggle('has-video', Boolean(video));
     if (video) {
@@ -608,8 +621,115 @@
       resultDownload.textContent = 'Tải video MP4 ' + String.fromCharCode(8595);
     } else if (items[0]) {
       resultDownload.href = items[0].url;
-      resultDownload.textContent = 'Tải ảnh 9:16 ' + String.fromCharCode(8595);
+      resultDownload.textContent = 'Tải lookbook 9:16 ' + String.fromCharCode(8595);
     }
+  }
+
+  function loadCanvasImage(url) {
+    return new Promise(function (resolve, reject) {
+      var image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = function () { resolve(image); };
+      image.onerror = function () { reject(new Error('Không thể đọc ảnh lookbook để xuất file.')); };
+      image.src = url;
+    });
+  }
+
+  function coverRect(context, image, rect) {
+    var sourceRatio = image.naturalWidth / image.naturalHeight;
+    var targetRatio = rect.width / rect.height;
+    var sourceWidth = image.naturalWidth;
+    var sourceHeight = image.naturalHeight;
+    var sourceX = 0;
+    var sourceY = 0;
+    if (sourceRatio > targetRatio) {
+      sourceWidth = image.naturalHeight * targetRatio;
+      sourceX = (image.naturalWidth - sourceWidth) / 2;
+    } else {
+      sourceHeight = image.naturalWidth / targetRatio;
+      sourceY = (image.naturalHeight - sourceHeight) / 2;
+    }
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      rect.x,
+      rect.y,
+      rect.width,
+      rect.height
+    );
+  }
+
+  function lookbookLayout(count) {
+    if (count <= 1) return [{ x: 0, y: 0, width: 1080, height: 1920 }];
+    if (count === 2) {
+      return [
+        { x: 0, y: 0, width: 540, height: 1920 },
+        { x: 540, y: 0, width: 540, height: 1920 }
+      ];
+    }
+    if (count === 3) {
+      return [
+        { x: 0, y: 0, width: 1080, height: 960 },
+        { x: 0, y: 960, width: 540, height: 960 },
+        { x: 540, y: 960, width: 540, height: 960 }
+      ];
+    }
+    return [
+      { x: 0, y: 0, width: 540, height: 960 },
+      { x: 540, y: 0, width: 540, height: 960 },
+      { x: 0, y: 960, width: 540, height: 960 },
+      { x: 540, y: 960, width: 540, height: 960 }
+    ];
+  }
+
+  async function downloadLookbookComposite(items) {
+    var images = await Promise.all(items.slice(0, 4).map(function (item) {
+      return loadCanvasImage(item.url);
+    }));
+    var canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1920;
+    var context = canvas.getContext('2d');
+    if (!context) throw new Error('Trình duyệt không hỗ trợ xuất lookbook.');
+
+    context.fillStyle = '#0b1a20';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    var layout = lookbookLayout(images.length);
+    images.forEach(function (image, index) {
+      coverRect(context, image, layout[index]);
+    });
+
+    var topShade = context.createLinearGradient(0, 0, 0, 210);
+    topShade.addColorStop(0, 'rgba(7, 21, 27, .84)');
+    topShade.addColorStop(1, 'rgba(7, 21, 27, 0)');
+    context.fillStyle = topShade;
+    context.fillRect(0, 0, canvas.width, 210);
+    context.fillStyle = '#e6f35e';
+    context.font = '500 28px "Space Grotesk", "Be Vietnam Pro", sans-serif';
+    context.letterSpacing = '4px';
+    context.fillText('V-REMIX / LOOKBOOK', 56, 76);
+    context.fillStyle = 'rgba(245, 246, 239, .82)';
+    context.font = '400 22px "Be Vietnam Pro", sans-serif';
+    context.letterSpacing = '0px';
+    context.fillText('Việt phục, theo cách bạn.', 56, 118);
+
+    var blob = await new Promise(function (resolve, reject) {
+      canvas.toBlob(function (value) {
+        if (value) resolve(value);
+        else reject(new Error('Không thể đóng gói file lookbook.'));
+      }, 'image/png');
+    });
+    var objectUrl = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = 'v-remix-lookbook-1080x1920.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
   }
 
   function setResultState(value, message) {
@@ -631,6 +751,8 @@
     resultVideo.load();
     resultVisual.classList.remove('has-images', 'has-video');
     lastOutputFingerprint = '';
+    currentLookbookItems = [];
+    currentVideo = null;
     resultPlaceholderVisual.hidden = false;
     resultVisualLabel.hidden = false;
     resultDownload.hidden = true;
@@ -661,6 +783,25 @@
     closeDock(true);
   });
   resultClose.addEventListener('click', hideResult);
+  resultDownload.addEventListener('click', function (event) {
+    if (currentVideo || currentLookbookItems.length === 0) return;
+    event.preventDefault();
+    var previousLabel = resultDownload.textContent;
+    resultDownload.setAttribute('aria-disabled', 'true');
+    resultDownload.textContent = 'Đang dựng file 1080×1920…';
+    downloadLookbookComposite(currentLookbookItems)
+      .then(function () {
+        setStatus('Đã xuất lookbook 1080×1920.');
+      })
+      .catch(function (error) {
+        setStatus(error && error.message ? error.message : 'Không thể xuất lookbook.');
+        window.open(currentLookbookItems[0].url, '_blank', 'noopener');
+      })
+      .finally(function () {
+        resultDownload.removeAttribute('aria-disabled');
+        resultDownload.textContent = previousLabel;
+      });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('.studio-footer__notes [data-mode]'), function (button) {
     button.addEventListener('click', function () {
       openMode(button.dataset.mode);

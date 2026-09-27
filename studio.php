@@ -42,6 +42,8 @@ if (!is_array($site) || !is_array($catalog) || !is_array($branches)) {
 }
 
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+$brandVisibleName = trim((string) ($site['brand_mark'] ?? '') . ' ' . (string) ($site['brand_name'] ?? ''));
+$brandAccessibleName = trim($brandVisibleName . ' — ' . (string) ($site['ui']['brand_aria_label'] ?? 'Trang chủ V-Remix'));
 $baseBranch = null;
 foreach ($branches as $branch) {
     if (!empty($branch['isBase'])) {
@@ -72,7 +74,7 @@ $studioData = $catalog + [
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
         <header class="studio-masthead">
-            <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($site['ui']['brand_aria_label'] ?? 'Trang chủ V-Remix') ?>">
+            <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>">
                 <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
             </a>
             <span class="studio-header-middle">Việt phục / interactive studio</span>
@@ -98,7 +100,7 @@ $studioData = $catalog + [
                 <p class="studio-intro__note">Chạm vào một điểm để bắt đầu. Giữ tinh thần của dáng áo, mở ra một cách xuất hiện mới.</p>
             </div>
 
-            <aside class="studio-dock" id="studioDock" aria-hidden="true" aria-labelledby="dockTitle">
+            <aside class="studio-dock" id="studioDock" aria-hidden="true" inert aria-labelledby="dockTitle">
                 <div class="studio-dock__header">
                     <div>
                         <p class="studio-dock__index" id="dockIndex">01 / 04</p>

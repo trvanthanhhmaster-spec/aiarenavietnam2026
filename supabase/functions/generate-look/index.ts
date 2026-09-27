@@ -1,4 +1,5 @@
 import { parseGeminiCopy } from "./copy-schema.ts";
+import { fallbackCopy, fallbackImagePrompt } from "./fallback-copy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,9 +56,13 @@ function serviceConfig() {
 }
 
 function isSafeImage(image: LookRequest["inputImage"]) {
+  // Base64 expands binary input by roughly one third. The browser enforces
+  // the 8 MB file limit, so validate the encoded payload against that same
+  // limit instead of rejecting valid uploads after conversion.
+  const maxBase64Chars = Math.ceil(8_000_000 / 3) * 4 + 8;
   return !image
     || (["image/jpeg", "image/png", "image/webp"].includes(image.mimeType)
-      && image.data.length <= 8_000_000);
+      && image.data.length <= maxBase64Chars);
 }
 
 function isUuid(value: unknown) {
@@ -275,20 +280,6 @@ async function askGemini(
   return parseGeminiCopy(text);
 }
 
-function fallbackImagePrompt(request: LookRequest, catalog: Record<string, any>) {
-  const event = catalog.event?.label || request.eventSlug || "a Vietnamese cultural event";
-  const garment = catalog.garment?.name || request.garmentSlug || "Vietnamese traditional clothing";
-  const color = catalog.options?.find((item: any) => item.slug === request.colorSlug)?.label || "";
-  const style = catalog.options?.find((item: any) => item.slug === request.styleSlug)?.label || "";
-  return [
-    `Editorial full-body fashion portrait for ${event}.`,
-    `${garment}, preserve its Vietnamese silhouette, collar, panels, buttons and sleeve construction.`,
-    `Palette: ${color}. Styling direction: ${style}.`,
-    "Contemporary accessories may be subtle, but the traditional garment remains the visual centre.",
-    "Natural light, respectful cultural context, clean background, portrait composition, no text, no logo, no watermark.",
-  ].join(" ");
-}
-
 async function generateImages(
   prompt: string,
   inputImage?: LookRequest["inputImage"],
@@ -303,7 +294,9 @@ async function generateImages(
     "detail-led lookbook composition",
   ];
   const images: { bytes: string; mimeType: string }[] = [];
-  for (let index = 0; index < variants.length; index += 1) {
+  const configuredCount = Number.parseInt(Deno.env.get("GEMINI_IMAGE_VARIANTS") || "4", 10);
+  const variantCount = Math.min(variants.length, Math.max(1, Number.isFinite(configuredCount) ? configuredCount : 4));
+  for (let index = 0; index < variantCount; index += 1) {
     const variant = variants[index];
     const parts: Record<string, unknown>[] = [{
       text: `${prompt}\nCreate variation ${index + 1}: ${variant}. Keep the same selected garment, styling and person identity across the lookbook.`,
@@ -329,8 +322,9 @@ async function generateImages(
     });
     if (!response.ok) {
       const error = await providerError(response, "Gemini image model");
-      // Preserve a usable first look when later lookbook variants hit provider limits.
-      if (images.length > 0 && /no available quota|resource exhausted/i.test(error.message)) break;
+      // Preserve every usable look when a later variant hits a transient or
+      // provider limit. A failed first variant remains a real job failure.
+      if (images.length > 0) break;
       throw error;
     }
     const body = await response.json();
@@ -552,25 +546,61 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
   await updateJob(job.id, "processing", {});
   const [event, garment, accessories, options] = await Promise.all([
     selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context`),
-    selectCatalog("studio_garments", `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&is_active=eq.true&select=slug,name,category,description,origin_note,significance_note`),
+    selectCatalog("studio_garments", `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&is_active=eq.true&select=slug,name,category,description,origin_note,significance_note,image_url`),
     selectCatalog("studio_accessories", `${input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : ""}is_active=eq.true&select=slug,name,description`),
     selectCatalog("studio_options", "is_active=eq.true&select=option_type,slug,label,value,prompt_hint"),
   ]);
   if (!event.length || !garment.length) throw new Error("Selection is not in the approved catalog.");
 
   const catalog = { event: event[0], garment: garment[0], accessories, options };
-  const copy = await askGemini(input, catalog, promptVersion);
+  let copy: Awaited<ReturnType<typeof askGemini>>;
+  let copySource: "gemini" | "catalog-fallback" = "gemini";
+  let copyWarning: string | undefined;
+  try {
+    copy = await askGemini(input, catalog, promptVersion);
+  } catch (error) {
+    // Catalog facts are already approved, so they provide a truthful fallback
+    // for the copy layer while the image provider can still finish the job.
+    copy = fallbackCopy(input, catalog);
+    copySource = "catalog-fallback";
+    copyWarning = error instanceof Error
+      ? `Gemini copy fallback: ${error.message}`
+      : "Gemini copy fallback was used.";
+  }
   const imagePrompt = copy.imagePrompt || fallbackImagePrompt(input, catalog);
   const generationType = input.generationType || "image";
   let assets: GeneratedAsset[] = [];
+  let imageSource: "gemini" | "catalog-fallback" = "gemini";
+  let imageWarning: string | undefined;
   if (generationType === "image" || generationType === "both") {
-    const generated = await generateImages(imagePrompt, input.inputImage);
-    assets = await storeLookbook(job.id, generated);
+    try {
+      const generated = await generateImages(imagePrompt, input.inputImage);
+      assets = await storeLookbook(job.id, generated);
+    } catch (error) {
+      const url = typeof catalog.garment.image_url === "string"
+        ? catalog.garment.image_url.trim()
+        : "";
+      if (!url) throw error;
+      assets = [{
+        path: `catalog/${catalog.garment.slug || "garment"}`,
+        url,
+        mimeType: "image/*",
+        index: 1,
+      }];
+      imageSource = "catalog-fallback";
+      imageWarning = error instanceof Error
+        ? `Image fallback: ${error.message}`
+        : "Catalog image fallback was used.";
+    }
   }
 
   const output: GenerationOutput = {
     ...copy,
     generationType,
+    copySource,
+    ...(copyWarning ? { copyWarning } : {}),
+    imageSource,
+    ...(imageWarning ? { imageWarning } : {}),
     promptVersion: { id: promptVersion.id, version: promptVersion.version, model: promptVersion.model },
     imagePrompt,
     imageUrl: assets[0]?.url || null,

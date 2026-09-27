@@ -20,6 +20,14 @@ For `generationType=both`, the image lookbook is stored before Veo starts. A
 Veo provider or Storage failure is recorded in `output.videoError` while the
 usable image job completes successfully.
 
+If the Gemini copy call fails but the image provider remains available, the
+function builds Story Card, Cultural Guardrail and image prompt only from the
+approved catalog facts. The response marks this path with
+`copySource=catalog-fallback`; it never invents a historical source. If a later
+image variant fails, previously generated variants are still stored and
+returned. Set `GEMINI_IMAGE_VARIANTS` from `1` to `4` to control the number of
+lookbook images; the default is `4`.
+
 Vertex AI configuration, used to charge the linked Google Cloud project:
 
 ```text
@@ -31,6 +39,7 @@ GOOGLE_CLOUD_LOCATION=global
 GOOGLE_CLOUD_VIDEO_LOCATION=us-central1
 GEMINI_TEXT_MODEL=gemini-2.5-flash
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+GEMINI_IMAGE_VARIANTS=4
 GEMINI_VIDEO_MODEL=veo-3.1-fast-generate-001
 VERTEX_VIDEO_BRIDGE_URL
 VERTEX_VIDEO_BRIDGE_SECRET

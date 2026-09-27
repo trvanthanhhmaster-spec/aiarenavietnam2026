@@ -41,7 +41,7 @@ require __DIR__ . '/includes/partials/head.php';
 ini_set('serialize_precision', '-1');
 ?>
 
-<div
+<main
     class="stage"
     id="stage"
     style="--cell-count: <?= count($branches) + 1 ?>; --mobile-rows: <?= (int) ceil(count($branches) / 2) ?>"
@@ -51,7 +51,7 @@ ini_set('serialize_precision', '-1');
     <?php require __DIR__ . '/includes/partials/controller.php'; ?>
     <?php require __DIR__ . '/includes/partials/header.php'; ?>
     <?php require __DIR__ . '/includes/partials/feedback.php'; ?>
-</div>
+</main>
 
 <script>
 window.VREMIX_CONFIG = <?= json_encode(
