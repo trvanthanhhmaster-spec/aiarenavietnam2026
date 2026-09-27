@@ -60,6 +60,8 @@ type ProviderConfig = {
   vertex: boolean;
   project?: string;
   location?: string;
+  bridgeUrl?: string;
+  bridgeSecret?: string;
 };
 
 function providerConfig(video = false): ProviderConfig {
@@ -74,7 +76,10 @@ function providerConfig(video = false): ProviderConfig {
   const project = Deno.env.get("GOOGLE_CLOUD_PROJECT");
   const location = Deno.env.get(video ? "GOOGLE_CLOUD_VIDEO_LOCATION" : "GOOGLE_CLOUD_LOCATION") || "global";
   if (!project) throw new Error("GOOGLE_CLOUD_PROJECT is missing for Vertex AI.");
-  return { apiKey, vertex: true, project, location };
+  const bridgeUrl = video ? Deno.env.get("VERTEX_VIDEO_BRIDGE_URL") : undefined;
+  const bridgeSecret = video ? Deno.env.get("VERTEX_VIDEO_BRIDGE_SECRET") : undefined;
+  if (bridgeUrl && !bridgeSecret) throw new Error("VERTEX_VIDEO_BRIDGE_SECRET is missing.");
+  return { apiKey, vertex: true, project, location, bridgeUrl, bridgeSecret };
 }
 
 function modelEndpoint(config: ProviderConfig, model: string, method: string) {
@@ -302,27 +307,42 @@ async function startVideoOperation(prompt: string, inputImage?: LookRequest["inp
       mimeType: inputImage.mimeType,
     };
   }
-  const endpoint = modelEndpoint(config, model, "predictLongRunning");
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instances: [instance],
-      parameters: {
-        aspectRatio: "9:16",
-        durationSeconds: 8,
-        sampleCount: 1,
+  const requestBody = {
+    model,
+    instances: [instance],
+    parameters: {
+      aspectRatio: "9:16",
+      durationSeconds: 8,
+      sampleCount: 1,
+    },
+  };
+  const response = config.bridgeUrl
+    ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-vremix-bridge-secret": config.bridgeSecret || "",
       },
-    }),
-  });
+      body: JSON.stringify(requestBody),
+    })
+    : await fetch(modelEndpoint(config, model, "predictLongRunning"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instances: requestBody.instances, parameters: requestBody.parameters }),
+    });
   if (!response.ok) throw await providerError(response, "Veo");
-  const body = await response.json();
-  if (!body?.name) throw new Error("Veo returned no operation id.");
-  return String(body.name);
+  const responseBody = await response.json();
+  if (!responseBody?.name) throw new Error("Veo returned no operation id.");
+  return String(responseBody.name);
 }
 
 async function readVideoOperation(operationName: string) {
-  const response = await fetch(operationEndpoint(providerConfig(true), operationName));
+  const config = providerConfig(true);
+  const response = config.bridgeUrl
+    ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/operation?name=${encodeURIComponent(operationName)}`, {
+      headers: { "x-vremix-bridge-secret": config.bridgeSecret || "" },
+    })
+    : await fetch(operationEndpoint(config, operationName));
   if (!response.ok) throw await providerError(response, "Veo operation");
   return response.json();
 }
@@ -347,9 +367,31 @@ function findVideoUri(value: unknown): string | null {
   return null;
 }
 
+function findVideoBytes(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.bytesBase64Encoded === "string") return record.bytesBase64Encoded;
+  for (const child of Object.values(record)) {
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const found = findVideoBytes(item);
+        if (found) return found;
+      }
+    } else {
+      const found = findVideoBytes(child);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 async function downloadVideo(uri: string) {
   const config = providerConfig(true);
-  const response = await fetch(uri, { headers: { "x-goog-api-key": config.apiKey } });
+  const response = config.bridgeUrl
+    ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/download?uri=${encodeURIComponent(uri)}`, {
+      headers: { "x-vremix-bridge-secret": config.bridgeSecret || "" },
+    })
+    : await fetch(uri, { headers: { "x-goog-api-key": config.apiKey } });
   if (!response.ok) throw await providerError(response, "Veo video download");
   return {
     bytes: await response.arrayBuffer(),
@@ -366,6 +408,18 @@ async function storeVideo(jobId: string, uri: string) {
     path,
     url: await signedUrl(path),
     mimeType: video.mimeType,
+  };
+}
+
+async function storeVideoBytes(jobId: string, bytes: string, mimeType = "video/mp4") {
+  await ensureStorageBucket();
+  const path = `${jobId}/lookbook-video.mp4`;
+  const binary = Uint8Array.from(atob(bytes), (character) => character.charCodeAt(0));
+  await uploadBytes(path, binary, mimeType);
+  return {
+    path,
+    url: await signedUrl(path),
+    mimeType,
   };
 }
 
@@ -489,12 +543,15 @@ async function refreshVideoJob(job: Record<string, any>) {
   }
   if (!operation.done) return job;
 
-  const uri = findVideoUri(operation.response);
-  if (!uri) {
+  const bytes = findVideoBytes(operation.response);
+  const uri = bytes ? null : findVideoUri(operation.response);
+  if (!bytes && !uri) {
     await updateJob(job.id, "failed", output, "Veo completed without a video asset.");
     return await getJob(job.id);
   }
-  output.video = await storeVideo(job.id, uri);
+  output.video = bytes
+    ? await storeVideoBytes(job.id, bytes)
+    : await storeVideo(job.id, uri as string);
   delete output.providerOperation;
   await updateJob(job.id, "completed", output);
   return await getJob(job.id);
