@@ -269,7 +269,6 @@ async function startVideoOperation(prompt: string, inputImage?: LookRequest["inp
         aspectRatio: "9:16",
         durationSeconds: 8,
         sampleCount: 1,
-        personGeneration: "allow_adult",
       },
     }),
   });
