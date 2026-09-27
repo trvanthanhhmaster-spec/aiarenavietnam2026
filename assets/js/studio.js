@@ -600,7 +600,21 @@
     if (video) {
       resultVideo.src = video.url;
       resultVideo.poster = items[0] ? items[0].url : '';
+      resultVideo.onerror = function () {
+        currentVideo = null;
+        resultVideo.hidden = true;
+        resultVisual.classList.remove('has-video');
+        resultImages.hidden = items.length === 0;
+        if (items[0]) {
+          resultDownload.href = items[0].url;
+          resultDownload.textContent = 'Tải lookbook 9:16 ' + String.fromCharCode(8595);
+          resultDownload.hidden = false;
+        }
+        setResultState('completed', 'Lookbook đã sẵn sàng; trình duyệt không tải được video nên đang dùng ảnh.');
+      };
+      resultVideo.load();
     } else {
+      resultVideo.onerror = null;
       resultVideo.removeAttribute('src');
       resultVideo.removeAttribute('poster');
       resultVideo.load();

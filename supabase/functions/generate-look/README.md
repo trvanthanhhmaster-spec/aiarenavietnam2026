@@ -20,6 +20,13 @@ For `generationType=both`, the image lookbook is stored before Veo starts. A
 Veo provider or Storage failure is recorded in `output.videoError` while the
 usable image job completes successfully.
 
+Every video request is image-to-video. The function first generates and stores
+an approved lookbook frame, then sends those exact image bytes to Veo as the
+first frame. `generationType=video` creates one lookbook frame; `both` reuses
+the first image from the normal lookbook. The persisted output records
+`videoFirstFrame.source=generated-lookbook` and its Storage path, so the
+identity anchor can be audited without persisting base64 bytes in Postgres.
+
 If the Gemini copy call fails but the image provider remains available, the
 function builds Story Card, Cultural Guardrail and image prompt only from the
 approved catalog facts. The response marks this path with

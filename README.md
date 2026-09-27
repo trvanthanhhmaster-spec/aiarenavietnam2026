@@ -62,6 +62,11 @@ provider lỗi ở biến thể sau. Khi Gemini text tạm lỗi, Edge Function 
 liệu catalog đã duyệt cho Story Card/Guardrail và đánh dấu
 `copySource=catalog-fallback`; provider key không bao giờ được gửi về client.
 
+Luồng video hiện dùng image-to-video: Edge Function tạo và lưu lookbook trước,
+sau đó gửi chính ảnh đầu tiên sang Veo qua Cloud Run Vertex bridge. Chế độ
+`video` tạo một first frame; chế độ `both` dùng ảnh đầu tiên của lookbook. Video
+lỗi hoặc timeout không làm thất bại phần ảnh đã hoàn tất.
+
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 
 ```bash
@@ -77,5 +82,6 @@ node --check assets/js/app.js
 node --check assets/js/studio.js
 deno check supabase/functions/generate-look/index.ts
 deno test supabase/functions/generate-look/copy-schema_test.ts \
-  supabase/functions/generate-look/fallback-copy_test.ts
+  supabase/functions/generate-look/fallback-copy_test.ts \
+  supabase/functions/generate-look/video-request_test.ts
 ```

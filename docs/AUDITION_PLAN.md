@@ -162,6 +162,12 @@ nút tải tạo file PNG `1080×1920` đúng tỉ lệ 9:16.
 - Video có trạng thái riêng và không làm thất bại job ảnh.
 - Kiểm thử chi phí, quota, timeout và fallback.
 
+Trạng thái hiện tại: Edge Function dùng ảnh lookbook đã tạo làm first frame,
+lưu metadata `videoFirstFrame`, và gọi Veo Vertex qua Cloud Run bridge. Chế độ
+video-only cũng tạo một lookbook frame trước. Live `both` đã kiểm thử thành
+công: operation hoàn tất, MP4 H.264/AAC 8 giây 720×1280 được lưu vào Storage;
+browser có fallback về ảnh nếu video media không tải được.
+
 ### Milestone E - Deploy
 
 - Deploy VPS/domain.

@@ -1,5 +1,6 @@
 import { parseGeminiCopy } from "./copy-schema.ts";
 import { fallbackCopy, fallbackImagePrompt } from "./fallback-copy.ts";
+import { buildVideoRequest, type VideoFirstFrame } from "./video-request.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -283,6 +284,7 @@ async function askGemini(
 async function generateImages(
   prompt: string,
   inputImage?: LookRequest["inputImage"],
+  maximumVariants = 4,
 ): Promise<{ bytes: string; mimeType: string }[]> {
   const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
   const config = providerConfig();
@@ -295,7 +297,11 @@ async function generateImages(
   ];
   const images: { bytes: string; mimeType: string }[] = [];
   const configuredCount = Number.parseInt(Deno.env.get("GEMINI_IMAGE_VARIANTS") || "4", 10);
-  const variantCount = Math.min(variants.length, Math.max(1, Number.isFinite(configuredCount) ? configuredCount : 4));
+  const variantCount = Math.min(
+    variants.length,
+    Math.max(1, maximumVariants),
+    Math.max(1, Number.isFinite(configuredCount) ? configuredCount : 4),
+  );
   for (let index = 0; index < variantCount; index += 1) {
     const variant = variants[index];
     const parts: Record<string, unknown>[] = [{
@@ -341,29 +347,11 @@ async function generateImages(
   return images;
 }
 
-async function startVideoOperation(prompt: string, inputImage?: LookRequest["inputImage"]) {
+async function startVideoOperation(prompt: string, firstFrame: VideoFirstFrame) {
   const config = providerConfig(true);
   const model = Deno.env.get("GEMINI_VIDEO_MODEL")
     || (config.vertex ? "veo-3.1-fast-generate-001" : "veo-3.1-generate-preview");
-
-  const instance: Record<string, unknown> = {
-    prompt: `${prompt}\nCreate a restrained eight-second fashion film. Preserve the selected Vietnamese garment construction and subject identity. Use slow natural movement, stable camera motion, no text, no logo and no wardrobe morphing.`,
-  };
-  if (inputImage) {
-    instance.image = {
-      bytesBase64Encoded: inputImage.data,
-      mimeType: inputImage.mimeType,
-    };
-  }
-  const requestBody = {
-    model,
-    instances: [instance],
-    parameters: {
-      aspectRatio: "9:16",
-      durationSeconds: 8,
-      sampleCount: 1,
-    },
-  };
+  const requestBody = buildVideoRequest(model, prompt, firstFrame);
   const response = config.bridgeUrl
     ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/generate`, {
       method: "POST",
@@ -572,10 +560,21 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
   let assets: GeneratedAsset[] = [];
   let imageSource: "gemini" | "catalog-fallback" = "gemini";
   let imageWarning: string | undefined;
-  if (generationType === "image" || generationType === "both") {
+  let videoFirstFrame: VideoFirstFrame | undefined;
+  if (generationType === "image" || generationType === "video" || generationType === "both") {
     try {
-      const generated = await generateImages(imagePrompt, input.inputImage);
+      const generated = await generateImages(
+        imagePrompt,
+        input.inputImage,
+        generationType === "video" ? 1 : 4,
+      );
       assets = await storeLookbook(job.id, generated);
+      if (generated[0]) {
+        videoFirstFrame = {
+          mimeType: generated[0].mimeType,
+          data: generated[0].bytes,
+        };
+      }
     } catch (error) {
       const url = typeof catalog.garment.image_url === "string"
         ? catalog.garment.image_url.trim()
@@ -611,7 +610,15 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
   };
   if (generationType === "video" || generationType === "both") {
     try {
-      output.providerOperation = await startVideoOperation(imagePrompt, input.inputImage);
+      if (!videoFirstFrame) {
+        throw new Error("Veo was not started because no generated lookbook first frame is available.");
+      }
+      output.videoFirstFrame = {
+        source: "generated-lookbook",
+        path: assets[0]?.path || null,
+        mimeType: videoFirstFrame.mimeType,
+      };
+      output.providerOperation = await startVideoOperation(imagePrompt, videoFirstFrame);
       output.videoStatus = "processing";
     } catch (error) {
       if (!assets.length) throw error;
