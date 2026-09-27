@@ -99,7 +99,6 @@ final class SupabaseAdminClient
         $responseBody = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         $error = curl_error($handle);
-        curl_close($handle);
 
         if ($responseBody === false || $error !== '') {
             throw new RuntimeException('Supabase admin request failed: ' . $error);
