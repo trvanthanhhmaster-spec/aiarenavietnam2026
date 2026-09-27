@@ -378,17 +378,21 @@
 
   async function pollJob(jobId) {
     if (!jobId) throw new Error('Generation job did not return an id.');
-    for (var attempt = 0; attempt < 40; attempt += 1) {
-      await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+    // Veo jobs commonly take longer than a minute; keep the overlay alive
+    // while the backend continues polling the provider operation.
+    var maxAttempts = 180;
+    var intervalMs = 2000;
+    for (var attempt = 0; attempt < maxAttempts; attempt += 1) {
+      await new Promise(function (resolve) { setTimeout(resolve, intervalMs); });
       var response = await fetch(catalog.generationEndpoint + '?jobId=' + encodeURIComponent(jobId), {
         headers: { Accept: 'application/json' }
       });
       var body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Unable to read generation job.');
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
-      setResultState('processing', 'Job ' + (attempt + 1) + '/40: Gemini/Veo đang dựng tài sản đầu ra.');
+      setResultState('processing', 'Job ' + (attempt + 1) + '/' + maxAttempts + ': Gemini/Veo đang dựng tài sản đầu ra.');
     }
-    throw new Error('Generation job timed out.');
+    throw new Error('Generation job vẫn đang được xử lý. Hãy mở lại kết quả sau ít phút để xem video.');
   }
 
   function applyOutput(output) {
