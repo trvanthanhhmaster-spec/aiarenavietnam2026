@@ -177,6 +177,6 @@ $studioData = $catalog + [
     <script>
         window.VREMIX_STUDIO = <?= json_encode($studioData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
-    <script src="assets/js/studio.js" defer></script>
+    <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
 </body>
 </html>
