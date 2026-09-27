@@ -119,7 +119,7 @@ async function askGemini(
   promptVersion: PromptVersion,
 ) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
-  const model = Deno.env.get("GEMINI_TEXT_MODEL") || "gemini-2.0-flash";
+  const model = Deno.env.get("GEMINI_TEXT_MODEL") || "gemini-2.5-flash";
   if (!apiKey) throw new Error("Gemini is not configured for this environment.");
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;

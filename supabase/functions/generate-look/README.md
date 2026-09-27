@@ -12,7 +12,7 @@ Required Edge Function secrets:
 
 ```text
 GEMINI_API_KEY
-GEMINI_TEXT_MODEL=gemini-2.0-flash
+GEMINI_TEXT_MODEL=gemini-2.5-flash
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 ```
 
