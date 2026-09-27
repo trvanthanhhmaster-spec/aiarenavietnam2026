@@ -13,7 +13,7 @@ Required Edge Function secrets:
 ```text
 GEMINI_API_KEY
 GEMINI_TEXT_MODEL=gemini-2.0-flash
-GEMINI_IMAGE_MODEL=imagen-3.0-generate-002
+GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 ```
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are supplied by Supabase's

@@ -172,33 +172,56 @@ function fallbackImagePrompt(request: LookRequest, catalog: Record<string, any>)
   ].join(" ");
 }
 
-async function generateImages(prompt: string): Promise<{ bytes: string; mimeType: string }[]> {
+async function generateImages(
+  prompt: string,
+  inputImage?: LookRequest["inputImage"],
+): Promise<{ bytes: string; mimeType: string }[]> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
-  const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "imagen-3.0-generate-002";
+  const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
   if (!apiKey) throw new Error("Gemini image generation is not configured.");
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:predict?key=${encodeURIComponent(apiKey)}`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: {
-        sampleCount: 4,
-        aspectRatio: "9:16",
-        personGeneration: "allow_adult",
-      },
-    }),
-  });
-  if (!response.ok) throw new Error(`Gemini image model returned HTTP ${response.status}.`);
-  const body = await response.json();
-  const predictions = Array.isArray(body?.predictions) ? body.predictions : [];
-  const images = predictions.map((prediction: any) => ({
-    bytes: prediction.bytesBase64Encoded || prediction.image?.bytesBase64Encoded || "",
-    mimeType: prediction.mimeType || prediction.image?.mimeType || "image/png",
-  })).filter((image: { bytes: string }) => image.bytes);
-  if (!images.length) throw new Error("Gemini image model returned no images.");
-  return images;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const variants = [
+    "front-facing editorial hero",
+    "three-quarter fashion portrait",
+    "full-body walking composition",
+    "detail-led lookbook composition",
+  ];
+  return Promise.all(variants.map(async (variant, index) => {
+    const parts: Record<string, unknown>[] = [{
+      text: `${prompt}\nCreate variation ${index + 1}: ${variant}. Keep the same selected garment, styling and person identity across the lookbook.`,
+    }];
+    if (inputImage) {
+      parts.push({
+        inline_data: {
+          mime_type: inputImage.mimeType,
+          data: inputImage.data,
+        },
+      });
+    }
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          responseModalities: ["TEXT", "IMAGE"],
+          imageConfig: { aspectRatio: "9:16" },
+        },
+      }),
+    });
+    if (!response.ok) throw new Error(`Gemini image model returned HTTP ${response.status}.`);
+    const body = await response.json();
+    const imagePart = body?.candidates?.[0]?.content?.parts?.find((part: any) =>
+      part.inlineData?.data || part.inline_data?.data
+    );
+    const image = imagePart?.inlineData || imagePart?.inline_data;
+    if (!image?.data) throw new Error("Gemini image model returned no image.");
+    return {
+      bytes: image.data,
+      mimeType: image.mimeType || image.mime_type || "image/png",
+    };
+  }));
 }
 
 async function ensureStorageBucket() {
@@ -281,7 +304,7 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
   const catalog = { event: event[0], garment: garment[0], accessories, options };
   const copy = await askGemini(input, catalog, promptVersion);
   const imagePrompt = copy.imagePrompt || fallbackImagePrompt(input, catalog);
-  const generated = await generateImages(imagePrompt);
+  const generated = await generateImages(imagePrompt, input.inputImage);
   const assets = await storeLookbook(job.id, generated);
   return {
     ...copy,
