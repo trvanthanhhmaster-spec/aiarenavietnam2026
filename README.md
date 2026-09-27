@@ -62,3 +62,14 @@ Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 ```bash
 git -C /Applications/XAMPP/xamppfiles/htdocs/aiarenavietnam2026 pull --ff-only
 ```
+
+## Kiểm tra nhanh
+
+```bash
+php -l index.php
+php -l studio.php
+node --check assets/js/app.js
+node --check assets/js/studio.js
+deno check supabase/functions/generate-look/index.ts
+deno test supabase/functions/generate-look/copy-schema_test.ts
+```

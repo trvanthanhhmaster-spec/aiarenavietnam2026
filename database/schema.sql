@@ -310,8 +310,8 @@ values (
     'outfit-image',
     1,
     'gemini',
-    'Create a respectful Vietnamese traditional outfit styling concept. Preserve the garment silhouette, collar, buttons, panels, sleeves and cultural identity. Modernize only the requested accessories and styling. Do not invent historical claims. Return structured output with image_prompt, cultural_notes, guardrails and confidence.',
-    'Initial audition prompt. Must be evaluated against garment identity, event fit, accessory compatibility and cultural safety.',
+    'Create a respectful Vietnamese traditional outfit styling concept. Preserve the garment silhouette, collar, buttons, panels, sleeves and cultural identity. Modernize only the requested accessories and styling. Do not invent historical claims. Return JSON with exactly these keys: story, guardrail, genZTip, imagePrompt and confidence. confidence must be a number between 0 and 1.',
+    'Validate story, guardrail, genZTip, imagePrompt and confidence against the Studio output schema before creating assets.',
     true
 )
 on conflict (slug, version) do update set

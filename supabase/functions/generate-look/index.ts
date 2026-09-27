@@ -1,3 +1,5 @@
+import { parseGeminiCopy } from "./copy-schema.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -270,7 +272,7 @@ async function askGemini(
   const body = await response.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned an empty response.");
-  return JSON.parse(text);
+  return parseGeminiCopy(text);
 }
 
 function fallbackImagePrompt(request: LookRequest, catalog: Record<string, any>) {

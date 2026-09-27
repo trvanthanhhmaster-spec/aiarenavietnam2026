@@ -138,6 +138,11 @@ con dang xu ly. Phan cancel job va test browser full-flow van con lai.
 - Kiem tra prompt version va output khong bia thong tin lich su.
 - Tao fallback lookbook duoc duyet cho kich ban demo.
 
+Trang thai hien tai: da them schema parser va test cho `story`, `guardrail`,
+`genZTip`, `imagePrompt`, `confidence`; prompt v1 tren Supabase da duoc dong bo
+voi contract nay. Bo eval van hoa, nguon duoc duyet va fallback lookbook van con
+lai.
+
 ### Milestone C - Khoa trai nghiem trinh bay
 
 - Visual QA Tang 1 va Studio tren desktop/mobile.
