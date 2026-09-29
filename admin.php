@@ -121,8 +121,10 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
         </section>
         <section class="admin-workspace">
             <nav class="admin-nav" aria-label="Các nhóm quản trị">
+                <p class="admin-nav__label">AI operations</p>
+                <button class="is-active" data-resource="ai-settings"><span>00</span>API & chi phí</button>
                 <p class="admin-nav__label">Collections</p>
-                <button class="is-active" data-resource="events"><span>01</span>Bối cảnh</button>
+                <button data-resource="events"><span>01</span>Bối cảnh</button>
                 <button data-resource="garments"><span>02</span>Cổ phục</button>
                 <button data-resource="accessories"><span>03</span>Phụ kiện</button>
                 <button data-resource="options"><span>04</span>Màu & phong cách</button>
@@ -146,6 +148,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                         <button class="admin-button admin-button--solid" id="adminCreate" type="button">Tạo mới <span>＋</span></button>
                     </div>
                 </div>
+                <div class="admin-metrics" id="adminMetrics" hidden></div>
                 <div class="admin-table-wrap">
                     <table class="admin-table">
                         <thead id="adminTableHead"></thead>

@@ -10,6 +10,9 @@ const corsHeaders = {
 };
 
 const storageBucket = "generated-lookbooks";
+let runtimeSettingsCache: RuntimeSettings | null = null;
+let runtimeSettingsCacheExpiresAt = 0;
+const runtimeSettingsCacheTtlMs = 15_000;
 
 type LookRequest = {
   clientRequestId?: string;
@@ -42,6 +45,27 @@ type GeneratedAsset = {
   url: string;
   mimeType: string;
   index: number;
+};
+
+type RuntimeSettings = {
+  generationEnabled: boolean;
+  imageProvider: "env" | "gemini" | "vertex";
+  videoProvider: "env" | "gemini" | "vertex";
+  textModel: string;
+  imageModel: string;
+  videoModel: string;
+  imageVariants: number;
+  imageUnitCostVnd: number;
+  videoUnitCostVnd: number;
+  dailyBudgetVnd: number;
+  monthlyBudgetVnd: number;
+  geminiApiKey?: string;
+};
+
+type CostEstimate = {
+  estimatedCostVnd: number;
+  imageCount: number;
+  videoCount: number;
 };
 
 const json = (body: unknown, status = 200) =>
@@ -91,14 +115,19 @@ type ProviderConfig = {
   bridgeSecret?: string;
 };
 
-function providerConfig(video = false): ProviderConfig {
+function providerConfig(video = false, settings?: RuntimeSettings): ProviderConfig {
+  const configuredProvider = video ? settings?.videoProvider : settings?.imageProvider;
   const provider = (
-    video
+    configuredProvider && configuredProvider !== "env"
+      ? configuredProvider
+      : video
       ? Deno.env.get("GOOGLE_VIDEO_PROVIDER") || Deno.env.get("GOOGLE_AI_PROVIDER")
       : Deno.env.get("GOOGLE_AI_PROVIDER")
   )?.toLowerCase();
   const vertex = provider === "vertex";
-  const apiKey = Deno.env.get(vertex ? "GOOGLE_VERTEX_API_KEY" : "GEMINI_API_KEY");
+  const apiKey = vertex
+    ? Deno.env.get("GOOGLE_VERTEX_API_KEY")
+    : settings?.geminiApiKey || Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) {
     throw new Error(vertex
       ? "Vertex AI is not configured for this environment."
@@ -165,6 +194,82 @@ async function selectCatalog(table: string, filter: string) {
   return response.json();
 }
 
+function decodeBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
+}
+
+async function decryptGeminiApiKey(value: string | null | undefined) {
+  const encodedKey = Deno.env.get("AI_CONFIG_ENCRYPTION_KEY");
+  if (!value || !encodedKey) return undefined;
+  try {
+    const keyBytes = Uint8Array.from(atob(encodedKey), (character) => character.charCodeAt(0));
+    if (keyBytes.length !== 32) return undefined;
+    const [version, iv, tag, ciphertext] = value.split(".");
+    if (version !== "v1" || !iv || !tag || !ciphertext) return undefined;
+    const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+    const cipherWithTag = new Uint8Array([...decodeBase64Url(ciphertext), ...decodeBase64Url(tag)]);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: decodeBase64Url(iv), tagLength: 128 },
+      cryptoKey,
+      cipherWithTag,
+    );
+    return new TextDecoder().decode(plain);
+  } catch {
+    return undefined;
+  }
+}
+
+async function runtimeSettings(): Promise<RuntimeSettings> {
+  if (runtimeSettingsCache && Date.now() < runtimeSettingsCacheExpiresAt) {
+    return runtimeSettingsCache;
+  }
+  const fallback: RuntimeSettings = {
+    generationEnabled: true,
+    imageProvider: "env",
+    videoProvider: "env",
+    textModel: Deno.env.get("GEMINI_TEXT_MODEL") || "gemini-2.5-flash",
+    imageModel: Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image",
+    videoModel: Deno.env.get("GEMINI_VIDEO_MODEL") || "veo-3.1-fast-generate-001",
+    imageVariants: Math.min(4, Math.max(1, Number.parseInt(Deno.env.get("GEMINI_IMAGE_VARIANTS") || "4", 10))),
+    imageUnitCostVnd: 0,
+    videoUnitCostVnd: 0,
+    dailyBudgetVnd: 0,
+    monthlyBudgetVnd: 0,
+  };
+  try {
+    const rows = await selectCatalog(
+      "ai_runtime_settings",
+      "id=eq.1&select=generation_enabled,image_provider,video_provider,text_model,image_model,video_model,image_variants,image_unit_cost_vnd,video_unit_cost_vnd,daily_budget_vnd,monthly_budget_vnd,encrypted_gemini_api_key&limit=1",
+    );
+    const row = rows[0] as Record<string, unknown> | undefined;
+    if (row) {
+      fallback.generationEnabled = row.generation_enabled !== false;
+      fallback.imageProvider = ["env", "gemini", "vertex"].includes(String(row.image_provider))
+        ? row.image_provider as RuntimeSettings["imageProvider"]
+        : "env";
+      fallback.videoProvider = ["env", "gemini", "vertex"].includes(String(row.video_provider))
+        ? row.video_provider as RuntimeSettings["videoProvider"]
+        : "env";
+      fallback.textModel = String(row.text_model || fallback.textModel);
+      fallback.imageModel = String(row.image_model || fallback.imageModel);
+      fallback.videoModel = String(row.video_model || fallback.videoModel);
+      fallback.imageVariants = Math.min(4, Math.max(1, Number(row.image_variants || fallback.imageVariants)));
+      fallback.imageUnitCostVnd = Math.max(0, Number(row.image_unit_cost_vnd || 0));
+      fallback.videoUnitCostVnd = Math.max(0, Number(row.video_unit_cost_vnd || 0));
+      fallback.dailyBudgetVnd = Math.max(0, Number(row.daily_budget_vnd || 0));
+      fallback.monthlyBudgetVnd = Math.max(0, Number(row.monthly_budget_vnd || 0));
+      fallback.geminiApiKey = await decryptGeminiApiKey(row.encrypted_gemini_api_key as string | undefined);
+    }
+  } catch {
+    // Keep the deployed Edge secret configuration until the migration exists.
+  }
+  runtimeSettingsCache = fallback;
+  runtimeSettingsCacheExpiresAt = Date.now() + runtimeSettingsCacheTtlMs;
+  return fallback;
+}
+
 async function activePrompt(): Promise<PromptVersion> {
   const rows = await selectCatalog(
     "studio_prompt_versions",
@@ -174,10 +279,49 @@ async function activePrompt(): Promise<PromptVersion> {
   return rows[0] as PromptVersion;
 }
 
-async function createJob(input: LookRequest, promptVersionId: string) {
+function costEstimate(input: LookRequest, settings: RuntimeSettings): CostEstimate {
+  const generationType = input.generationType || "image";
+  const imageCount = generationType === "video" ? 1 : settings.imageVariants;
+  const videoCount = generationType === "video" || generationType === "both" ? 1 : 0;
+  return {
+    imageCount,
+    videoCount,
+    estimatedCostVnd: imageCount * settings.imageUnitCostVnd + videoCount * settings.videoUnitCostVnd,
+  };
+}
+
+async function estimatedUsageSince(isoDate: string) {
+  const rows = await selectCatalog(
+    "generation_jobs",
+    `created_at=gte.${encodeURIComponent(isoDate)}&status=neq.cancelled&select=estimated_cost_vnd&limit=1000`,
+  );
+  return rows.reduce((total: number, row: Record<string, unknown>) =>
+    total + Number(row.estimated_cost_vnd || 0), 0);
+}
+
+async function createJob(input: LookRequest, promptVersionId: string, settings: RuntimeSettings) {
   const requestId = input.clientRequestId as string;
   const existing = await getJobByRequestId(requestId);
   if (existing) return { id: existing.id as string, existing: true };
+
+  if (!settings.generationEnabled) {
+    throw new Error("AI generation is temporarily disabled by the admin.");
+  }
+  const estimate = costEstimate(input, settings);
+  const now = new Date();
+  const dayStart = new Date(now);
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const [todayUsage, monthUsage] = await Promise.all([
+    estimatedUsageSince(dayStart.toISOString()),
+    estimatedUsageSince(monthStart.toISOString()),
+  ]);
+  if (settings.dailyBudgetVnd > 0 && todayUsage + estimate.estimatedCostVnd > settings.dailyBudgetVnd) {
+    throw new Error("Daily AI budget would be exceeded. Hãy giảm số biến thể hoặc tăng ngân sách trong Admin.");
+  }
+  if (settings.monthlyBudgetVnd > 0 && monthUsage + estimate.estimatedCostVnd > settings.monthlyBudgetVnd) {
+    throw new Error("Monthly AI budget would be exceeded. Hãy kiểm tra chi phí trong Admin.");
+  }
 
   const response = await rest("generation_jobs?on_conflict=client_request_id", {
     method: "POST",
@@ -187,6 +331,9 @@ async function createJob(input: LookRequest, promptVersionId: string) {
       client_request_id: requestId,
       input: persistedInput(input),
       prompt_version_id: promptVersionId,
+      estimated_cost_vnd: estimate.estimatedCostVnd,
+      image_count: estimate.imageCount,
+      video_count: estimate.videoCount,
     }),
   });
   const rows = await response.json();
@@ -213,7 +360,7 @@ async function updateJob(jobId: string, status: string, output: unknown, errorMe
 async function getJob(jobId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `id=eq.${encodeURIComponent(jobId)}&select=id,client_request_id,status,output,error_message,created_at,updated_at,completed_at&limit=1`,
+    `id=eq.${encodeURIComponent(jobId)}&select=id,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
 }
@@ -221,7 +368,7 @@ async function getJob(jobId: string) {
 async function getJobByRequestId(requestId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `client_request_id=eq.${encodeURIComponent(requestId)}&select=id,client_request_id,status,output,error_message,created_at,updated_at,completed_at&limit=1`,
+    `client_request_id=eq.${encodeURIComponent(requestId)}&select=id,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
 }
@@ -232,6 +379,11 @@ function jobResponse(job: Record<string, any>) {
     requestId: job.client_request_id,
     status: job.status,
     output: job.output || {},
+    estimatedCostVnd: Number(job.estimated_cost_vnd || 0),
+    usage: {
+      imageCount: Number(job.image_count || 0),
+      videoCount: Number(job.video_count || 0),
+    },
     error: job.error_message || null,
     createdAt: job.created_at,
     updatedAt: job.updated_at,
@@ -243,9 +395,10 @@ async function askGemini(
   request: LookRequest,
   catalog: Record<string, unknown>,
   promptVersion: PromptVersion,
+  settings: RuntimeSettings,
 ) {
-  const model = Deno.env.get("GEMINI_TEXT_MODEL") || "gemini-2.5-flash";
-  const config = providerConfig();
+  const model = settings.textModel;
+  const config = providerConfig(false, settings);
   const endpoint = modelEndpoint(config, model, "generateContent");
   const prompt = [
     promptVersion.system_prompt,
@@ -284,11 +437,12 @@ async function askGemini(
 
 async function generateImages(
   prompt: string,
-  inputImage?: LookRequest["inputImage"],
-  maximumVariants = 4,
+  inputImage: LookRequest["inputImage"],
+  settings: RuntimeSettings,
+  maximumVariants = settings.imageVariants,
 ): Promise<{ bytes: string; mimeType: string }[]> {
-  const model = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
-  const config = providerConfig();
+  const model = settings.imageModel;
+  const config = providerConfig(false, settings);
   const endpoint = modelEndpoint(config, model, "generateContent");
   const variants = [
     "front-facing editorial hero",
@@ -297,7 +451,7 @@ async function generateImages(
     "detail-led lookbook composition",
   ];
   const images: { bytes: string; mimeType: string }[] = [];
-  const configuredCount = Number.parseInt(Deno.env.get("GEMINI_IMAGE_VARIANTS") || "4", 10);
+  const configuredCount = settings.imageVariants;
   const variantCount = Math.min(
     variants.length,
     Math.max(1, maximumVariants),
@@ -331,9 +485,9 @@ async function generateImages(
   return images;
 }
 
-async function startVideoOperation(prompt: string, firstFrame: VideoFirstFrame) {
-  const config = providerConfig(true);
-  const model = Deno.env.get("GEMINI_VIDEO_MODEL")
+async function startVideoOperation(prompt: string, firstFrame: VideoFirstFrame, settings: RuntimeSettings) {
+  const config = providerConfig(true, settings);
+  const model = settings.videoModel
     || (config.vertex ? "veo-3.1-fast-generate-001" : "veo-3.1-generate-preview");
   const requestBody = buildVideoRequest(model, prompt, firstFrame);
   const response = config.bridgeUrl
@@ -356,8 +510,8 @@ async function startVideoOperation(prompt: string, firstFrame: VideoFirstFrame) 
   return String(responseBody.name);
 }
 
-async function readVideoOperation(operationName: string) {
-  const config = providerConfig(true);
+async function readVideoOperation(operationName: string, settings: RuntimeSettings) {
+  const config = providerConfig(true, settings);
   const response = config.bridgeUrl
     ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/operation?name=${encodeURIComponent(operationName)}`, {
       headers: { "x-vremix-bridge-secret": config.bridgeSecret || "" },
@@ -405,8 +559,8 @@ function findVideoBytes(value: unknown): string | null {
   return null;
 }
 
-async function downloadVideo(uri: string) {
-  const config = providerConfig(true);
+async function downloadVideo(uri: string, settings: RuntimeSettings) {
+  const config = providerConfig(true, settings);
   const response = config.bridgeUrl
     ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/download?uri=${encodeURIComponent(uri)}`, {
       headers: { "x-vremix-bridge-secret": config.bridgeSecret || "" },
@@ -419,9 +573,9 @@ async function downloadVideo(uri: string) {
   };
 }
 
-async function storeVideo(jobId: string, uri: string) {
+async function storeVideo(jobId: string, uri: string, settings: RuntimeSettings) {
   await ensureStorageBucket();
-  const video = await downloadVideo(uri);
+  const video = await downloadVideo(uri, settings);
   const path = `${jobId}/lookbook-video.mp4`;
   await uploadBytes(path, video.bytes, video.mimeType);
   return {
@@ -514,7 +668,12 @@ async function storeLookbook(jobId: string, images: { bytes: string; mimeType: s
   return assets;
 }
 
-async function processLook(job: { id: string }, input: LookRequest, promptVersion: PromptVersion) {
+async function processLook(
+  job: { id: string },
+  input: LookRequest,
+  promptVersion: PromptVersion,
+  settings: RuntimeSettings,
+) {
   await updateJob(job.id, "processing", {});
   const [event, garment, accessories, options] = await Promise.all([
     selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context`),
@@ -529,7 +688,7 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
   let copySource: "gemini" | "catalog-fallback" = "gemini";
   let copyWarning: string | undefined;
   try {
-    copy = await askGemini(input, catalog, promptVersion);
+    copy = await askGemini(input, catalog, promptVersion, settings);
   } catch (error) {
     // Catalog facts are already approved, so they provide a truthful fallback
     // for the copy layer while the image provider can still finish the job.
@@ -550,7 +709,8 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
       const generated = await generateImages(
         imagePrompt,
         input.inputImage,
-        generationType === "video" ? 1 : 4,
+        settings,
+        generationType === "video" ? 1 : settings.imageVariants,
       );
       assets = await storeLookbook(job.id, generated);
       if (generated[0]) {
@@ -586,6 +746,7 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
     ...(imageWarning ? { imageWarning } : {}),
     promptVersion: { id: promptVersion.id, version: promptVersion.version, model: promptVersion.model },
     imagePrompt,
+    costEstimate: costEstimate(input, settings),
     imageUrl: assets[0]?.url || null,
     lookbook: {
       aspectRatio: "9:16",
@@ -602,7 +763,7 @@ async function processLook(job: { id: string }, input: LookRequest, promptVersio
         path: assets[0]?.path || null,
         mimeType: videoFirstFrame.mimeType,
       };
-      output.providerOperation = await startVideoOperation(imagePrompt, videoFirstFrame);
+      output.providerOperation = await startVideoOperation(imagePrompt, videoFirstFrame, settings);
       output.videoStatus = "processing";
     } catch (error) {
       if (!assets.length) throw error;
@@ -626,11 +787,11 @@ async function completeWithoutVideo(jobId: string, output: GenerationOutput, mes
   return await getJob(jobId);
 }
 
-async function refreshVideoJob(job: Record<string, any>) {
+async function refreshVideoJob(job: Record<string, any>, settings: RuntimeSettings) {
   const output: GenerationOutput = { ...(job.output || {}) };
   if (job.status !== "processing" || !output.providerOperation) return job;
 
-  const operation = await readVideoOperation(output.providerOperation);
+  const operation = await readVideoOperation(output.providerOperation, settings);
   if (operation.error) {
     const message = operation.error.message || "Veo generation failed.";
     if (hasLookbook(output)) return await completeWithoutVideo(job.id, output, message);
@@ -650,7 +811,7 @@ async function refreshVideoJob(job: Record<string, any>) {
   try {
     output.video = bytes
       ? await storeVideoBytes(job.id, bytes)
-      : await storeVideo(job.id, uri as string);
+      : await storeVideo(job.id, uri as string, settings);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to store Veo video.";
     if (hasLookbook(output)) return await completeWithoutVideo(job.id, output, message);
@@ -673,10 +834,11 @@ Deno.serve(async (request) => {
     if (!jobId && !requestId) return json({ error: "jobId or requestId is required." }, 400);
     if (requestId && !isUuid(requestId)) return json({ error: "requestId must be a UUID." }, 400);
     try {
+      const settings = await runtimeSettings();
       const current = jobId
         ? await getJob(jobId)
         : await getJobByRequestId(requestId as string);
-      const job = current ? await refreshVideoJob(current) : null;
+      const job = current ? await refreshVideoJob(current, settings) : null;
       return job ? json(jobResponse(job)) : json({ error: "Job not found." }, 404);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Unable to read job." }, 502);
@@ -705,15 +867,16 @@ Deno.serve(async (request) => {
 
   let job: { id: string; existing: boolean } | null = null;
   try {
+    const settings = await runtimeSettings();
     const promptVersion = await activePrompt();
-    job = await createJob(input, promptVersion.id);
+    job = await createJob(input, promptVersion.id, settings);
     if (job.existing) {
       const current = await getJob(job.id);
-      const resumed = current ? await refreshVideoJob(current) : null;
+      const resumed = current ? await refreshVideoJob(current, settings) : null;
       if (!resumed) throw new Error("Existing generation job could not be loaded.");
       return json(jobResponse(resumed), resumed.status === "processing" || resumed.status === "queued" ? 202 : 200);
     }
-    const output = await processLook(job, input, promptVersion);
+    const output = await processLook(job, input, promptVersion, settings);
     if (output.providerOperation) {
       await updateJob(job.id, "processing", output);
       const processing = await getJob(job.id);

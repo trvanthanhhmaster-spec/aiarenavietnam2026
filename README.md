@@ -71,12 +71,20 @@ Kết quả ảnh luôn được yêu cầu theo canvas dọc `9:16` ở cả re
 prompt và khung hiển thị Studio. Provider có thể trả kích thước pixel gần
 9:16 (ví dụ `768×1344`), nhưng không còn bị trình bày như một khung ngang.
 
-Mở `admin.php` từ localhost để thiết lập mật khẩu quản trị lần đầu. Admin
-chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa secret
-vào HTML/JavaScript. Có thể sửa catalog Studio, media tầng 1, nguồn văn hoá,
-prompt versions và xem generation jobs. Với XAMPP, đặt `ADMIN_AUTH_FILE` và
-`SUPABASE_CACHE_FILE` ở thư mục runtime ngoài document root (ví dụ `/tmp`) để
-PHP user `daemon` có quyền ghi mà không phải mở quyền cho source tree.
+Mở `admin.php` từ localhost để thiết lập mật khẩu quản trị lần đầu. Trang
+`API & chi phí` là màn hình mặc định: tại đây có thể bật/tắt generation, chọn
+provider/model ảnh và video, nhập Gemini API key dạng write-only, đặt số biến
+thể, đơn giá ước tính và ngân sách ngày/tháng. API key được mã hoá AES-256-GCM
+trước khi lưu; nếu để trống, Edge Function tiếp tục dùng secret đã deploy.
+Thay đổi runtime được Edge Function nhận trong tối đa khoảng 15 giây.
+
+Admin chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa
+secret vào HTML/JavaScript. Ngoài AI operations, có thể sửa catalog Studio,
+media tầng 1, nguồn văn hoá, prompt versions và xem generation jobs. Chi phí
+trên dashboard là dự toán theo đơn giá đã cấu hình, không phải số liệu hoá đơn
+Google Cloud. Với XAMPP, đặt `ADMIN_AUTH_FILE` và `SUPABASE_CACHE_FILE` ở thư
+mục runtime ngoài document root (ví dụ `/tmp`) để PHP user `daemon` có quyền
+ghi mà không phải mở quyền cho source tree.
 
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 

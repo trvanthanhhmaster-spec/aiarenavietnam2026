@@ -16,6 +16,14 @@ same database job instead of starting another provider request. Uploaded image
 bytes are used in memory and are not persisted inside `generation_jobs.input`.
 The browser never receives a provider key or a service-role key.
 
+Runtime provider/model and budget settings are stored in
+`ai_runtime_settings` and managed from `admin.php`. A Gemini Developer API key
+entered there is write-only and AES-256-GCM encrypted with
+`AI_CONFIG_ENCRYPTION_KEY`; deployed Edge Function secrets remain the fallback.
+Runtime settings use a 15-second cache. Cost totals are estimates calculated
+from the configured per-image/per-video VND rates, not Google Cloud billing
+data. Daily and monthly limits are checked before a new job is created.
+
 For `generationType=both`, the image lookbook is stored before Veo starts. A
 Veo provider or Storage failure is recorded in `output.videoError` while the
 usable image job completes successfully.

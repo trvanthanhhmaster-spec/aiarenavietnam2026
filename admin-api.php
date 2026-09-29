@@ -38,6 +38,14 @@ if ($supabaseUrl === '' || $serviceRoleKey === '') {
 }
 
 $resources = [
+    'ai-settings' => [
+        'table' => 'ai_runtime_settings',
+        'select' => 'id,generation_enabled,image_provider,video_provider,text_model,image_model,video_model,image_variants,image_unit_cost_vnd,video_unit_cost_vnd,daily_budget_vnd,monthly_budget_vnd,encrypted_gemini_api_key,updated_at',
+        'order' => 'id.asc',
+        'fields' => ['generation_enabled', 'image_provider', 'video_provider', 'text_model', 'image_model', 'video_model', 'image_variants', 'image_unit_cost_vnd', 'video_unit_cost_vnd', 'daily_budget_vnd', 'monthly_budget_vnd'],
+        'no_create' => true,
+        'no_delete' => true,
+    ],
     'events' => [
         'table' => 'studio_events',
         'select' => 'id,slug,label,description,cultural_context,sort_order,is_active,created_at,updated_at',
@@ -90,7 +98,7 @@ $resources = [
     ],
     'jobs' => [
         'table' => 'generation_jobs',
-        'select' => 'id,client_request_id,status,input,output,error_message,created_at,updated_at,completed_at',
+        'select' => 'id,client_request_id,status,input,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at',
         'order' => 'created_at.desc',
         'fields' => [],
         'readonly' => true,
@@ -115,7 +123,48 @@ try {
             $query['limit'] = '100';
         }
         $rows = $client->select((string) $resource['table'], $query);
-        $respond(['resource' => $resourceKey, 'items' => $rows, 'count' => count($rows)]);
+        $usage = null;
+        if ($resourceKey === 'ai-settings') {
+            foreach ($rows as &$row) {
+                $row['gemini_api_key_configured'] = !empty($row['encrypted_gemini_api_key']);
+                $row['secret_source'] = $row['gemini_api_key_configured']
+                    ? 'admin-managed'
+                    : 'edge-secret-fallback';
+                unset($row['encrypted_gemini_api_key']);
+            }
+            unset($row);
+
+            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+            $monthStart = $now->modify('first day of this month')->setTime(0, 0);
+            $todayStart = $now->setTime(0, 0);
+            $costRows = $client->select('generation_jobs', [
+                'select' => 'estimated_cost_vnd,image_count,video_count,status,created_at',
+                'created_at' => 'gte.' . $monthStart->format(DATE_ATOM),
+                'limit' => '1000',
+            ]);
+            $usage = [
+                'today_cost_vnd' => 0.0,
+                'month_cost_vnd' => 0.0,
+                'month_images' => 0,
+                'month_videos' => 0,
+                'month_jobs' => 0,
+            ];
+            foreach ($costRows as $costRow) {
+                if (($costRow['status'] ?? '') === 'cancelled') {
+                    continue;
+                }
+                $cost = (float) ($costRow['estimated_cost_vnd'] ?? 0);
+                $usage['month_cost_vnd'] += $cost;
+                $usage['month_images'] += (int) ($costRow['image_count'] ?? 0);
+                $usage['month_videos'] += (int) ($costRow['video_count'] ?? 0);
+                $usage['month_jobs']++;
+                $createdAt = new DateTimeImmutable((string) ($costRow['created_at'] ?? 'now'));
+                if ($createdAt >= $todayStart) {
+                    $usage['today_cost_vnd'] += $cost;
+                }
+            }
+        }
+        $respond(['resource' => $resourceKey, 'items' => $rows, 'count' => count($rows), 'usage' => $usage]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -158,6 +207,51 @@ try {
             }
             $payload[$field] = $value;
         }
+        if ($resourceKey === 'ai-settings') {
+            foreach (['image_provider', 'video_provider'] as $providerField) {
+                if (!in_array($payload[$providerField] ?? '', ['env', 'gemini', 'vertex'], true)) {
+                    $respond(['error' => 'Provider AI không hợp lệ.'], 422);
+                }
+            }
+            foreach (['text_model', 'image_model', 'video_model'] as $modelField) {
+                if (!is_string($payload[$modelField] ?? null) || $payload[$modelField] === '' || mb_strlen($payload[$modelField]) > 200) {
+                    $respond(['error' => 'Tên model AI không hợp lệ.'], 422);
+                }
+            }
+            $variantCount = filter_var($payload['image_variants'] ?? null, FILTER_VALIDATE_INT);
+            if ($variantCount === false || $variantCount < 1 || $variantCount > 4) {
+                $respond(['error' => 'Số ảnh mỗi lookbook phải từ 1 đến 4.'], 422);
+            }
+            $payload['image_variants'] = $variantCount;
+            foreach (['image_unit_cost_vnd', 'video_unit_cost_vnd', 'daily_budget_vnd', 'monthly_budget_vnd'] as $moneyField) {
+                if (!is_int($payload[$moneyField] ?? null) && !is_float($payload[$moneyField] ?? null)) {
+                    $respond(['error' => 'Đơn giá và ngân sách phải là số.'], 422);
+                }
+                if ($payload[$moneyField] < 0 || $payload[$moneyField] > 999999999999.99) {
+                    $respond(['error' => 'Đơn giá và ngân sách phải lớn hơn hoặc bằng 0.'], 422);
+                }
+            }
+            $payload['generation_enabled'] = (bool) ($payload['generation_enabled'] ?? false);
+            $apiKey = trim((string) ($record['gemini_api_key'] ?? ''));
+            if ($apiKey !== '') {
+                if (strlen($apiKey) < 20 || strlen($apiKey) > 500) {
+                    $respond(['error' => 'Gemini API key không đúng độ dài hợp lệ.'], 422);
+                }
+                $encryptionKey = base64_decode((string) getenv('AI_CONFIG_ENCRYPTION_KEY'), true);
+                if (!is_string($encryptionKey) || strlen($encryptionKey) !== 32) {
+                    $respond(['error' => 'AI_CONFIG_ENCRYPTION_KEY chưa được cấu hình đúng trên server.'], 503);
+                }
+                $iv = random_bytes(12);
+                $tag = '';
+                $ciphertext = openssl_encrypt($apiKey, 'aes-256-gcm', $encryptionKey, OPENSSL_RAW_DATA, $iv, $tag);
+                if (!is_string($ciphertext)) {
+                    $respond(['error' => 'Không thể mã hoá API key.'], 500);
+                }
+                $encode = static fn (string $value): string => rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+                $payload['encrypted_gemini_api_key'] = 'v1.' . $encode($iv) . '.' . $encode($tag) . '.' . $encode($ciphertext);
+            }
+            $payload['updated_at'] = gmdate(DATE_ATOM);
+        }
         if ($payload === []) {
             $respond(['error' => 'Không có dữ liệu để lưu.'], 422);
         }
@@ -175,7 +269,9 @@ try {
             ], ['is_base' => false]);
         }
 
-        if ($id !== '') {
+        if ($resourceKey === 'ai-settings') {
+            $saved = $client->update((string) $resource['table'], ['id' => 'eq.1'], $payload);
+        } elseif ($id !== '') {
             if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
                 $respond(['error' => 'ID bản ghi không hợp lệ.'], 422);
             }
@@ -186,7 +282,13 @@ try {
             }
             $saved = $client->insert((string) $resource['table'], $payload);
         }
-        $respond(['item' => $saved[0] ?? null, 'message' => 'Đã lưu thay đổi vào Supabase.']);
+        $savedItem = $saved[0] ?? null;
+        if ($resourceKey === 'ai-settings' && is_array($savedItem)) {
+            unset($savedItem['encrypted_gemini_api_key']);
+            $savedItem['gemini_api_key_configured'] = isset($payload['encrypted_gemini_api_key'])
+                || !empty($record['gemini_api_key_configured']);
+        }
+        $respond(['item' => $savedItem, 'message' => 'Đã lưu thay đổi vào Supabase.']);
     }
 
     if ($action === 'delete') {

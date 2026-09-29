@@ -2,10 +2,16 @@
   'use strict';
 
   var config = window.VREMIX_ADMIN || {};
-  var resourceKey = 'events';
+  var resourceKey = 'ai-settings';
   var rows = [];
+  var usage = null;
   var editing = null;
   var resourceLabels = {
+    'ai-settings': {
+      kicker: 'AI operations / 00',
+      title: 'API, model & chi phí',
+      columns: ['generation_enabled', 'image_provider', 'image_model', 'video_provider', 'video_model', 'image_variants', 'secret_source']
+    },
     events: { kicker: 'Collection / 01', title: 'Bối cảnh', columns: ['label', 'slug', 'description', 'is_active'] },
     garments: { kicker: 'Collection / 02', title: 'Cổ phục', columns: ['name', 'category', 'slug', 'is_active'] },
     accessories: { kicker: 'Collection / 03', title: 'Phụ kiện', columns: ['name', 'category', 'slug', 'is_active'] },
@@ -17,6 +23,18 @@
     jobs: { kicker: 'Operations / 09', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'error_message'] }
   };
   var fields = {
+    'ai-settings': [
+      ['generation_enabled', 'Cho phép tạo nội dung', 'checkbox', false],
+      ['image_provider', 'Provider ảnh & văn bản', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['gemini', 'Gemini Developer API'], ['vertex', 'Vertex AI']]],
+      ['video_provider', 'Provider video', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['vertex', 'Vertex AI / Cloud Run bridge'], ['gemini', 'Gemini Developer API']]],
+      ['text_model', 'Model văn bản', 'text', true], ['image_model', 'Model tạo ảnh', 'text', true],
+      ['video_model', 'Model tạo video', 'text', true], ['image_variants', 'Số ảnh mỗi lookbook', 'number', true],
+      ['image_unit_cost_vnd', 'Ước tính chi phí / ảnh (VND)', 'number', true],
+      ['video_unit_cost_vnd', 'Ước tính chi phí / video (VND)', 'number', true],
+      ['daily_budget_vnd', 'Ngân sách ngày (0 = không giới hạn)', 'number', true],
+      ['monthly_budget_vnd', 'Ngân sách tháng (0 = không giới hạn)', 'number', true],
+      ['gemini_api_key', 'Gemini API key mới (để trống để giữ nguyên)', 'password', false]
+    ],
     events: [
       ['slug', 'Branch key', 'text', true], ['label', 'Tên hiển thị', 'text', true],
       ['description', 'Mô tả', 'textarea', true], ['cultural_context', 'Bối cảnh văn hoá', 'textarea', true],
@@ -81,6 +99,7 @@
   var refreshButton = document.getElementById('adminRefresh');
   var syncState = document.getElementById('adminSyncState');
   var status = document.getElementById('adminStatus');
+  var metrics = document.getElementById('adminMetrics');
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -99,7 +118,14 @@
 
   function displayValue(value, key) {
     if (value == null || value === '') return '—';
-    if (key === 'is_active' || key === 'is_base') return value ? 'Đang bật' : 'Tắt';
+    if (key === 'is_active' || key === 'is_base' || key === 'generation_enabled') return value ? 'Đang bật' : 'Đã tắt';
+    if (key === 'image_provider' || key === 'video_provider') {
+      return value === 'env' ? 'Edge secrets hiện tại' : value === 'vertex' ? 'Vertex AI' : 'Gemini API';
+    }
+    if (key === 'secret_source') {
+      return value === 'admin-managed' ? 'Admin mã hoá' : 'Edge secret fallback';
+    }
+    if (/_cost_vnd$|_budget_vnd$/.test(key)) return formatVnd(value);
     if (key === 'created_at' || key === 'updated_at' || key === 'completed_at') {
       try { return new Date(value).toLocaleString('vi-VN'); } catch (error) { return value; }
     }
@@ -131,9 +157,11 @@
     try {
       var body = await request(resourceKey);
       rows = body.items || [];
+      usage = body.usage || null;
       document.getElementById('adminResourceKicker').textContent = metadata.kicker;
       document.getElementById('adminResourceTitle').textContent = metadata.title;
-      createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages';
+      createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'ai-settings';
+      renderMetrics();
       renderTable(metadata.columns);
       setStatus(rows.length + ' bản ghi · vừa đồng bộ');
     } catch (error) {
@@ -143,19 +171,43 @@
     }
   }
 
+  function formatVnd(value) {
+    return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(Number(value || 0)) + ' đ';
+  }
+
+  function renderMetrics() {
+    if (resourceKey !== 'ai-settings' || !usage) {
+      metrics.hidden = true;
+      metrics.innerHTML = '';
+      return;
+    }
+    metrics.hidden = false;
+    var settings = rows[0] || {};
+    metrics.innerHTML =
+      '<article><span>Hôm nay / ước tính</span><strong>' + escapeHtml(formatVnd(usage.today_cost_vnd)) + '</strong></article>' +
+      '<article><span>Tháng này / ước tính</span><strong>' + escapeHtml(formatVnd(usage.month_cost_vnd)) + '</strong></article>' +
+      '<article><span>Tài sản tháng</span><strong>' + Number(usage.month_images || 0) + ' ảnh · ' + Number(usage.month_videos || 0) + ' video</strong></article>' +
+      '<article><span>Đơn giá đang tính</span><strong>' + escapeHtml(formatVnd(settings.image_unit_cost_vnd)) + ' / ảnh · ' + escapeHtml(formatVnd(settings.video_unit_cost_vnd)) + ' / video</strong></article>' +
+      '<article><span>Ngân sách ngày</span><strong>' + (Number(settings.daily_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.daily_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
+      '<article><span>Ngân sách tháng</span><strong>' + (Number(settings.monthly_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.monthly_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
+      '<p>Nhấn <strong>Sửa</strong> để chọn provider/model, nhập Gemini API key, đơn giá và hạn mức. Đây là dự toán nội bộ, không phải hoá đơn Google Cloud.</p>';
+  }
+
   function renderTable(columns) {
+    var showActions = resourceKey !== 'jobs';
+    var allowDelete = resourceKey !== 'pages' && resourceKey !== 'ai-settings';
     tableHead.innerHTML = '<tr>' + columns.map(function (key) {
       return '<th>' + escapeHtml(labelFor(key)) + '</th>';
-    }).join('') + (resourceKey === 'jobs' ? '' : '<th class="admin-table__actions">Thao tác</th>') + '</tr>';
+    }).join('') + (showActions ? '<th class="admin-table__actions">Thao tác</th>' : '') + '</tr>';
     tableBody.innerHTML = '';
     empty.hidden = rows.length !== 0;
     rows.forEach(function (row, index) {
       var tr = document.createElement('tr');
       tr.innerHTML = columns.map(function (key) {
         return '<td class="admin-table__' + escapeHtml(key) + '">' + escapeHtml(displayValue(row[key], key)) + '</td>';
-      }).join('') + (resourceKey === 'jobs' ? '' :
+      }).join('') + (!showActions ? '' :
         '<td class="admin-table__actions"><button type="button" class="admin-row-action" data-edit="' + index + '">Sửa</button>' +
-        '<button type="button" class="admin-row-action admin-row-action--danger" data-delete="' + index + '">Xoá</button></td>');
+        (allowDelete ? '<button type="button" class="admin-row-action admin-row-action--danger" data-delete="' + index + '">Xoá</button>' : '') + '</td>');
       tableBody.appendChild(tr);
     });
     tableBody.querySelectorAll('[data-edit]').forEach(function (button) {

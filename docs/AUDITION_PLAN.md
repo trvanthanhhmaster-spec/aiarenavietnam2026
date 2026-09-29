@@ -171,7 +171,10 @@ browser có fallback về ảnh nếu video media không tải được.
 Ảnh Studio được khóa dọc `9:16` ở request Gemini, prompt và result overlay.
 Admin control room đã có tại `admin.php`: thiết lập mật khẩu lần đầu trên
 localhost, sửa catalog/media/prompt/source qua Supabase server-side và xem
-generation jobs mà không lộ service-role key ở client.
+generation jobs mà không lộ service-role key ở client. Màn hình `API & chi
+phí` quản lý provider/model, Gemini API key được mã hoá, số biến thể, đơn giá
+ước tính và hạn mức ngày/tháng. Edge Function kiểm tra hạn mức trước khi tạo
+job; dashboard là dự toán nội bộ, không thay thế hoá đơn Google Cloud.
 
 ### Milestone E - Deploy
 
