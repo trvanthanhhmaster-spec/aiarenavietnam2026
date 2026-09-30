@@ -226,7 +226,7 @@ create table if not exists public.generation_jobs (
 create table if not exists public.ai_runtime_settings (
     id smallint primary key default 1 check (id = 1),
     generation_enabled boolean not null default true,
-    image_provider text not null default 'env' check (image_provider in ('env', 'gemini', 'vertex')),
+    image_provider text not null default 'env' check (image_provider in ('env', 'gemini', 'vertex', 'webapi')),
     video_provider text not null default 'env' check (video_provider in ('env', 'gemini', 'vertex')),
     text_model text not null default 'gemini-2.5-flash',
     image_model text not null default 'gemini-2.5-flash-image',

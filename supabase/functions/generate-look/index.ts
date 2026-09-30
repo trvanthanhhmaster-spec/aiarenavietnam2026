@@ -55,7 +55,7 @@ type GeneratedAsset = {
 
 type RuntimeSettings = {
   generationEnabled: boolean;
-  imageProvider: "env" | "gemini" | "vertex";
+  imageProvider: "env" | "gemini" | "vertex" | "webapi";
   videoProvider: "env" | "gemini" | "vertex";
   textModel: string;
   imageModel: string;
@@ -124,7 +124,7 @@ type ProviderConfig = {
 function providerConfig(video = false, settings?: RuntimeSettings): ProviderConfig {
   const configuredProvider = video ? settings?.videoProvider : settings?.imageProvider;
   const provider = (
-    configuredProvider && configuredProvider !== "env"
+    configuredProvider && configuredProvider !== "env" && configuredProvider !== "webapi"
       ? configuredProvider
       : video
       ? Deno.env.get("GOOGLE_VIDEO_PROVIDER") || Deno.env.get("GOOGLE_AI_PROVIDER")
@@ -252,7 +252,7 @@ async function runtimeSettings(): Promise<RuntimeSettings> {
     const row = rows[0] as Record<string, unknown> | undefined;
     if (row) {
       fallback.generationEnabled = row.generation_enabled !== false;
-      fallback.imageProvider = ["env", "gemini", "vertex"].includes(String(row.image_provider))
+      fallback.imageProvider = ["env", "gemini", "vertex", "webapi"].includes(String(row.image_provider))
         ? row.image_provider as RuntimeSettings["imageProvider"]
         : "env";
       fallback.videoProvider = ["env", "gemini", "vertex"].includes(String(row.video_provider))
@@ -449,8 +449,6 @@ async function generateImages(
   request?: LookRequest,
 ): Promise<{ bytes: string; mimeType: string }[]> {
   const model = settings.imageModel;
-  const config = providerConfig(false, settings);
-  const endpoint = modelEndpoint(config, model, "generateContent");
   const variants = [
     { key: "A", label: "locked source frame", scope: "fixed subject identity, face, pose, camera angle and composition" },
     { key: "B", label: "background and scene", scope: request?.framePlan?.B?.changeScope || "background and scene only" },
@@ -466,37 +464,76 @@ async function generateImages(
   let source = inputImage;
   for (let index = 0; index < variantCount; index += 1) {
     const variant = variants[index];
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildImageRequest(
-        prompt,
-        `${variant.key}: ${variant.label}`,
-        source,
-        {
+    let image: { data: string; mimeType: string } | null = null;
+    let response: Response | null = null;
+    if (settings.imageProvider === "webapi") {
+      const bridgeUrl = Deno.env.get("GEMINI_WEB_BRIDGE_URL")?.replace(/\/+$/, "");
+      const bridgeSecret = Deno.env.get("GEMINI_WEB_BRIDGE_SECRET");
+      if (!bridgeUrl || !bridgeSecret) throw new Error("Gemini Web bridge is not configured.");
+      response = await fetch(`${bridgeUrl}/v1/images/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-vremix-bridge-secret": bridgeSecret,
+        },
+        body: JSON.stringify({
+          prompt,
           aspectRatio,
           targetResolution,
-          operation: index === 0 && mode === "text-to-image" ? "base" : "edit",
           changeScope: variant.scope,
-        },
-      )),
-    });
-    if (!response.ok) {
-      const error = await providerError(response, "Gemini image model");
+          sourceImage: source ? { mimeType: source.mimeType, data: source.data } : null,
+        }),
+      });
+      if (response.ok) {
+        const body = await response.json();
+        const first = body?.images?.[0];
+        if (first?.data) image = {
+          data: String(first.data),
+          mimeType: String(first.mimeType || "image/png"),
+        };
+      }
+    } else {
+      const config = providerConfig(false, settings);
+      const endpoint = modelEndpoint(config, model, "generateContent");
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildImageRequest(
+          prompt,
+          `${variant.key}: ${variant.label}`,
+          source,
+          {
+            aspectRatio,
+            targetResolution,
+            operation: index === 0 && mode === "text-to-image" ? "base" : "edit",
+            changeScope: variant.scope,
+          },
+        )),
+      });
+      if (response.ok) {
+        const body = await response.json();
+        const imagePart = body?.candidates?.[0]?.content?.parts?.find((part: any) =>
+          part.inlineData?.data || part.inline_data?.data
+        );
+        const inline = imagePart?.inlineData || imagePart?.inline_data;
+        if (inline?.data) image = {
+          data: String(inline.data),
+          mimeType: String(inline.mimeType || inline.mime_type || "image/png"),
+        };
+      }
+    }
+    if (!response?.ok || !image) {
+      const error = response
+        ? await providerError(response, settings.imageProvider === "webapi" ? "Gemini Web bridge" : "Gemini image model")
+        : new Error("Image provider returned no response.");
       // Preserve every usable look when a later variant hits a transient or
       // provider limit. A failed first variant remains a real job failure.
       if (images.length > 0) break;
       throw error;
     }
-    const body = await response.json();
-    const imagePart = body?.candidates?.[0]?.content?.parts?.find((part: any) =>
-      part.inlineData?.data || part.inline_data?.data
-    );
-    const image = imagePart?.inlineData || imagePart?.inline_data;
-    if (!image?.data) throw new Error("Gemini image model returned no image.");
     const generated = {
       bytes: image.data,
-      mimeType: image.mimeType || image.mime_type || "image/png",
+      mimeType: image.mimeType,
     };
     images.push(generated);
     // Every destination frame is edited from A, never from the previous edit.

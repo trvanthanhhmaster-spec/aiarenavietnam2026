@@ -216,10 +216,11 @@ try {
             $payload[$field] = $value;
         }
         if ($resourceKey === 'ai-settings') {
-            foreach (['image_provider', 'video_provider'] as $providerField) {
-                if (!in_array($payload[$providerField] ?? '', ['env', 'gemini', 'vertex'], true)) {
-                    $respond(['error' => 'Provider AI không hợp lệ.'], 422);
-                }
+            if (!in_array($payload['image_provider'] ?? '', ['env', 'gemini', 'vertex', 'webapi'], true)) {
+                $respond(['error' => 'Provider tạo ảnh không hợp lệ.'], 422);
+            }
+            if (!in_array($payload['video_provider'] ?? '', ['env', 'gemini', 'vertex'], true)) {
+                $respond(['error' => 'Provider tạo video không hợp lệ.'], 422);
             }
             foreach (['text_model', 'image_model', 'video_model'] as $modelField) {
                 if (!is_string($payload[$modelField] ?? null) || $payload[$modelField] === '' || mb_strlen($payload[$modelField]) > 200) {

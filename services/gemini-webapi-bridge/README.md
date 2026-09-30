@@ -1,0 +1,26 @@
+# V-Remix Gemini web bridge
+
+This service installs [HanaokaYuzu/Gemini-API](https://github.com/HanaokaYuzu/Gemini-API) at a pinned commit and exposes a small private image-generation endpoint for local development.
+
+Important: the upstream library uses the Gemini web application, not the Gemini Developer API. It requires Google web-session cookies (`__Secure-1PSID` and optionally `__Secure-1PSIDTS`). The API key stored in Supabase does not authenticate this bridge.
+
+## Install
+
+```sh
+cd services/gemini-webapi-bridge
+uv sync
+cp .env.example .env
+# Fill the cookie values and a local bridge secret in .env.
+uv run python server.py
+```
+
+The default listener is `127.0.0.1:8788`. Test it without exposing credentials:
+
+```sh
+curl -H "x-vremix-bridge-secret: $GEMINI_WEB_BRIDGE_SECRET" \
+  http://127.0.0.1:8788/health
+```
+
+The generation contract is `POST /v1/images/generate` with a JSON body containing `prompt`, optional `sourceImage` (`mimeType`, base64 `data`), `aspectRatio`, `targetResolution`, and `changeScope`.
+
+Do not commit `.env`, browser cookies, or generated images. Do not expose this loopback bridge directly to the public internet; if it must serve Supabase Edge Functions, put it behind an authenticated HTTPS service and rotate the bridge secret.

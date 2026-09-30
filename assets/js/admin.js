@@ -26,7 +26,7 @@
   var fields = {
     'ai-settings': [
       ['generation_enabled', 'Cho phép tạo nội dung', 'checkbox', false],
-      ['image_provider', 'Provider ảnh & văn bản', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['gemini', 'Gemini Developer API'], ['vertex', 'Vertex AI']]],
+      ['image_provider', 'Provider tạo ảnh', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['gemini', 'Gemini Developer API'], ['vertex', 'Vertex AI'], ['webapi', 'Gemini Web bridge']]],
       ['video_provider', 'Provider video', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['vertex', 'Vertex AI / Cloud Run bridge'], ['gemini', 'Gemini Developer API']]],
       ['text_model', 'Model văn bản', 'text', true], ['image_model', 'Model tạo ảnh', 'text', true],
       ['video_model', 'Model tạo video', 'text', true], ['image_variants', 'Số frame ảnh (A + B/C/D/E)', 'number', true],
@@ -133,7 +133,7 @@
     if (value == null || value === '') return '—';
     if (key === 'is_active' || key === 'is_base' || key === 'generation_enabled') return value ? 'Đang bật' : 'Đã tắt';
     if (key === 'image_provider' || key === 'video_provider') {
-      return value === 'env' ? 'Edge secrets hiện tại' : value === 'vertex' ? 'Vertex AI' : 'Gemini API';
+      return value === 'env' ? 'Edge secrets hiện tại' : value === 'vertex' ? 'Vertex AI' : value === 'webapi' ? 'Gemini Web bridge' : 'Gemini API';
     }
     if (key === 'secret_source') {
       return value === 'admin-managed' ? 'Admin mã hoá' : 'Edge secret fallback';
@@ -219,7 +219,7 @@
     keyStatus.textContent = settings.gemini_api_key_configured
       ? 'Gemini API key đang được lưu: ' + (settings.gemini_api_key_hint || '••••••••')
       : 'Chưa có key admin — đang dùng Edge Function secret';
-    imageRoute.textContent = 'Ảnh ' + (settings.image_provider === 'gemini' ? 'Gemini' : settings.image_provider === 'vertex' ? 'Vertex' : 'Edge') + ' · ' + (settings.image_model || 'chưa chọn');
+    imageRoute.textContent = 'Ảnh ' + (settings.image_provider === 'gemini' ? 'Gemini' : settings.image_provider === 'vertex' ? 'Vertex' : settings.image_provider === 'webapi' ? 'Gemini Web bridge' : 'Edge') + ' · ' + (settings.image_model || 'chưa chọn');
     videoRouteLabel.textContent = 'Video ' + (settings.video_provider === 'gemini' ? 'Gemini' : settings.video_provider === 'vertex' ? 'Vertex / bridge' : 'Edge') + ' · ' + (settings.video_model || 'chưa chọn');
     metrics.innerHTML =
       '<article><span>Hôm nay / ước tính</span><strong>' + escapeHtml(formatVnd(usage.today_cost_vnd)) + '</strong></article>' +
