@@ -123,18 +123,19 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
             <nav class="admin-nav" aria-label="Các nhóm quản trị">
                 <p class="admin-nav__label">AI operations</p>
                 <button class="is-active" data-resource="ai-settings"><span>00</span>API & chi phí</button>
+                <button data-resource="studio-generation"><span>01</span>Studio generation</button>
                 <p class="admin-nav__label">Collections</p>
-                <button data-resource="events"><span>01</span>Bối cảnh</button>
-                <button data-resource="garments"><span>02</span>Cổ phục</button>
-                <button data-resource="accessories"><span>03</span>Phụ kiện</button>
-                <button data-resource="options"><span>04</span>Màu & phong cách</button>
+                <button data-resource="events"><span>02</span>Bối cảnh</button>
+                <button data-resource="garments"><span>03</span>Cổ phục</button>
+                <button data-resource="accessories"><span>04</span>Phụ kiện</button>
+                <button data-resource="options"><span>05</span>Màu & phong cách</button>
                 <p class="admin-nav__label">Editorial</p>
-                <button data-resource="branches"><span>05</span>Media tầng 1</button>
-                <button data-resource="sources"><span>06</span>Nguồn văn hoá</button>
-                <button data-resource="prompts"><span>07</span>Prompt versions</button>
-                <button data-resource="pages"><span>08</span>Trang chủ</button>
+                <button data-resource="branches"><span>06</span>Media tầng 1</button>
+                <button data-resource="sources"><span>07</span>Nguồn văn hoá</button>
+                <button data-resource="prompts"><span>08</span>Prompt versions</button>
+                <button data-resource="pages"><span>09</span>Trang chủ</button>
                 <p class="admin-nav__label">Operations</p>
-                <button data-resource="jobs"><span>09</span>Generation jobs</button>
+                <button data-resource="jobs"><span>10</span>Generation jobs</button>
             </nav>
             <section class="admin-content">
                 <div class="admin-content__toolbar">
@@ -149,6 +150,18 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                     </div>
                 </div>
                 <div class="admin-metrics" id="adminMetrics" hidden></div>
+                <section class="admin-quick-config" id="adminQuickConfig" aria-label="Trạng thái cấu hình AI">
+                    <div class="admin-quick-config__copy">
+                        <span class="admin-quick-config__eyebrow">Runtime configuration</span>
+                        <strong id="adminKeyStatus">Đang đọc trạng thái API key…</strong>
+                        <p>Key chỉ hiển thị dạng che khuất và 4 ký tự cuối. Supabase/Edge Function không cho đọc ngược plaintext.</p>
+                    </div>
+                    <div class="admin-quick-config__facts">
+                        <span><b id="adminImageRoute">Ảnh —</b><small>provider / model</small></span>
+                        <span><b id="adminVideoRoute">Video —</b><small>provider / model</small></span>
+                        <button class="admin-button admin-button--solid" id="adminQuickEdit" type="button">Cấu hình API & video</button>
+                    </div>
+                </section>
                 <div class="admin-table-wrap">
                     <table class="admin-table">
                         <thead id="adminTableHead"></thead>

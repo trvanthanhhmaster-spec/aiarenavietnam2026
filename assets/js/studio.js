@@ -35,7 +35,12 @@
   var resultImages = document.getElementById('resultImages');
   var resultVideo = document.getElementById('resultVideo');
   var resultDownload = document.getElementById('resultDownload');
+  var resultVideoBranches = document.getElementById('resultVideoBranches');
   var submitButton = form.querySelector('.studio-submit');
+  var canvasAspect = document.getElementById('canvasAspect');
+  var targetResolution = document.getElementById('targetResolution');
+  var generationMode = document.getElementById('generationMode');
+  var frameSteps = document.querySelectorAll('[data-frame-step]');
   var submitLabel = submitButton.innerHTML;
   var activeJobKey = 'vremix.active-generation-job.v1';
   var generationPending = false;
@@ -80,8 +85,16 @@
     garment: firstSlug(catalog.garments),
     color: firstSlug(catalog.colors),
     style: firstSlug(catalog.styles),
-    accessories: []
+    accessories: [],
+    aspectRatio: catalog.generation && catalog.generation.canvas_aspect_ratio || '16:9',
+    resolution: catalog.generation && catalog.generation.target_resolution || '1080',
+    mode: catalog.generation && catalog.generation.default_generation_mode || 'text-to-image',
+    activeFrame: 'A'
   };
+
+  canvasAspect.value = state.aspectRatio;
+  targetResolution.value = state.resolution;
+  generationMode.value = state.mode;
 
   function createRequestId() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -135,6 +148,18 @@
         return Boolean(lookup(catalog.accessories, slug).slug);
       })
       : [];
+    if (selection.aspectRatio) {
+      state.aspectRatio = selection.aspectRatio;
+      canvasAspect.value = selection.aspectRatio;
+    }
+    if (selection.targetResolution) {
+      state.resolution = selection.targetResolution;
+      targetResolution.value = selection.targetResolution;
+    }
+    if (selection.generationMode) {
+      state.mode = selection.generationMode;
+      generationMode.value = selection.generationMode;
+    }
     if (selection.generationType) outputType.value = selection.generationType;
     updateSummary();
   }
@@ -324,7 +349,32 @@
     document.getElementById('footerGarment').textContent = garment.name || 'Chưa chọn';
     document.getElementById('footerStyle').textContent = [color.label, style.label].filter(Boolean).join(' / ') || 'Chưa chọn';
     document.getElementById('footerAccessory').textContent = accessoryNames.length ? accessoryNames.join(', ') : 'Không phụ kiện';
+    document.getElementById('frameBSummary').textContent = event.label ? 'Nền: ' + event.label : 'Chỉ thay phông nền';
+    document.getElementById('frameCSummary').textContent = style.label ? 'Ánh sáng: ' + style.label : 'Chỉ thay thời điểm trong ngày';
+    document.getElementById('frameDSummary').textContent = garment.name ? 'Quần áo: ' + garment.name : 'Chỉ thay quần áo';
+    document.getElementById('frameESummary').textContent = accessoryNames.length ? 'Điểm nhấn: ' + accessoryNames.join(', ') : 'Giữ vị trí và kích thước tương đương';
   }
+
+  function syncFrameSteps() {
+    Array.prototype.forEach.call(frameSteps, function (step) {
+      step.classList.toggle('is-active', step.dataset.frameStep === state.activeFrame);
+    });
+  }
+
+  Array.prototype.forEach.call(frameSteps, function (step) {
+    step.addEventListener('click', function () {
+      state.activeFrame = step.dataset.frameStep;
+      syncFrameSteps();
+      var target = { A: null, B: 'event', C: 'style', D: 'garment', E: 'accessory' }[state.activeFrame];
+      if (target) openMode(target);
+      setStatus(state.activeFrame === 'A'
+        ? 'Ảnh A đã khoá: nhân vật, dáng, góc máy và bố cục.'
+        : 'Đang chỉnh frame ' + state.activeFrame + '. Chỉ lớp được chọn sẽ thay đổi.');
+    });
+  });
+  canvasAspect.addEventListener('change', function () { state.aspectRatio = canvasAspect.value; setStatus('Đã chọn khung ảnh ' + state.aspectRatio + '.'); });
+  targetResolution.addEventListener('change', function () { state.resolution = targetResolution.value; setStatus('Đã chọn chất lượng ' + state.resolution + '.'); });
+  generationMode.addEventListener('change', function () { state.mode = generationMode.value; setStatus(state.mode === 'image-to-image' ? 'Image to image: ảnh A sẽ làm nguồn cố định.' : 'Text to image: prompt sẽ tạo ảnh A.'); });
 
   function setStatus(message) {
     studioStatus.textContent = message;
@@ -388,6 +438,11 @@
 
   async function generateLook() {
     if (generationPending) return;
+    if (state.mode === 'image-to-image' && !(imageInput.files && imageInput.files[0])) {
+      setStatus('Chế độ image to image cần một ảnh nguồn cho frame A.');
+      imageInput.focus();
+      return;
+    }
     showResult();
     setResultState('queued', 'Đang xếp hàng bản phối.');
     prepareResultCopy();
@@ -403,7 +458,10 @@
         color: state.color,
         style: state.style,
         accessories: state.accessories.slice(),
-        generationType: outputType.value
+        generationType: outputType.value,
+        aspectRatio: state.aspectRatio,
+        targetResolution: state.resolution,
+        generationMode: state.mode
       }
     };
     saveActiveJob(activeJob);
@@ -416,7 +474,17 @@
       accessorySlugs: state.accessories.slice(),
       colorSlug: state.color,
       styleSlug: state.style,
-      generationType: outputType.value
+      generationType: outputType.value,
+      aspectRatio: state.aspectRatio,
+      targetResolution: state.resolution,
+      generationMode: state.mode,
+      framePlan: {
+        A: { changeScope: 'fixed subject identity, face, pose, camera angle and composition' },
+        B: { branch: 'event', changeScope: 'background and scene only', value: state.event },
+        C: { branch: 'lighting', changeScope: 'lighting and time of day only', value: state.style },
+        D: { branch: 'garment', changeScope: 'clothing only', value: state.garment },
+        E: { branch: 'character', changeScope: 'subject identity only; preserve position and scale', value: state.accessories }
+      }
     };
 
     var terminalFailure = false;
@@ -566,7 +634,7 @@
     if (output.copySource === 'catalog-fallback') {
       return 'Lookbook đã sẵn sàng; Story Card đang dùng dữ liệu catalog đã duyệt vì Gemini tạm thời không phản hồi.';
     }
-    return 'Bản phối AI và lookbook 9:16 đã sẵn sàng.';
+    return 'Bộ frame A–E và lookbook ' + state.aspectRatio + ' đã sẵn sàng.';
   }
 
   function applyOutput(output) {
@@ -579,6 +647,7 @@
       genZTip: output.genZTip || '',
       images: items.map(function (item) { return item.url; }),
       video: output.video && output.video.url || '',
+      videos: (output.videos || []).map(function (item) { return item.key + ':' + item.url; }),
       videoStatus: output.videoStatus || '',
       videoError: output.videoError || ''
     });
@@ -591,9 +660,13 @@
 
     resultImages.innerHTML = '';
     resultImages.hidden = items.length === 0;
-    currentLookbookItems = items.slice(0, 4);
+    currentLookbookItems = items.slice(0, 5);
+    var outputAspect = output.lookbook && output.lookbook.aspectRatio || state.aspectRatio || '16:9';
+    resultVisual.style.aspectRatio = outputAspect.replace(':', ' / ');
+    resultVisual.classList.toggle('is-landscape', outputAspect === '16:9');
     resultVisual.classList.toggle('has-images', items.length > 0);
-    var video = output.video && output.video.url ? output.video : null;
+    var videos = Array.isArray(output.videos) ? output.videos.filter(function (item) { return item && item.url; }) : [];
+    var video = output.video && output.video.url ? output.video : (videos[0] || null);
     currentVideo = video;
     resultVideo.hidden = !video;
     resultVisual.classList.toggle('has-video', Boolean(video));
@@ -607,7 +680,7 @@
         resultImages.hidden = items.length === 0;
         if (items[0]) {
           resultDownload.href = items[0].url;
-          resultDownload.textContent = 'Tải lookbook 9:16 ' + String.fromCharCode(8595);
+          resultDownload.textContent = 'Tải lookbook ' + outputAspect + ' ' + String.fromCharCode(8595);
           resultDownload.hidden = false;
         }
         setResultState('completed', 'Lookbook đã sẵn sàng; trình duyệt không tải được video nên đang dùng ảnh.');
@@ -619,6 +692,26 @@
       resultVideo.removeAttribute('poster');
       resultVideo.load();
     }
+    resultVideoBranches.hidden = videos.length === 0;
+    resultVideoBranches.innerHTML = videos.map(function (item, index) {
+      return '<button type="button" data-video-index="' + index + '"' + (index === 0 ? ' class="is-active"' : '') +
+        '>A → ' + escapeHtml(item.key || ['B', 'C', 'D', 'E'][index] || String(index + 1)) + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(resultVideoBranches.querySelectorAll('[data-video-index]'), function (button) {
+      button.addEventListener('click', function () {
+        var selected = videos[Number(button.dataset.videoIndex)];
+        if (!selected) return;
+        currentVideo = selected;
+        resultVideo.src = selected.url;
+        resultVideo.hidden = false;
+        resultVideo.load();
+        resultDownload.href = selected.url;
+        resultDownload.textContent = 'Tải video A → ' + (selected.key || '') + ' ' + String.fromCharCode(8595);
+        Array.prototype.forEach.call(resultVideoBranches.querySelectorAll('button'), function (item) {
+          item.classList.toggle('is-active', item === button);
+        });
+      });
+    });
     resultPlaceholderVisual.hidden = items.length > 0 || Boolean(video);
     resultVisualLabel.hidden = items.length > 0 || Boolean(video);
     resultDownload.hidden = items.length === 0 && !video;
@@ -635,7 +728,7 @@
       resultDownload.textContent = 'Tải video MP4 ' + String.fromCharCode(8595);
     } else if (items[0]) {
       resultDownload.href = items[0].url;
-      resultDownload.textContent = 'Tải lookbook 9:16 ' + String.fromCharCode(8595);
+      resultDownload.textContent = 'Tải lookbook ' + outputAspect + ' ' + String.fromCharCode(8595);
     }
   }
 
@@ -676,26 +769,38 @@
     );
   }
 
-  function lookbookLayout(count) {
-    if (count <= 1) return [{ x: 0, y: 0, width: 1080, height: 1920 }];
+  function lookbookLayout(count, width, height) {
+    if (count <= 1) return [{ x: 0, y: 0, width: width, height: height }];
+    if (count === 5 && width > height) {
+      var heroWidth = Math.round(width / 2);
+      var tileWidth = Math.round((width - heroWidth) / 2);
+      var tileHeight = Math.round(height / 2);
+      return [
+        { x: 0, y: 0, width: heroWidth, height: height },
+        { x: heroWidth, y: 0, width: tileWidth, height: tileHeight },
+        { x: heroWidth + tileWidth, y: 0, width: width - heroWidth - tileWidth, height: tileHeight },
+        { x: heroWidth, y: tileHeight, width: tileWidth, height: height - tileHeight },
+        { x: heroWidth + tileWidth, y: tileHeight, width: width - heroWidth - tileWidth, height: height - tileHeight }
+      ];
+    }
     if (count === 2) {
       return [
-        { x: 0, y: 0, width: 540, height: 1920 },
-        { x: 540, y: 0, width: 540, height: 1920 }
+        { x: 0, y: 0, width: width / 2, height: height },
+        { x: width / 2, y: 0, width: width / 2, height: height }
       ];
     }
     if (count === 3) {
       return [
-        { x: 0, y: 0, width: 1080, height: 960 },
-        { x: 0, y: 960, width: 540, height: 960 },
-        { x: 540, y: 960, width: 540, height: 960 }
+        { x: 0, y: 0, width: width, height: height / 2 },
+        { x: 0, y: height / 2, width: width / 2, height: height / 2 },
+        { x: width / 2, y: height / 2, width: width / 2, height: height / 2 }
       ];
     }
     return [
-      { x: 0, y: 0, width: 540, height: 960 },
-      { x: 540, y: 0, width: 540, height: 960 },
-      { x: 0, y: 960, width: 540, height: 960 },
-      { x: 540, y: 960, width: 540, height: 960 }
+      { x: 0, y: 0, width: width / 2, height: height / 2 },
+      { x: width / 2, y: 0, width: width / 2, height: height / 2 },
+      { x: 0, y: height / 2, width: width / 2, height: height / 2 },
+      { x: width / 2, y: height / 2, width: width / 2, height: height / 2 }
     ];
   }
 
@@ -704,14 +809,15 @@
       return loadCanvasImage(item.url);
     }));
     var canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 1920;
+    var aspect = state.aspectRatio || '16:9';
+    canvas.width = aspect === '16:9' ? 1920 : 1080;
+    canvas.height = aspect === '16:9' ? 1080 : (aspect === '1:1' ? 1080 : 1920);
     var context = canvas.getContext('2d');
     if (!context) throw new Error('Trình duyệt không hỗ trợ xuất lookbook.');
 
     context.fillStyle = '#0b1a20';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    var layout = lookbookLayout(images.length);
+    var layout = lookbookLayout(images.length, canvas.width, canvas.height);
     images.forEach(function (image, index) {
       coverRect(context, image, layout[index]);
     });
@@ -739,7 +845,7 @@
     var objectUrl = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.href = objectUrl;
-    link.download = 'v-remix-lookbook-1080x1920.png';
+    link.download = 'v-remix-lookbook-' + canvas.width + 'x' + canvas.height + '.png';
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -805,7 +911,7 @@
     resultDownload.textContent = 'Đang dựng file 1080×1920…';
     downloadLookbookComposite(currentLookbookItems)
       .then(function () {
-        setStatus('Đã xuất lookbook 1080×1920.');
+        setStatus('Đã xuất lookbook ' + state.aspectRatio + '.');
       })
       .catch(function (error) {
         setStatus(error && error.message ? error.message : 'Không thể xuất lookbook.');

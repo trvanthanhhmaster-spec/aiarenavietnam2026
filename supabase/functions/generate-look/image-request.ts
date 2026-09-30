@@ -3,14 +3,29 @@ export type ImageInput = {
   data: string;
 };
 
+export type ImageRequestOptions = {
+  aspectRatio?: string;
+  targetResolution?: string;
+  operation?: "base" | "edit";
+  changeScope?: string;
+};
+
 export function buildImageRequest(
   prompt: string,
   variant: string,
   inputImage?: ImageInput,
+  options: ImageRequestOptions = {},
 ) {
-  const parts: Record<string, unknown>[] = [{
+  const aspectRatio = options.aspectRatio || "16:9";
+  const targetResolution = options.targetResolution || "1080";
+  const operation = options.operation || (inputImage ? "edit" : "base");
+  const editInstruction = operation === "edit"
+    ? `Edit the supplied source image instead of re-generating the composition. Change only this approved scope: ${options.changeScope || variant}. Preserve all other pixels, subject identity, camera angle, position, scale, garment construction and framing.`
+    : "Create the locked source frame A and establish one stable subject identity, pose, camera angle and composition for all later edits.";
+  const parts: any[] = [{
     text: `${prompt}
-Create variation ${variant}. Keep the same selected garment, styling and person identity across the lookbook. Compose a strictly vertical portrait on a 9:16 canvas, never landscape or horizontal. Show the full garment silhouette with enough headroom and foot room for a 9:16 lookbook frame.`,
+Create frame ${variant}. ${editInstruction}
+Use a ${aspectRatio} canvas with a ${targetResolution}p delivery target. Keep the selected Vietnamese garment culturally accurate. No text, logo or watermark.`,
   }];
   if (inputImage) {
     parts.push({
@@ -24,7 +39,7 @@ Create variation ${variant}. Keep the same selected garment, styling and person 
     contents: [{ role: "user", parts }],
     generationConfig: {
       responseModalities: ["TEXT", "IMAGE"],
-      imageConfig: { aspectRatio: "9:16" },
+      imageConfig: { aspectRatio },
     },
   };
 }

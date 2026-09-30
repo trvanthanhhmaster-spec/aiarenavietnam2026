@@ -23,6 +23,10 @@ type LookRequest = {
   styleSlug?: string;
   generationType?: "image" | "video" | "both";
   inputImage?: { mimeType: string; data: string };
+  aspectRatio?: "16:9" | "1:1" | "9:16";
+  targetResolution?: "720" | "1080" | "2160";
+  generationMode?: "text-to-image" | "image-to-image";
+  framePlan?: Record<string, { branch?: string; changeScope?: string; value?: unknown }>;
 };
 
 type GenerationOutput = Record<string, any> & {
@@ -31,6 +35,8 @@ type GenerationOutput = Record<string, any> & {
   videoStatus?: "processing" | "completed" | "failed";
   videoError?: string;
   video?: { path: string; url: string; mimeType: string } | null;
+  videos?: Array<{ key: string; path: string; url: string; mimeType: string }>;
+  providerOperations?: Array<{ key: string; name: string }>;
 };
 
 type PromptVersion = {
@@ -281,8 +287,8 @@ async function activePrompt(): Promise<PromptVersion> {
 
 function costEstimate(input: LookRequest, settings: RuntimeSettings): CostEstimate {
   const generationType = input.generationType || "image";
-  const imageCount = generationType === "video" ? 1 : settings.imageVariants;
-  const videoCount = generationType === "video" || generationType === "both" ? 1 : 0;
+  const imageCount = 5;
+  const videoCount = generationType === "video" || generationType === "both" ? 4 : 0;
   return {
     imageCount,
     videoCount,
@@ -440,29 +446,40 @@ async function generateImages(
   inputImage: LookRequest["inputImage"],
   settings: RuntimeSettings,
   maximumVariants = settings.imageVariants,
+  request?: LookRequest,
 ): Promise<{ bytes: string; mimeType: string }[]> {
   const model = settings.imageModel;
   const config = providerConfig(false, settings);
   const endpoint = modelEndpoint(config, model, "generateContent");
   const variants = [
-    "front-facing editorial hero",
-    "three-quarter fashion portrait",
-    "full-body walking composition",
-    "detail-led lookbook composition",
+    { key: "A", label: "locked source frame", scope: "fixed subject identity, face, pose, camera angle and composition" },
+    { key: "B", label: "background and scene", scope: request?.framePlan?.B?.changeScope || "background and scene only" },
+    { key: "C", label: "lighting and time of day", scope: request?.framePlan?.C?.changeScope || "lighting and time of day only" },
+    { key: "D", label: "clothing and garment styling", scope: request?.framePlan?.D?.changeScope || "clothing only" },
+    { key: "E", label: "subject identity", scope: request?.framePlan?.E?.changeScope || "subject identity only; preserve position and scale" },
   ];
   const images: { bytes: string; mimeType: string }[] = [];
-  const configuredCount = settings.imageVariants;
-  const variantCount = Math.min(
-    variants.length,
-    Math.max(1, maximumVariants),
-    Math.max(1, Number.isFinite(configuredCount) ? configuredCount : 4),
-  );
+  const variantCount = Math.min(variants.length, Math.max(1, maximumVariants));
+  const aspectRatio = request?.aspectRatio || "16:9";
+  const targetResolution = request?.targetResolution || "1080";
+  const mode = request?.generationMode || (inputImage ? "image-to-image" : "text-to-image");
+  let source = inputImage;
   for (let index = 0; index < variantCount; index += 1) {
     const variant = variants[index];
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildImageRequest(prompt, `${index + 1}: ${variant}`, inputImage)),
+      body: JSON.stringify(buildImageRequest(
+        prompt,
+        `${variant.key}: ${variant.label}`,
+        source,
+        {
+          aspectRatio,
+          targetResolution,
+          operation: index === 0 && mode === "text-to-image" ? "base" : "edit",
+          changeScope: variant.scope,
+        },
+      )),
     });
     if (!response.ok) {
       const error = await providerError(response, "Gemini image model");
@@ -477,19 +494,29 @@ async function generateImages(
     );
     const image = imagePart?.inlineData || imagePart?.inline_data;
     if (!image?.data) throw new Error("Gemini image model returned no image.");
-    images.push({
+    const generated = {
       bytes: image.data,
       mimeType: image.mimeType || image.mime_type || "image/png",
-    });
+    };
+    images.push(generated);
+    // Every destination frame is edited from A, never from the previous edit.
+    // This keeps camera geometry and subject identity anchored to the source.
+    if (index === 0) source = { data: generated.bytes, mimeType: generated.mimeType };
   }
   return images;
 }
 
-async function startVideoOperation(prompt: string, firstFrame: VideoFirstFrame, settings: RuntimeSettings) {
+async function startVideoOperation(
+  prompt: string,
+  firstFrame: VideoFirstFrame,
+  lastFrame: VideoFirstFrame | undefined,
+  settings: RuntimeSettings,
+  aspectRatio = "16:9",
+) {
   const config = providerConfig(true, settings);
   const model = settings.videoModel
     || (config.vertex ? "veo-3.1-fast-generate-001" : "veo-3.1-generate-preview");
-  const requestBody = buildVideoRequest(model, prompt, firstFrame);
+  const requestBody = buildVideoRequest(model, prompt, firstFrame, lastFrame, aspectRatio);
   const response = config.bridgeUrl
     ? await fetch(`${config.bridgeUrl.replace(/\/+$/, "")}/v1/veo/generate`, {
       method: "POST",
@@ -573,10 +600,10 @@ async function downloadVideo(uri: string, settings: RuntimeSettings) {
   };
 }
 
-async function storeVideo(jobId: string, uri: string, settings: RuntimeSettings) {
+async function storeVideo(jobId: string, uri: string, settings: RuntimeSettings, key = "lookbook") {
   await ensureStorageBucket();
   const video = await downloadVideo(uri, settings);
-  const path = `${jobId}/lookbook-video.mp4`;
+  const path = `${jobId}/${key}-video.mp4`;
   await uploadBytes(path, video.bytes, video.mimeType);
   return {
     path,
@@ -585,9 +612,9 @@ async function storeVideo(jobId: string, uri: string, settings: RuntimeSettings)
   };
 }
 
-async function storeVideoBytes(jobId: string, bytes: string, mimeType = "video/mp4") {
+async function storeVideoBytes(jobId: string, bytes: string, mimeType = "video/mp4", key = "lookbook") {
   await ensureStorageBucket();
-  const path = `${jobId}/lookbook-video.mp4`;
+  const path = `${jobId}/${key}-video.mp4`;
   const binary = Uint8Array.from(atob(bytes), (character) => character.charCodeAt(0));
   await uploadBytes(path, binary, mimeType);
   return {
@@ -704,15 +731,18 @@ async function processLook(
   let imageSource: "gemini" | "catalog-fallback" = "gemini";
   let imageWarning: string | undefined;
   let videoFirstFrame: VideoFirstFrame | undefined;
+  let videoFrames: Array<{ bytes: string; mimeType: string }> = [];
   if (generationType === "image" || generationType === "video" || generationType === "both") {
     try {
       const generated = await generateImages(
         imagePrompt,
         input.inputImage,
         settings,
-        generationType === "video" ? 1 : settings.imageVariants,
+        5,
+        input,
       );
       assets = await storeLookbook(job.id, generated);
+      videoFrames = generated;
       if (generated[0]) {
         videoFirstFrame = {
           mimeType: generated[0].mimeType,
@@ -749,7 +779,7 @@ async function processLook(
     costEstimate: costEstimate(input, settings),
     imageUrl: assets[0]?.url || null,
     lookbook: {
-      aspectRatio: "9:16",
+    aspectRatio: input.aspectRatio || "16:9",
       items: assets,
     },
   };
@@ -763,7 +793,22 @@ async function processLook(
         path: assets[0]?.path || null,
         mimeType: videoFirstFrame.mimeType,
       };
-      output.providerOperation = await startVideoOperation(imagePrompt, videoFirstFrame, settings);
+      const destinations = videoFrames.slice(1, 5);
+      const operations: Array<{ key: string; name: string }> = [];
+      for (let index = 0; index < destinations.length; index += 1) {
+        const key = ["B", "C", "D", "E"][index];
+        const name = await startVideoOperation(
+          `${imagePrompt}\nTransition branch ${key}: ${input.framePlan?.[key]?.changeScope || key}.`,
+          videoFirstFrame,
+          { mimeType: destinations[index].mimeType, data: destinations[index].bytes },
+          settings,
+          input.aspectRatio || "16:9",
+        );
+        operations.push({ key, name });
+      }
+      if (!operations.length) throw new Error("No destination frames were available for Veo.");
+      output.providerOperations = operations;
+      output.providerOperation = operations[0].name;
       output.videoStatus = "processing";
     } catch (error) {
       if (!assets.length) throw error;
@@ -789,9 +834,51 @@ async function completeWithoutVideo(jobId: string, output: GenerationOutput, mes
 
 async function refreshVideoJob(job: Record<string, any>, settings: RuntimeSettings) {
   const output: GenerationOutput = { ...(job.output || {}) };
-  if (job.status !== "processing" || !output.providerOperation) return job;
+  if (job.status !== "processing" || (!output.providerOperation && !output.providerOperations?.length)) return job;
 
-  const operation = await readVideoOperation(output.providerOperation, settings);
+  if (output.providerOperations?.length) {
+    const videos = Array.isArray(output.videos) ? [...output.videos] : [];
+    const errors: string[] = [];
+    let pending = false;
+    for (const providerOperation of output.providerOperations) {
+      if (videos.some((video) => video.key === providerOperation.key)) continue;
+      const operation = await readVideoOperation(providerOperation.name, settings);
+      if (operation.error) {
+        errors.push(`${providerOperation.key}: ${operation.error.message || "Veo generation failed."}`);
+        continue;
+      }
+      if (!operation.done) {
+        pending = true;
+        continue;
+      }
+      const bytes = findVideoBytes(operation.response);
+      const uri = bytes ? null : findVideoUri(operation.response);
+      if (!bytes && !uri) {
+        errors.push(`${providerOperation.key}: Veo completed without a video asset.`);
+        continue;
+      }
+      const stored = bytes
+        ? await storeVideoBytes(job.id, bytes, "video/mp4", providerOperation.key.toLowerCase())
+        : await storeVideo(job.id, uri as string, settings, providerOperation.key.toLowerCase());
+      videos.push({ key: providerOperation.key, ...stored });
+    }
+    output.videos = videos;
+    output.video = videos[0] || null;
+    if (pending) {
+      if (errors.length) output.videoError = errors.join(" · ");
+      await updateJob(job.id, "processing", output);
+      return await getJob(job.id);
+    }
+    delete output.providerOperations;
+    delete output.providerOperation;
+    output.videoStatus = videos.length ? "completed" : "failed";
+    if (errors.length) output.videoError = errors.join(" · ");
+    else delete output.videoError;
+    await updateJob(job.id, "completed", output);
+    return await getJob(job.id);
+  }
+
+  const operation = await readVideoOperation(output.providerOperation as string, settings);
   if (operation.error) {
     const message = operation.error.message || "Veo generation failed.";
     if (hasLookbook(output)) return await completeWithoutVideo(job.id, output, message);
@@ -858,6 +945,18 @@ Deno.serve(async (request) => {
     return json({ error: "generationType must be image, video or both." }, 400);
   }
   input.generationType = generationType;
+  if (input.aspectRatio && !["16:9", "1:1", "9:16"].includes(input.aspectRatio)) {
+    return json({ error: "aspectRatio must be 16:9, 1:1 or 9:16." }, 400);
+  }
+  if (input.targetResolution && !["720", "1080", "2160"].includes(input.targetResolution)) {
+    return json({ error: "targetResolution must be 720, 1080 or 2160." }, 400);
+  }
+  if (input.generationMode && !["text-to-image", "image-to-image"].includes(input.generationMode)) {
+    return json({ error: "generationMode must be text-to-image or image-to-image." }, 400);
+  }
+  if (input.generationMode === "image-to-image" && !input.inputImage) {
+    return json({ error: "Image-to-image mode requires a source image for frame A." }, 400);
+  }
   if (!isUuid(input.clientRequestId)) {
     return json({ error: "clientRequestId must be a UUID." }, 400);
   }

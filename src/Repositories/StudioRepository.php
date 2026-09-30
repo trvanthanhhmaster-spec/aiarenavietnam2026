@@ -14,7 +14,7 @@ final class StudioRepository
     }
 
     /**
-     * @return array{events: array<int, array<string, mixed>>, garments: array<int, array<string, mixed>>, accessories: array<int, array<string, mixed>>, colors: array<int, array<string, mixed>>, styles: array<int, array<string, mixed>>}|null
+     * @return array{events: array<int, array<string, mixed>>, garments: array<int, array<string, mixed>>, accessories: array<int, array<string, mixed>>, colors: array<int, array<string, mixed>>, styles: array<int, array<string, mixed>>, generation: array<string, mixed>}|null
      */
     public function getCatalog(): ?array
     {
@@ -39,8 +39,26 @@ final class StudioRepository
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
+            $generationRows = $this->client->select('studio_generation_settings', [
+                'select' => 'canvas_aspect_ratio,target_resolution,default_generation_mode,base_prompt,frame_plan',
+                'id' => 'eq.1',
+                'limit' => '1',
+            ]);
 
-            $catalog = ['events' => $events, 'garments' => $garments, 'accessories' => $accessories, 'colors' => [], 'styles' => []];
+            $catalog = [
+                'events' => $events,
+                'garments' => $garments,
+                'accessories' => $accessories,
+                'colors' => [],
+                'styles' => [],
+                'generation' => $generationRows[0] ?? [
+                    'canvas_aspect_ratio' => '16:9',
+                    'target_resolution' => '1080',
+                    'default_generation_mode' => 'text-to-image',
+                    'base_prompt' => '',
+                    'frame_plan' => [],
+                ],
+            ];
             foreach ($options as $option) {
                 $type = (string) ($option['option_type'] ?? '');
                 if ($type === 'color') {

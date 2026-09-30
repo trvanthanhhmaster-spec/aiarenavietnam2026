@@ -100,9 +100,50 @@ $studioData = $catalog + [
 
             <div class="studio-intro" id="studioIntro">
                 <p class="studio-kicker">V-Remix / Tầng 02</p>
-                <h1>Phối một dáng Việt<br><em>theo cách bạn.</em></h1>
-                <p class="studio-intro__note">Chạm vào một điểm để bắt đầu. Giữ tinh thần của dáng áo, mở ra một cách xuất hiện mới.</p>
+                <h1>Tạo ảnh<br><em>từ một dáng gốc.</em></h1>
+                <p class="studio-intro__note">Chốt ảnh A trước, sau đó chỉ thay đúng một lớp ở B, C, D hoặc E.</p>
             </div>
+
+            <section class="studio-console" aria-label="Bảng điều khiển tạo ảnh">
+                <div class="studio-console__head">
+                    <div>
+                        <p class="studio-console__eyebrow">Generation setup</p>
+                        <h2>Khung tạo ảnh</h2>
+                    </div>
+                    <span class="studio-console__badge">A → B / C / D / E</span>
+                </div>
+                <div class="studio-spec-grid">
+                    <label>Khung ảnh
+                        <select id="canvasAspect">
+                            <option value="16:9">16:9 ngang</option>
+                            <option value="1:1">1:1 vuông</option>
+                            <option value="9:16">9:16 dọc</option>
+                        </select>
+                    </label>
+                    <label>Chất lượng
+                        <select id="targetResolution">
+                            <option value="1080">1080</option>
+                            <option value="720">720</option>
+                            <option value="2160">2160</option>
+                        </select>
+                    </label>
+                    <label class="studio-spec-grid__wide">Chế độ
+                        <select id="generationMode">
+                            <option value="text-to-image">Text to image (prompt)</option>
+                            <option value="image-to-image">Image to image (prompt + image)</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="studio-frame-plan">
+                    <div class="studio-frame-plan__header"><span>Biến đổi có kiểm soát</span><small>Chỉ thay phần ghi dưới đây</small></div>
+                    <button type="button" class="studio-frame-step is-active" data-frame-step="A"><b>A</b><span><strong>Ảnh gốc</strong><small>Khoá khuôn mặt, dáng, góc máy</small></span></button>
+                    <button type="button" class="studio-frame-step" data-frame-step="B"><b>B</b><span><strong>Bối cảnh</strong><small id="frameBSummary">Chỉ thay phông nền</small></span></button>
+                    <button type="button" class="studio-frame-step" data-frame-step="C"><b>C</b><span><strong>Ánh sáng</strong><small id="frameCSummary">Chỉ thay thời điểm trong ngày</small></span></button>
+                    <button type="button" class="studio-frame-step" data-frame-step="D"><b>D</b><span><strong>Trang phục</strong><small id="frameDSummary">Chỉ thay quần áo</small></span></button>
+                    <button type="button" class="studio-frame-step" data-frame-step="E"><b>E</b><span><strong>Nhân vật</strong><small id="frameESummary">Giữ vị trí và kích thước tương đương</small></span></button>
+                </div>
+                <p class="studio-console__hint">Bấm một nhánh để mở đúng nhóm lựa chọn trên ảnh; không cần chạm vào vị trí cố định.</p>
+            </section>
 
             <aside class="studio-dock" id="studioDock" aria-hidden="true" inert aria-labelledby="dockTitle">
                 <div class="studio-dock__header">
@@ -173,6 +214,7 @@ $studioData = $catalog + [
                     <div class="result-story"><span>Story Card</span><p id="resultStory">—</p></div>
                     <div class="result-story"><span>Cultural Guardrail</span><p id="resultGuardrail">—</p></div>
                     <div class="result-story"><span>Mẹo Gen Z</span><p id="resultGenZTip">—</p></div>
+                    <div class="result-video-branches" id="resultVideoBranches" hidden aria-label="Bốn video chuyển đổi"></div>
                     <a class="result-download" id="resultDownload" href="#" download hidden>Tải lookbook 9:16 <span aria-hidden="true">↓</span></a>
                 </div>
             </div>

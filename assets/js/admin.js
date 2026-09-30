@@ -10,17 +10,18 @@
     'ai-settings': {
       kicker: 'AI operations / 00',
       title: 'API, model & chi phí',
-      columns: ['generation_enabled', 'image_provider', 'image_model', 'video_provider', 'video_model', 'image_variants', 'secret_source']
+      columns: ['generation_enabled', 'image_provider', 'image_model', 'video_provider', 'video_model', 'gemini_api_key_hint', 'secret_source']
     },
-    events: { kicker: 'Collection / 01', title: 'Bối cảnh', columns: ['label', 'slug', 'description', 'is_active'] },
-    garments: { kicker: 'Collection / 02', title: 'Cổ phục', columns: ['name', 'category', 'slug', 'is_active'] },
-    accessories: { kicker: 'Collection / 03', title: 'Phụ kiện', columns: ['name', 'category', 'slug', 'is_active'] },
-    options: { kicker: 'Collection / 04', title: 'Màu & phong cách', columns: ['label', 'option_type', 'slug', 'is_active'] },
-    branches: { kicker: 'Editorial / 05', title: 'Media tầng 1', columns: ['label', 'branch_key', 'forward_media_url', 'is_base', 'is_active'] },
-    sources: { kicker: 'Editorial / 06', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
-    prompts: { kicker: 'Editorial / 07', title: 'Prompt versions', columns: ['slug', 'version', 'model', 'is_active'] },
-    pages: { kicker: 'Editorial / 08', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
-    jobs: { kicker: 'Operations / 09', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'error_message'] }
+    'studio-generation': { kicker: 'AI operations / 01', title: 'Studio generation', columns: ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'base_prompt'] },
+    events: { kicker: 'Collection / 02', title: 'Bối cảnh', columns: ['label', 'slug', 'description', 'is_active'] },
+    garments: { kicker: 'Collection / 03', title: 'Cổ phục', columns: ['name', 'category', 'slug', 'is_active'] },
+    accessories: { kicker: 'Collection / 04', title: 'Phụ kiện', columns: ['name', 'category', 'slug', 'is_active'] },
+    options: { kicker: 'Collection / 05', title: 'Màu & phong cách', columns: ['label', 'option_type', 'slug', 'is_active'] },
+    branches: { kicker: 'Editorial / 06', title: 'Media tầng 1', columns: ['label', 'branch_key', 'forward_media_url', 'is_base', 'is_active'] },
+    sources: { kicker: 'Editorial / 07', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
+    prompts: { kicker: 'Editorial / 08', title: 'Prompt versions', columns: ['slug', 'version', 'model', 'is_active'] },
+    pages: { kicker: 'Editorial / 09', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
+    jobs: { kicker: 'Operations / 10', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'error_message'] }
   };
   var fields = {
     'ai-settings': [
@@ -28,12 +29,19 @@
       ['image_provider', 'Provider ảnh & văn bản', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['gemini', 'Gemini Developer API'], ['vertex', 'Vertex AI']]],
       ['video_provider', 'Provider video', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['vertex', 'Vertex AI / Cloud Run bridge'], ['gemini', 'Gemini Developer API']]],
       ['text_model', 'Model văn bản', 'text', true], ['image_model', 'Model tạo ảnh', 'text', true],
-      ['video_model', 'Model tạo video', 'text', true], ['image_variants', 'Số ảnh mỗi lookbook', 'number', true],
+      ['video_model', 'Model tạo video', 'text', true], ['image_variants', 'Số frame ảnh (A + B/C/D/E)', 'number', true],
       ['image_unit_cost_vnd', 'Ước tính chi phí / ảnh (VND)', 'number', true],
       ['video_unit_cost_vnd', 'Ước tính chi phí / video (VND)', 'number', true],
       ['daily_budget_vnd', 'Ngân sách ngày (0 = không giới hạn)', 'number', true],
       ['monthly_budget_vnd', 'Ngân sách tháng (0 = không giới hạn)', 'number', true],
       ['gemini_api_key', 'API key Gemini (ảnh + video Developer API)', 'password', false]
+    ],
+    'studio-generation': [
+      ['canvas_aspect_ratio', 'Khung ảnh', 'select', true, [['16:9', '16:9 ngang'], ['1:1', '1:1 vuông'], ['9:16', '9:16 dọc']]],
+      ['target_resolution', 'Chất lượng mục tiêu', 'select', true, [['720', '720p'], ['1080', '1080p'], ['2160', '2160p']]],
+      ['default_generation_mode', 'Chế độ mặc định', 'select', true, [['text-to-image', 'Text to image'], ['image-to-image', 'Image to image']]],
+      ['base_prompt', 'Prompt ảnh gốc A', 'textarea', true],
+      ['frame_plan', 'Frame plan A → B/C/D/E', 'json', true]
     ],
     events: [
       ['slug', 'Branch key', 'text', true], ['label', 'Tên hiển thị', 'text', true],
@@ -100,6 +108,11 @@
   var syncState = document.getElementById('adminSyncState');
   var status = document.getElementById('adminStatus');
   var metrics = document.getElementById('adminMetrics');
+  var quickConfig = document.getElementById('adminQuickConfig');
+  var quickEdit = document.getElementById('adminQuickEdit');
+  var keyStatus = document.getElementById('adminKeyStatus');
+  var imageRoute = document.getElementById('adminImageRoute');
+  var videoRouteLabel = document.getElementById('adminVideoRoute');
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -127,6 +140,9 @@
     }
     if (key === 'gemini_api_key_configured') {
       return value ? 'Đã cấu hình (mã hoá)' : 'Chưa nhập · dùng Edge secret';
+    }
+    if (key === 'gemini_api_key_hint') {
+      return value || '•••••••• (Edge secret)';
     }
     if (/_cost_vnd$|_budget_vnd$/.test(key)) return formatVnd(value);
     if (key === 'created_at' || key === 'updated_at' || key === 'completed_at') {
@@ -158,7 +174,8 @@
     usage = null;
     document.getElementById('adminResourceKicker').textContent = metadata.kicker;
     document.getElementById('adminResourceTitle').textContent = metadata.title;
-    createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'ai-settings';
+    createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages'
+      || resourceKey === 'ai-settings' || resourceKey === 'studio-generation';
     renderMetrics();
     setStatus('Đang đồng bộ Supabase…');
     tableBody.innerHTML = '<tr><td class="admin-table__loading" colspan="8">Đang đọc dữ liệu đã duyệt…</td></tr>';
@@ -185,16 +202,25 @@
     if (resourceKey !== 'ai-settings' || !usage) {
       metrics.hidden = true;
       metrics.innerHTML = '';
+      quickConfig.hidden = true;
       return;
     }
+    quickConfig.hidden = false;
     metrics.hidden = false;
     var settings = rows[0] || {};
-    var keyStatus = settings.gemini_api_key_configured ? 'Admin mã hoá' : 'Edge secret fallback';
-    var videoRoute = settings.video_provider === 'gemini'
+    var keyStatus = settings.gemini_api_key_configured
+      ? 'Admin mã hoá ' + (settings.gemini_api_key_hint || '')
+      : '•••••••• (Edge secret fallback)';
+    var configuredVideoRoute = settings.video_provider === 'gemini'
       ? 'Gemini Developer API'
       : settings.video_provider === 'vertex'
       ? 'Vertex AI / Cloud Run bridge'
       : 'Edge secret hiện tại';
+    keyStatus.textContent = settings.gemini_api_key_configured
+      ? 'Gemini API key đang được lưu: ' + (settings.gemini_api_key_hint || '••••••••')
+      : 'Chưa có key admin — đang dùng Edge Function secret';
+    imageRoute.textContent = 'Ảnh ' + (settings.image_provider === 'gemini' ? 'Gemini' : settings.image_provider === 'vertex' ? 'Vertex' : 'Edge') + ' · ' + (settings.image_model || 'chưa chọn');
+    videoRouteLabel.textContent = 'Video ' + (settings.video_provider === 'gemini' ? 'Gemini' : settings.video_provider === 'vertex' ? 'Vertex / bridge' : 'Edge') + ' · ' + (settings.video_model || 'chưa chọn');
     metrics.innerHTML =
       '<article><span>Hôm nay / ước tính</span><strong>' + escapeHtml(formatVnd(usage.today_cost_vnd)) + '</strong></article>' +
       '<article><span>Tháng này / ước tính</span><strong>' + escapeHtml(formatVnd(usage.month_cost_vnd)) + '</strong></article>' +
@@ -202,12 +228,12 @@
       '<article><span>Đơn giá đang tính</span><strong>' + escapeHtml(formatVnd(settings.image_unit_cost_vnd)) + ' / ảnh · ' + escapeHtml(formatVnd(settings.video_unit_cost_vnd)) + ' / video</strong></article>' +
       '<article><span>Ngân sách ngày</span><strong>' + (Number(settings.daily_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.daily_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
       '<article><span>Ngân sách tháng</span><strong>' + (Number(settings.monthly_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.monthly_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
-      '<p><strong>API key:</strong> ' + escapeHtml(keyStatus) + ' · <strong>Video:</strong> ' + escapeHtml(videoRoute) + ' / ' + escapeHtml(settings.video_model || 'chưa chọn') + '. Nhấn <strong>Cấu hình API & video</strong> để thay đổi.</p>';
+      '<p><strong>API key:</strong> ' + escapeHtml(keyStatus) + ' · <strong>Video:</strong> ' + escapeHtml(configuredVideoRoute) + ' / ' + escapeHtml(settings.video_model || 'chưa chọn') + '. Nhấn <strong>Cấu hình API & video</strong> để thay đổi.</p>';
   }
 
   function renderTable(columns) {
     var showActions = resourceKey !== 'jobs';
-    var allowDelete = resourceKey !== 'pages' && resourceKey !== 'ai-settings';
+    var allowDelete = resourceKey !== 'pages' && resourceKey !== 'ai-settings' && resourceKey !== 'studio-generation';
     tableHead.innerHTML = '<tr>' + columns.map(function (key) {
       return '<th>' + escapeHtml(labelFor(key)) + '</th>';
     }).join('') + (showActions ? '<th class="admin-table__actions">Thao tác</th>' : '') + '</tr>';
@@ -249,6 +275,10 @@
           (value ? ' checked' : '') + '><span><strong>' + escapeHtml(label) + '</strong><small>Chuyển trạng thái hiển thị</small></span></label>';
       }
       var control = '';
+      var keyPreview = '';
+      if (key === 'gemini_api_key' && editing.gemini_api_key_configured) {
+        keyPreview = '<div class="admin-key-preview"><input type="text" value="' + escapeHtml(editing.gemini_api_key_hint || '••••••••') + '" readonly aria-label="API key hiện tại dạng che khuất"><small>Không thể đọc lại plaintext từ secret đã mã hoá.</small></div>';
+      }
       if (type === 'textarea' || type === 'json') {
         var textValue = type === 'json' ? JSON.stringify(value || {}, null, 2) : (value || '');
         control = '<textarea data-field="' + key + '" ' + (required ? 'required' : '') + '>' + escapeHtml(textValue) + '</textarea>';
@@ -261,7 +291,7 @@
         var placeholder = '';
         if (key === 'gemini_api_key') {
           placeholder = editing.gemini_api_key_configured
-            ? 'Đã lưu mã hoá — nhập key mới để thay'
+            ? 'Đã lưu ' + (editing.gemini_api_key_hint || 'mã hoá') + ' — nhập key mới để thay'
             : 'Dán Gemini API key tại đây';
         }
         control = '<input type="' + (type === 'number' ? 'number' : type) + '" data-field="' + key + '" value="' + escapeHtml(value == null ? '' : value) + '"' +
@@ -269,12 +299,21 @@
           (placeholder ? ' placeholder="' + escapeHtml(placeholder) + '"' : '') + '>';
       }
       var help = key === 'gemini_api_key'
-        ? '<small class="admin-field__help">Dùng chung cho text, ảnh và video khi provider là Gemini Developer API. Để trống để giữ key hiện tại; key không được hiển thị lại.</small>'
+        ? keyPreview + '<small class="admin-field__help">Dùng chung cho text, ảnh và video khi provider là Gemini Developer API. Để trống để giữ key hiện tại; key không được hiển thị lại.</small>'
         : '';
       return '<label class="admin-field"><span>' + escapeHtml(label) + '</span>' + control + help + '</label>';
     }).join('');
     dialog.showModal();
   }
+
+  if (quickEdit) quickEdit.addEventListener('click', function () {
+    if (resourceKey !== 'ai-settings') {
+      resourceKey = 'ai-settings';
+      loadResource().then(function () { openEditor(rows[0] || {}); });
+    } else {
+      openEditor(rows[0] || {});
+    }
+  });
 
   async function saveEditor() {
     var record = { id: editing && editing.id ? editing.id : undefined };

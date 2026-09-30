@@ -40,9 +40,17 @@ if ($supabaseUrl === '' || $serviceRoleKey === '') {
 $resources = [
     'ai-settings' => [
         'table' => 'ai_runtime_settings',
-        'select' => 'id,generation_enabled,image_provider,video_provider,text_model,image_model,video_model,image_variants,image_unit_cost_vnd,video_unit_cost_vnd,daily_budget_vnd,monthly_budget_vnd,encrypted_gemini_api_key,updated_at',
+        'select' => 'id,generation_enabled,image_provider,video_provider,text_model,image_model,video_model,image_variants,image_unit_cost_vnd,video_unit_cost_vnd,daily_budget_vnd,monthly_budget_vnd,encrypted_gemini_api_key,gemini_api_key_hint,updated_at',
         'order' => 'id.asc',
         'fields' => ['generation_enabled', 'image_provider', 'video_provider', 'text_model', 'image_model', 'video_model', 'image_variants', 'image_unit_cost_vnd', 'video_unit_cost_vnd', 'daily_budget_vnd', 'monthly_budget_vnd'],
+        'no_create' => true,
+        'no_delete' => true,
+    ],
+    'studio-generation' => [
+        'table' => 'studio_generation_settings',
+        'select' => 'id,canvas_aspect_ratio,target_resolution,default_generation_mode,base_prompt,frame_plan,updated_at',
+        'order' => 'id.asc',
+        'fields' => ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'base_prompt', 'frame_plan'],
         'no_create' => true,
         'no_delete' => true,
     ],
@@ -202,7 +210,7 @@ try {
                     $respond(['error' => 'Nội dung trường ' . $field . ' quá dài.'], 422);
                 }
             }
-            if (is_array($value) && $field !== 'ui') {
+            if (is_array($value) && !in_array($field, ['ui', 'frame_plan'], true)) {
                 $respond(['error' => 'Kiểu dữ liệu trường ' . $field . ' không hợp lệ.'], 422);
             }
             $payload[$field] = $value;
@@ -219,8 +227,8 @@ try {
                 }
             }
             $variantCount = filter_var($payload['image_variants'] ?? null, FILTER_VALIDATE_INT);
-            if ($variantCount === false || $variantCount < 1 || $variantCount > 4) {
-                $respond(['error' => 'Số ảnh mỗi lookbook phải từ 1 đến 4.'], 422);
+            if ($variantCount === false || $variantCount < 1 || $variantCount > 5) {
+                $respond(['error' => 'Số frame ảnh phải từ 1 đến 5 (A + B/C/D/E).'], 422);
             }
             $payload['image_variants'] = $variantCount;
             foreach (['image_unit_cost_vnd', 'video_unit_cost_vnd', 'daily_budget_vnd', 'monthly_budget_vnd'] as $moneyField) {
@@ -249,6 +257,45 @@ try {
                 }
                 $encode = static fn (string $value): string => rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
                 $payload['encrypted_gemini_api_key'] = 'v1.' . $encode($iv) . '.' . $encode($tag) . '.' . $encode($ciphertext);
+                $payload['gemini_api_key_hint'] = '••••' . substr($apiKey, -4);
+            }
+            $payload['updated_at'] = gmdate(DATE_ATOM);
+        }
+        if ($resourceKey === 'studio-generation') {
+            if (!in_array($payload['canvas_aspect_ratio'] ?? '', ['16:9', '1:1', '9:16'], true)) {
+                $respond(['error' => 'Tỉ lệ khung ảnh không hợp lệ.'], 422);
+            }
+            if (!in_array($payload['target_resolution'] ?? '', ['720', '1080', '2160'], true)) {
+                $respond(['error' => 'Chất lượng đầu ra không hợp lệ.'], 422);
+            }
+            if (!in_array($payload['default_generation_mode'] ?? '', ['text-to-image', 'image-to-image'], true)) {
+                $respond(['error' => 'Chế độ tạo ảnh không hợp lệ.'], 422);
+            }
+            if (!is_string($payload['base_prompt'] ?? null) || trim($payload['base_prompt']) === '') {
+                $respond(['error' => 'Prompt ảnh gốc A không được để trống.'], 422);
+            }
+            if (!is_array($payload['frame_plan'] ?? null) || count($payload['frame_plan']) !== 5) {
+                $respond(['error' => 'Frame plan phải có đúng năm frame A, B, C, D và E.'], 422);
+            }
+            $frameKeys = [];
+            foreach ($payload['frame_plan'] as $frame) {
+                if (!is_array($frame)) {
+                    $respond(['error' => 'Mỗi frame phải là một object hợp lệ.'], 422);
+                }
+                $key = strtoupper(trim((string) ($frame['key'] ?? '')));
+                if (!in_array($key, ['A', 'B', 'C', 'D', 'E'], true)) {
+                    $respond(['error' => 'Frame key chỉ được là A, B, C, D hoặc E.'], 422);
+                }
+                $frameKeys[] = $key;
+                foreach (['label', 'branch_key', 'change_scope', 'prompt_template'] as $requiredFrameField) {
+                    if (trim((string) ($frame[$requiredFrameField] ?? '')) === '') {
+                        $respond(['error' => 'Frame ' . $key . ' thiếu trường ' . $requiredFrameField . '.'], 422);
+                    }
+                }
+            }
+            sort($frameKeys);
+            if ($frameKeys !== ['A', 'B', 'C', 'D', 'E']) {
+                $respond(['error' => 'Frame plan phải chứa duy nhất A, B, C, D và E.'], 422);
             }
             $payload['updated_at'] = gmdate(DATE_ATOM);
         }
@@ -269,7 +316,7 @@ try {
             ], ['is_base' => false]);
         }
 
-        if ($resourceKey === 'ai-settings') {
+        if (in_array($resourceKey, ['ai-settings', 'studio-generation'], true)) {
             $saved = $client->update((string) $resource['table'], ['id' => 'eq.1'], $payload);
         } elseif ($id !== '') {
             if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
