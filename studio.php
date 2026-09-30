@@ -69,8 +69,8 @@ $studioData = $catalog + [
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/app.css">
-    <link rel="stylesheet" href="assets/css/studio.css">
+    <link rel="stylesheet" href="assets/css/app.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/app.css') ?>">
+    <link rel="stylesheet" href="assets/css/studio.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio.css') ?>">
 </head>
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
@@ -148,7 +148,7 @@ $studioData = $catalog + [
             </div>
             <div class="studio-footer__baseline">
                 <span>V-Remix — Việt phục Remix</span>
-                <span>Data từ catalog đã duyệt · Gemini qua Edge Function</span>
+                <span>Data từ catalog đã duyệt · AI server-side qua Edge Function</span>
             </div>
         </footer>
 

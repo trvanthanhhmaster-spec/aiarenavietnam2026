@@ -59,6 +59,6 @@ window.VREMIX_CONFIG = <?= json_encode(
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
 ) ?>;
 </script>
-<script src="assets/js/app.js" defer></script>
+<script src="assets/js/app.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/app.js') ?>" defer></script>
 </body>
 </html>
