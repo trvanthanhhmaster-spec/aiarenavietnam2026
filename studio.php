@@ -52,8 +52,12 @@ foreach ($branches as $branch) {
     }
 }
 $baseMedia = (string) (($baseBranch ?? reset($branches))['forwardUrl'] ?? '');
+$localWebGeneration = filter_var((string) getenv('GEMINI_WEB_LOCAL_ENABLED'), FILTER_VALIDATE_BOOL);
 $studioData = $catalog + [
-    'generationEndpoint' => rtrim($database['url'], '/') . '/functions/v1/generate-look',
+    'generationEndpoint' => $localWebGeneration
+        ? 'local-generate.php'
+        : rtrim($database['url'], '/') . '/functions/v1/generate-look',
+    'generationProvider' => $localWebGeneration ? 'gemini-webapi-local' : 'supabase-edge',
     'baseMedia' => $baseMedia,
 ];
 ?>
