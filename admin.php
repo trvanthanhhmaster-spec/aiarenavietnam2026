@@ -55,7 +55,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="assets/css/admin.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/admin.css') ?>">
 </head>
 <body class="admin-page">
 <?php if (!$authenticated): ?>
@@ -139,8 +139,8 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
             <section class="admin-content">
                 <div class="admin-content__toolbar">
                     <div>
-                        <p class="admin-eyebrow" id="adminResourceKicker">Collection / 01</p>
-                        <h2 id="adminResourceTitle">Bối cảnh</h2>
+                        <p class="admin-eyebrow" id="adminResourceKicker">AI operations / 00</p>
+                        <h2 id="adminResourceTitle">API, model & chi phí</h2>
                     </div>
                     <div class="admin-toolbar__actions">
                         <span class="admin-sync-state" id="adminSyncState">Chưa tải dữ liệu</span>

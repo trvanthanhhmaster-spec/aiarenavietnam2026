@@ -33,7 +33,7 @@
       ['video_unit_cost_vnd', 'Ước tính chi phí / video (VND)', 'number', true],
       ['daily_budget_vnd', 'Ngân sách ngày (0 = không giới hạn)', 'number', true],
       ['monthly_budget_vnd', 'Ngân sách tháng (0 = không giới hạn)', 'number', true],
-      ['gemini_api_key', 'Gemini API key mới (để trống để giữ nguyên)', 'password', false]
+      ['gemini_api_key', 'API key Gemini (ảnh + video Developer API)', 'password', false]
     ],
     events: [
       ['slug', 'Branch key', 'text', true], ['label', 'Tên hiển thị', 'text', true],
@@ -125,6 +125,9 @@
     if (key === 'secret_source') {
       return value === 'admin-managed' ? 'Admin mã hoá' : 'Edge secret fallback';
     }
+    if (key === 'gemini_api_key_configured') {
+      return value ? 'Đã cấu hình (mã hoá)' : 'Chưa nhập · dùng Edge secret';
+    }
     if (/_cost_vnd$|_budget_vnd$/.test(key)) return formatVnd(value);
     if (key === 'created_at' || key === 'updated_at' || key === 'completed_at') {
       try { return new Date(value).toLocaleString('vi-VN'); } catch (error) { return value; }
@@ -152,20 +155,23 @@
 
   async function loadResource() {
     var metadata = resourceLabels[resourceKey];
+    usage = null;
+    document.getElementById('adminResourceKicker').textContent = metadata.kicker;
+    document.getElementById('adminResourceTitle').textContent = metadata.title;
+    createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'ai-settings';
+    renderMetrics();
     setStatus('Đang đồng bộ Supabase…');
     tableBody.innerHTML = '<tr><td class="admin-table__loading" colspan="8">Đang đọc dữ liệu đã duyệt…</td></tr>';
     try {
       var body = await request(resourceKey);
       rows = body.items || [];
       usage = body.usage || null;
-      document.getElementById('adminResourceKicker').textContent = metadata.kicker;
-      document.getElementById('adminResourceTitle').textContent = metadata.title;
-      createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'ai-settings';
       renderMetrics();
       renderTable(metadata.columns);
       setStatus(rows.length + ' bản ghi · vừa đồng bộ');
     } catch (error) {
       rows = [];
+      renderMetrics();
       tableBody.innerHTML = '<tr><td class="admin-table__loading" colspan="8">' + escapeHtml(error.message) + '</td></tr>';
       setStatus('Đồng bộ lỗi');
     }
@@ -183,6 +189,12 @@
     }
     metrics.hidden = false;
     var settings = rows[0] || {};
+    var keyStatus = settings.gemini_api_key_configured ? 'Admin mã hoá' : 'Edge secret fallback';
+    var videoRoute = settings.video_provider === 'gemini'
+      ? 'Gemini Developer API'
+      : settings.video_provider === 'vertex'
+      ? 'Vertex AI / Cloud Run bridge'
+      : 'Edge secret hiện tại';
     metrics.innerHTML =
       '<article><span>Hôm nay / ước tính</span><strong>' + escapeHtml(formatVnd(usage.today_cost_vnd)) + '</strong></article>' +
       '<article><span>Tháng này / ước tính</span><strong>' + escapeHtml(formatVnd(usage.month_cost_vnd)) + '</strong></article>' +
@@ -190,7 +202,7 @@
       '<article><span>Đơn giá đang tính</span><strong>' + escapeHtml(formatVnd(settings.image_unit_cost_vnd)) + ' / ảnh · ' + escapeHtml(formatVnd(settings.video_unit_cost_vnd)) + ' / video</strong></article>' +
       '<article><span>Ngân sách ngày</span><strong>' + (Number(settings.daily_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.daily_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
       '<article><span>Ngân sách tháng</span><strong>' + (Number(settings.monthly_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.monthly_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
-      '<p>Nhấn <strong>Sửa</strong> để chọn provider/model, nhập Gemini API key, đơn giá và hạn mức. Đây là dự toán nội bộ, không phải hoá đơn Google Cloud.</p>';
+      '<p><strong>API key:</strong> ' + escapeHtml(keyStatus) + ' · <strong>Video:</strong> ' + escapeHtml(videoRoute) + ' / ' + escapeHtml(settings.video_model || 'chưa chọn') + '. Nhấn <strong>Cấu hình API & video</strong> để thay đổi.</p>';
   }
 
   function renderTable(columns) {
@@ -203,10 +215,11 @@
     empty.hidden = rows.length !== 0;
     rows.forEach(function (row, index) {
       var tr = document.createElement('tr');
+      var actionLabel = resourceKey === 'ai-settings' ? 'Cấu hình' : 'Sửa';
       tr.innerHTML = columns.map(function (key) {
         return '<td class="admin-table__' + escapeHtml(key) + '">' + escapeHtml(displayValue(row[key], key)) + '</td>';
       }).join('') + (!showActions ? '' :
-        '<td class="admin-table__actions"><button type="button" class="admin-row-action" data-edit="' + index + '">Sửa</button>' +
+        '<td class="admin-table__actions"><button type="button" class="admin-row-action" data-edit="' + index + '">' + actionLabel + '</button>' +
         (allowDelete ? '<button type="button" class="admin-row-action admin-row-action--danger" data-delete="' + index + '">Xoá</button>' : '') + '</td>');
       tableBody.appendChild(tr);
     });
@@ -221,7 +234,9 @@
   function openEditor(row) {
     editing = row || {};
     var definitions = fields[resourceKey] || [];
-    editorTitle.textContent = row ? 'Chỉnh sửa bản ghi' : 'Tạo bản ghi mới';
+    editorTitle.textContent = resourceKey === 'ai-settings'
+      ? 'Cấu hình API, ảnh & video'
+      : row ? 'Chỉnh sửa bản ghi' : 'Tạo bản ghi mới';
     editorKicker.textContent = (resourceLabels[resourceKey] || {}).title || 'Edit';
     editorFields.innerHTML = definitions.map(function (definition) {
       var key = definition[0];
@@ -243,10 +258,20 @@
             return '<option value="' + escapeHtml(option[0]) + '"' + (String(value || '') === option[0] ? ' selected' : '') + '>' + escapeHtml(option[1]) + '</option>';
           }).join('') + '</select>';
       } else {
+        var placeholder = '';
+        if (key === 'gemini_api_key') {
+          placeholder = editing.gemini_api_key_configured
+            ? 'Đã lưu mã hoá — nhập key mới để thay'
+            : 'Dán Gemini API key tại đây';
+        }
         control = '<input type="' + (type === 'number' ? 'number' : type) + '" data-field="' + key + '" value="' + escapeHtml(value == null ? '' : value) + '"' +
-          (required ? ' required' : '') + (type === 'number' ? ' step="0.01"' : '') + '>';
+          (required ? ' required' : '') + (type === 'number' ? ' step="0.01"' : '') +
+          (placeholder ? ' placeholder="' + escapeHtml(placeholder) + '"' : '') + '>';
       }
-      return '<label class="admin-field"><span>' + escapeHtml(label) + '</span>' + control + '</label>';
+      var help = key === 'gemini_api_key'
+        ? '<small class="admin-field__help">Dùng chung cho text, ảnh và video khi provider là Gemini Developer API. Để trống để giữ key hiện tại; key không được hiển thị lại.</small>'
+        : '';
+      return '<label class="admin-field"><span>' + escapeHtml(label) + '</span>' + control + help + '</label>';
     }).join('');
     dialog.showModal();
   }

@@ -77,6 +77,9 @@ provider/model ảnh và video, nhập Gemini API key dạng write-only, đặt 
 thể, đơn giá ước tính và ngân sách ngày/tháng. API key được mã hoá AES-256-GCM
 trước khi lưu; nếu để trống, Edge Function tiếp tục dùng secret đã deploy.
 Thay đổi runtime được Edge Function nhận trong tối đa khoảng 15 giây.
+Một Gemini API key dùng chung cho text, ảnh và video khi chọn Gemini Developer
+API. Nếu video chọn Vertex AI / Cloud Run bridge, bridge URL và secret tiếp tục
+được giữ ở Edge Function/Cloud Run và không hiển thị trong trình duyệt.
 
 Admin chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa
 secret vào HTML/JavaScript. Ngoài AI operations, có thể sửa catalog Studio,
