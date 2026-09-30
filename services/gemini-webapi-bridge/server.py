@@ -19,6 +19,24 @@ from urllib.parse import urlparse
 from gemini_webapi import GeminiClient
 
 
+def load_dotenv(path: Path = Path(__file__).with_name(".env")) -> None:
+    """Load the small bridge config without adding another runtime dependency."""
+    if not path.is_file():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("\"'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_dotenv()
+
+
 def env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
@@ -94,9 +112,12 @@ async def run() -> None:
     secret = env("GEMINI_WEB_BRIDGE_SECRET")
     secure_1psid = env("GEMINI_WEB_SECURE_1PSID")
     secure_1psidts = env("GEMINI_WEB_SECURE_1PSIDTS")
-    if not secret or not secure_1psid:
+    if not secret:
+        raise RuntimeError("Set GEMINI_WEB_BRIDGE_SECRET in services/gemini-webapi-bridge/.env.")
+    if not secure_1psid:
         raise RuntimeError(
-            "Set GEMINI_WEB_BRIDGE_SECRET and GEMINI_WEB_SECURE_1PSID in services/gemini-webapi-bridge/.env."
+            "Set GEMINI_WEB_SECURE_1PSID in services/gemini-webapi-bridge/.env. "
+            "Do not paste this cookie into chat or commit it to Git."
         )
 
     client = GeminiClient(secure_1psid, secure_1psidts, proxy=env("GEMINI_WEB_PROXY") or None)
