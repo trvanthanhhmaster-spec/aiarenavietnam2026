@@ -100,11 +100,14 @@ try {
             throw new RuntimeException('Gemini Web bridge connection failed: ' . $error);
         }
         $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
-        if ($status < 200 || $status >= 300 || !is_array($decoded)) {
+        if (!is_array($decoded)) {
             throw new RuntimeException('Gemini Web bridge returned HTTP ' . $status . '.');
         }
         if (!empty($decoded['error'])) {
             throw new RuntimeException((string) $decoded['error']);
+        }
+        if ($status < 200 || $status >= 300) {
+            throw new RuntimeException('Gemini Web bridge returned HTTP ' . $status . '.');
         }
         $image = $decoded['images'][0] ?? null;
         if (!is_array($image) || empty($image['data'])) {

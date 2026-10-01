@@ -97,6 +97,12 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     output = await client.generate_content(full_prompt, files=files, temporary=True)
     generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
     if not generated:
+        response_text = str(getattr(output, "text", "") or "").strip()
+        if "signed in" in response_text.lower() or "image creation isn't available" in response_text.lower():
+            raise RuntimeError(
+                "Gemini Web session is unauthenticated or expired. "
+                "Refresh GEMINI_WEB_SECURE_1PSID and GEMINI_WEB_SECURE_1PSIDTS, then restart the bridge."
+            )
         raise RuntimeError("Gemini web returned no generated image.")
     with tempfile.TemporaryDirectory(prefix="vremix-gemini-") as directory:
         images = []
@@ -126,6 +132,7 @@ async def run() -> None:
         auto_close=False,
         auto_refresh=True,
     )
+    authenticated = getattr(getattr(client, "account_status", None), "name", "") != "UNAUTHENTICATED"
 
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -134,7 +141,17 @@ async def run() -> None:
             if headers.get("x-vremix-bridge-secret") != secret:
                 writer.write(response(401, {"error": "Invalid bridge secret."}))
             elif method == "GET" and urlparse(path).path == "/health":
-                writer.write(response(200, {"ok": True, "provider": "gemini-webapi"}))
+                writer.write(response(
+                    200 if authenticated else 503,
+                    {
+                        "ok": authenticated,
+                        "authenticated": authenticated,
+                        "provider": "gemini-webapi",
+                        **({} if authenticated else {
+                            "error": "Gemini Web session is unauthenticated or expired."
+                        }),
+                    },
+                ))
             elif method == "POST" and urlparse(path).path == "/v1/images/generate":
                 writer.write(response(200, await generate(client, json.loads(body))))
             else:
