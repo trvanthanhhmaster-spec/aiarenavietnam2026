@@ -637,6 +637,9 @@
     if (output.imageSource === 'catalog-fallback') {
       return 'Đang dùng ảnh catalog đã duyệt làm fallback; bạn có thể thử lại để tạo ảnh AI mới.';
     }
+    if (output.imageSource === 'gemini-webapi-partial-fallback') {
+      return 'Lookbook đã sẵn sàng; một số frame đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.';
+    }
     if (output.copySource === 'catalog-fallback') {
       return 'Lookbook đã sẵn sàng; Story Card đang dùng dữ liệu catalog đã duyệt vì Gemini tạm thời không phản hồi.';
     }

@@ -94,7 +94,15 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
         f"Approved edit scope: {scope}. Preserve all other visual details. "
         "No text, logo or watermark.\n\n" + prompt
     )
-    output = await client.generate_content(full_prompt, files=files, temporary=True)
+    try:
+        output = await asyncio.wait_for(
+            client.generate_content(full_prompt, files=files, temporary=True),
+            timeout=int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
+        )
+    except asyncio.TimeoutError as error:
+        raise RuntimeError(
+            "Gemini Web image generation timed out. The branch can safely fall back to frame A."
+        ) from error
     generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
     if not generated:
         response_text = str(getattr(output, "text", "") or "").strip()
@@ -158,9 +166,15 @@ async def run() -> None:
                 writer.write(response(404, {"error": "Not found."}))
         except Exception as error:
             writer.write(response(502, {"error": str(error)[:500]}))
-        await writer.drain()
+        try:
+            await writer.drain()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
         writer.close()
-        await writer.wait_closed()
+        try:
+            await writer.wait_closed()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     server = await asyncio.start_server(handle, host, port)
     addresses = ", ".join(str(sock.getsockname()) for sock in server.sockets or [])

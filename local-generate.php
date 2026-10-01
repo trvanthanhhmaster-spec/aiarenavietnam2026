@@ -86,7 +86,9 @@ try {
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_TIMEOUT => 180,
+            // Keep a transient provider stall from holding the Studio request
+            // until Apache's much longer script timeout.
+            CURLOPT_TIMEOUT => 90,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'x-vremix-bridge-secret: ' . $bridgeSecret,
@@ -117,15 +119,27 @@ try {
     };
 
     $frames = [];
+    $fallbackFrames = [];
     $sourceImage = $inputImage;
     foreach ($scopes as $key => $scope) {
-        $image = $callBridge([
-            'prompt' => $basePrompt . "\nFrame " . $key . ': ' . $scope,
-            'sourceImage' => $sourceImage,
-            'aspectRatio' => $aspectRatio,
-            'targetResolution' => $resolution,
-            'changeScope' => $scope,
-        ]);
+        try {
+            $image = $callBridge([
+                'prompt' => $basePrompt . "\nFrame " . $key . ': ' . $scope,
+                'sourceImage' => $sourceImage,
+                'aspectRatio' => $aspectRatio,
+                'targetResolution' => $resolution,
+                'changeScope' => $scope,
+            ]);
+        } catch (Throwable $error) {
+            if ($key === 'A' || !is_array($sourceImage) || empty($sourceImage['data'])) {
+                throw $error;
+            }
+            // A is the locked source frame; preserving it is safer than
+            // failing the complete lookbook when a branch provider call flakes.
+            $image = $sourceImage;
+            $fallbackFrames[] = $key;
+            error_log('[V-Remix] Frame ' . $key . ' fallback to frame A: ' . $error->getMessage());
+        }
         $mimeType = (string) ($image['mimeType'] ?? 'image/png');
         $frames[] = [
             'key' => $key,
@@ -133,6 +147,7 @@ try {
             'url' => 'data:' . $mimeType . ';base64,' . (string) $image['data'],
             'mimeType' => $mimeType,
             'index' => count($frames) + 1,
+            'fallback' => in_array($key, $fallbackFrames, true),
         ];
         if ($key === 'A') {
             $sourceImage = ['mimeType' => $mimeType, 'data' => (string) $image['data']];
@@ -142,10 +157,12 @@ try {
     $output = [
         'generationType' => (string) ($input['generationType'] ?? 'image'),
         'provider' => 'gemini-webapi-local',
-        'story' => 'Bộ ảnh được tạo từ một frame A cố định và bốn phép biến đổi có kiểm soát.',
+        'story' => $fallbackFrames === []
+            ? 'Bộ ảnh được tạo từ một frame A cố định và bốn phép biến đổi có kiểm soát.'
+            : 'Frame A đã được khoá. ' . implode(', ', $fallbackFrames) . ' đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.',
         'guardrail' => 'Giữ cấu trúc nhận diện của Việt phục và chỉ thay đúng phạm vi của từng frame.',
         'genZTip' => 'Dùng một điểm nhấn hiện đại để trang phục truyền thống vẫn là trung tâm.',
-        'imageSource' => 'gemini-webapi',
+        'imageSource' => $fallbackFrames === [] ? 'gemini-webapi' : 'gemini-webapi-partial-fallback',
         'imageUrl' => $frames[0]['url'] ?? null,
         'lookbook' => ['aspectRatio' => $aspectRatio, 'items' => $frames],
     ];
