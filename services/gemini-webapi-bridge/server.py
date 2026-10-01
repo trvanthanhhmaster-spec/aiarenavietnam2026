@@ -134,13 +134,42 @@ async def run() -> None:
             "Do not paste this cookie into chat or commit it to Git."
         )
 
-    client = GeminiClient(secure_1psid, secure_1psidts, proxy=env("GEMINI_WEB_PROXY") or None)
-    await client.init(
-        timeout=int(env("GEMINI_WEB_TIMEOUT_SECONDS", "120")),
-        auto_close=False,
-        auto_refresh=True,
-    )
-    authenticated = getattr(getattr(client, "account_status", None), "name", "") != "UNAUTHENTICATED"
+    client_timeout = int(env("GEMINI_WEB_TIMEOUT_SECONDS", "120"))
+    proxy = env("GEMINI_WEB_PROXY") or None
+
+    async def create_client() -> GeminiClient:
+        fresh_client = GeminiClient(secure_1psid, secure_1psidts, proxy=proxy)
+        await fresh_client.init(
+            timeout=client_timeout,
+            auto_close=False,
+            auto_refresh=True,
+        )
+        return fresh_client
+
+    client = await create_client()
+    client_lock = asyncio.Lock()
+
+    def client_is_authenticated(value: GeminiClient) -> bool:
+        return getattr(getattr(value, "account_status", None), "name", "") == "AVAILABLE"
+
+    async def renew_client() -> GeminiClient:
+        nonlocal client
+        previous = client
+        try:
+            await previous.close()
+        except Exception:
+            pass
+        client = await create_client()
+        return client
+
+    def looks_like_auth_error(error: Exception, value: GeminiClient) -> bool:
+        message = str(error).lower()
+        return (
+            "permission denied" in message
+            or "unauthenticated" in message
+            or "session is not authenticated" in message
+            or not client_is_authenticated(value)
+        )
 
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -149,19 +178,34 @@ async def run() -> None:
             if headers.get("x-vremix-bridge-secret") != secret:
                 writer.write(response(401, {"error": "Invalid bridge secret."}))
             elif method == "GET" and urlparse(path).path == "/health":
+                is_authenticated = client_is_authenticated(client)
                 writer.write(response(
-                    200 if authenticated else 503,
+                    200 if is_authenticated else 503,
                     {
-                        "ok": authenticated,
-                        "authenticated": authenticated,
+                        "ok": is_authenticated,
+                        "authenticated": is_authenticated,
                         "provider": "gemini-webapi",
-                        **({} if authenticated else {
+                        **({} if is_authenticated else {
                             "error": "Gemini Web session is unauthenticated or expired."
                         }),
                     },
                 ))
             elif method == "POST" and urlparse(path).path == "/v1/images/generate":
-                writer.write(response(200, await generate(client, json.loads(body))))
+                async with client_lock:
+                    active_client = client
+                    if not client_is_authenticated(active_client):
+                        active_client = await renew_client()
+                    try:
+                        generated = await generate(active_client, json.loads(body))
+                    except Exception as error:
+                        # A long-lived Web session can be invalidated between
+                        # frames. Re-authenticate once before surfacing the
+                        # error so B-E have a chance to generate independently.
+                        if not looks_like_auth_error(error, active_client):
+                            raise
+                        active_client = await renew_client()
+                        generated = await generate(active_client, json.loads(body))
+                writer.write(response(200, generated))
             else:
                 writer.write(response(404, {"error": "Not found."}))
         except Exception as error:
