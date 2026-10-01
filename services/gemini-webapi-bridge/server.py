@@ -132,9 +132,16 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     if not prompt:
         raise ValueError("prompt is required.")
     source = payload.get("sourceImage")
+    source_file = None
     files = None
     if isinstance(source, dict) and source.get("data"):
-        files = [base64.b64decode(str(source["data"]))]
+        # The upstream uploader assigns raw bytes a .txt filename. Gemini may
+        # then treat the attachment as a document instead of an image, so
+        # provide a real image suffix for image-to-image requests.
+        source_file = tempfile.NamedTemporaryFile(prefix="vremix-source-", suffix=".png")
+        source_file.write(base64.b64decode(str(source["data"])))
+        source_file.flush()
+        files = [Path(source_file.name)]
 
     aspect = str(payload.get("aspectRatio") or "16:9")
     resolution = str(payload.get("targetResolution") or "1080")
@@ -146,29 +153,37 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
         "No text, logo or watermark.\n\n" + prompt
     )
     try:
-        output = await asyncio.wait_for(
-            client.generate_content(full_prompt, files=files, temporary=True),
-            timeout=int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
-        )
-    except asyncio.TimeoutError as error:
-        raise RuntimeError(
-            "Gemini Web image generation timed out. The branch can safely fall back to frame A."
-        ) from error
-    generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
-    if not generated:
-        response_text = str(getattr(output, "text", "") or "").strip()
-        if "signed in" in response_text.lower() or "image creation isn't available" in response_text.lower():
-            raise RuntimeError(
-                "Gemini Web session is unauthenticated or expired. "
-                "Refresh GEMINI_WEB_SECURE_1PSID and GEMINI_WEB_SECURE_1PSIDTS, then restart the bridge."
+        try:
+            output = await asyncio.wait_for(
+                client.generate_content(full_prompt, files=files, temporary=True),
+                timeout=int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
             )
-        raise RuntimeError("Gemini web returned no generated image.")
-    with tempfile.TemporaryDirectory(prefix="vremix-gemini-") as directory:
-        images = []
-        for index, image in enumerate(generated[:5], start=1):
-            mime_type, data = await image_bytes(image, directory, index)
-            images.append({"mimeType": mime_type, "data": data})
-    return {"images": images, "provider": "gemini-webapi", "aspectRatio": aspect}
+        except asyncio.TimeoutError as error:
+            raise RuntimeError(
+                "Gemini Web image generation timed out. The branch can safely fall back to frame A."
+            ) from error
+        generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
+        if not generated:
+            response_text = " ".join(str(getattr(output, "text", "") or "").split())
+            image_types = [type(image).__name__ for image in getattr(output, "images", [])]
+            if "signed in" in response_text.lower() or "image creation isn't available" in response_text.lower():
+                raise RuntimeError(
+                    "Gemini Web session is unauthenticated or expired. "
+                    "Refresh GEMINI_WEB_SECURE_1PSID and GEMINI_WEB_SECURE_1PSIDTS, then restart the bridge."
+                )
+            details = f" ({response_text[:240]})" if response_text else ""
+            if image_types:
+                details += f" [image types: {', '.join(image_types[:5])}]"
+            raise RuntimeError("Gemini web returned no generated image." + details)
+        with tempfile.TemporaryDirectory(prefix="vremix-gemini-") as directory:
+            images = []
+            for index, image in enumerate(generated[:5], start=1):
+                mime_type, data = await image_bytes(image, directory, index)
+                images.append({"mimeType": mime_type, "data": data})
+        return {"images": images, "provider": "gemini-webapi", "aspectRatio": aspect}
+    finally:
+        if source_file is not None:
+            source_file.close()
 
 
 async def run() -> None:

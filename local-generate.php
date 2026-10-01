@@ -74,7 +74,7 @@ try {
         'B' => 'Change only the background and event context. Preserve frame A subject, garment, camera, position and scale.',
         'C' => 'Change only lighting and time of day. Preserve frame A background, subject, garment, camera and composition.',
         'D' => 'Change only the clothing and garment styling. Preserve frame A identity, face, pose, camera and composition.',
-        'E' => 'Change only the subject identity. Preserve frame A position, scale, pose, background, camera and garment composition.',
+        'E' => 'Replace only the adult model identity with another adult model. Preserve frame A position, scale, pose, background, camera and garment composition.',
     ];
 
     $callBridge = static function (array $payload) use ($bridgeUrl, $bridgeSecret): array {
