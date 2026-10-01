@@ -361,16 +361,22 @@
     });
   }
 
-  Array.prototype.forEach.call(frameSteps, function (step) {
-    step.addEventListener('click', function () {
-      state.activeFrame = step.dataset.frameStep;
-      syncFrameSteps();
-      var target = { A: null, B: 'event', C: 'style', D: 'garment', E: 'accessory' }[state.activeFrame];
-      if (target) openMode(target);
-      setStatus(state.activeFrame === 'A'
-        ? 'Ảnh A đã khoá: nhân vật, dáng, góc máy và bố cục.'
-        : 'Đang chỉnh frame ' + state.activeFrame + '. Chỉ lớp được chọn sẽ thay đổi.');
-    });
+  function selectFrame(step) {
+    state.activeFrame = step.dataset.frameStep;
+    syncFrameSteps();
+    var target = { A: null, B: 'event', C: 'style', D: 'garment', E: 'accessory' }[state.activeFrame];
+    if (target) openMode(target);
+    else if (state.openMode) closeDock(false);
+    setStatus(state.activeFrame === 'A'
+      ? 'Ảnh A đã khoá: nhân vật, dáng, góc máy và bố cục.'
+      : 'Đang chỉnh frame ' + state.activeFrame + '. Chỉ lớp được chọn sẽ thay đổi.');
+  }
+
+  // Delegation keeps the cinematic controller interactive even when the
+  // responsive layout changes its internal hit areas.
+  experience.addEventListener('click', function (event) {
+    var step = event.target.closest('[data-frame-step]');
+    if (step) selectFrame(step);
   });
   canvasAspect.addEventListener('change', function () { state.aspectRatio = canvasAspect.value; setStatus('Đã chọn khung ảnh ' + state.aspectRatio + '.'); });
   targetResolution.addEventListener('change', function () { state.resolution = targetResolution.value; setStatus('Đã chọn chất lượng ' + state.resolution + '.'); });

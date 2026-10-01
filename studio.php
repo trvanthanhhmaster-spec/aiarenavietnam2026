@@ -66,13 +66,13 @@ $studioData = $catalog + [
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#10252d">
+    <meta name="theme-color" content="#07131c">
     <title>Studio — <?= $escape($site['title'] ?? 'V-Remix') ?></title>
     <meta name="description" content="Studio phối Việt phục V-Remix theo bối cảnh, dáng áo và điểm nhấn cá nhân.">
     <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/app.css') ?>">
     <link rel="stylesheet" href="assets/css/studio.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio.css') ?>">
 </head>
@@ -82,7 +82,7 @@ $studioData = $catalog + [
             <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>">
                 <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
             </a>
-            <span class="studio-header-middle">Việt phục / interactive studio</span>
+            <span class="studio-header-middle">Tầng 02 / Interactive Studio</span>
             <div class="studio-header-actions">
                 <a class="studio-admin" href="admin.php">Quản trị</a>
                 <a class="studio-back" href="index.php#stage"><span aria-hidden="true">←</span> Tầng 01</a>
@@ -104,8 +104,8 @@ $studioData = $catalog + [
 
             <div class="studio-intro" id="studioIntro">
                 <p class="studio-kicker">V-Remix / Tầng 02</p>
-                <h1>Tạo ảnh<br><em>từ một dáng gốc.</em></h1>
-                <p class="studio-intro__note">Chốt ảnh A trước, sau đó chỉ thay đúng một lớp ở B, C, D hoặc E.</p>
+                <h1>Giữ hồn Việt,<br><em>phối một nhịp mới.</em></h1>
+                <p class="studio-intro__note">Chốt ảnh A, rồi tinh chỉnh từng lớp Bối cảnh, Ánh sáng, Trang phục và Nhân vật.</p>
             </div>
 
             <section class="studio-console" aria-label="Bảng điều khiển tạo ảnh">
