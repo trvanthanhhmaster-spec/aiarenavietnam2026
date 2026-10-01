@@ -14,6 +14,14 @@ cp .env.example .env
 uv run python server.py
 ```
 
+On macOS, set `GEMINI_WEB_AUTO_COOKIE_SYNC=true` and
+`GEMINI_WEB_CHROME_PROFILE=Default` to refresh `__Secure-1PSID` and
+`__Secure-1PSIDTS` from the local Chrome cookie store at startup and after a
+session reconnect. Cookie values are written only to the ignored local `.env`
+file and are never logged or returned by the bridge. The upstream library's
+background cookie refresh is disabled by default because it can invalidate an
+otherwise usable short-lived generation session.
+
 The default listener is `127.0.0.1:8788`. Test it without exposing credentials:
 
 ```sh

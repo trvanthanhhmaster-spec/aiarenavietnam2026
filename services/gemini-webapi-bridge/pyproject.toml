@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Private local bridge for the Gemini web wrapper used by V-Remix."
 requires-python = ">=3.11"
 dependencies = [
+  "browser-cookie3>=0.20.1",
   "gemini-webapi @ git+https://github.com/HanaokaYuzu/Gemini-API.git@8c5b1dcbf54ecf093551cc20bd25cef438190ba8",
 ]
 

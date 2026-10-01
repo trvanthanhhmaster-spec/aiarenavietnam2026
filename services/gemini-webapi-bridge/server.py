@@ -40,6 +40,57 @@ load_dotenv()
 def env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
+def sync_browser_session_cookies(path: Path) -> dict[str, str]:
+    """Read the local Chrome session without ever logging cookie values."""
+    if env("GEMINI_WEB_AUTO_COOKIE_SYNC", "false").lower() not in {"1", "true", "yes", "on"}:
+        return {}
+    try:
+        import browser_cookie3
+    except ImportError:
+        return {}
+
+    configured_path = env("GEMINI_WEB_CHROME_COOKIE_FILE")
+    profile = env("GEMINI_WEB_CHROME_PROFILE", "Default")
+    cookie_path = Path(configured_path).expanduser() if configured_path else (
+        Path.home() / "Library/Application Support/Google/Chrome" / profile / "Cookies"
+    )
+    if not cookie_path.is_file():
+        return {}
+
+    try:
+        jar = browser_cookie3.chrome(cookie_file=str(cookie_path), domain_name="google.com")
+    except Exception:
+        return {}
+
+    values = {
+        cookie.name: cookie.value
+        for cookie in jar
+        if cookie.domain == ".google.com"
+        and cookie.name in {"__Secure-1PSID", "__Secure-1PSIDTS"}
+        and cookie.value
+    }
+    updates = {"GEMINI_WEB_SECURE_1PSID": values.get("__Secure-1PSID", "")}
+    if values.get("__Secure-1PSIDTS"):
+        updates["GEMINI_WEB_SECURE_1PSIDTS"] = values["__Secure-1PSIDTS"]
+    if not updates["GEMINI_WEB_SECURE_1PSID"]:
+        return {}
+
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    output = []
+    replaced = set()
+    for line in lines:
+        key = line.split("=", 1)[0].strip() if "=" in line else ""
+        if key in updates:
+            output.append(f"{key}={updates[key]}")
+            replaced.add(key)
+        else:
+            output.append(line)
+    for key, value in updates.items():
+        if key not in replaced:
+            output.append(f"{key}={value}")
+    path.write_text("\n".join(output) + "\n", encoding="utf-8")
+    return updates
+
 
 def response(status: int, body: dict) -> bytes:
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
@@ -124,25 +175,35 @@ async def run() -> None:
     host = env("GEMINI_WEB_BRIDGE_HOST", "127.0.0.1")
     port = int(env("GEMINI_WEB_BRIDGE_PORT", "8788"))
     secret = env("GEMINI_WEB_BRIDGE_SECRET")
-    secure_1psid = env("GEMINI_WEB_SECURE_1PSID")
-    secure_1psidts = env("GEMINI_WEB_SECURE_1PSIDTS")
+    env_path = Path(__file__).with_name(".env")
+    cookie_values = {
+        "GEMINI_WEB_SECURE_1PSID": env("GEMINI_WEB_SECURE_1PSID"),
+        "GEMINI_WEB_SECURE_1PSIDTS": env("GEMINI_WEB_SECURE_1PSIDTS"),
+    }
+    cookie_values.update(sync_browser_session_cookies(env_path))
     if not secret:
         raise RuntimeError("Set GEMINI_WEB_BRIDGE_SECRET in services/gemini-webapi-bridge/.env.")
-    if not secure_1psid:
+    if not cookie_values["GEMINI_WEB_SECURE_1PSID"]:
         raise RuntimeError(
             "Set GEMINI_WEB_SECURE_1PSID in services/gemini-webapi-bridge/.env. "
             "Do not paste this cookie into chat or commit it to Git."
         )
 
     client_timeout = int(env("GEMINI_WEB_TIMEOUT_SECONDS", "120"))
+    auto_refresh = env("GEMINI_WEB_AUTO_REFRESH", "false").lower() in {"1", "true", "yes", "on"}
     proxy = env("GEMINI_WEB_PROXY") or None
 
     async def create_client() -> GeminiClient:
-        fresh_client = GeminiClient(secure_1psid, secure_1psidts, proxy=proxy)
+        cookie_values.update(sync_browser_session_cookies(env_path))
+        fresh_client = GeminiClient(
+            cookie_values["GEMINI_WEB_SECURE_1PSID"],
+            cookie_values["GEMINI_WEB_SECURE_1PSIDTS"] or None,
+            proxy=proxy,
+        )
         await fresh_client.init(
             timeout=client_timeout,
             auto_close=False,
-            auto_refresh=True,
+            auto_refresh=auto_refresh,
         )
         return fresh_client
 
