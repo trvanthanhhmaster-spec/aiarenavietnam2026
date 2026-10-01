@@ -130,6 +130,11 @@
     window.localStorage.removeItem(activeJobKey);
   }
 
+  function isSynchronousLocalGeneration() {
+    return catalog.generationProvider === 'gemini-webapi-local'
+      || /(?:^|\/)local-generate\.php(?:$|\?)/i.test(String(catalog.generationEndpoint || ''));
+  }
+
   function syncSubmitButton() {
     submitButton.disabled = generationPending && !result.hidden;
     submitButton.innerHTML = generationPending
@@ -436,8 +441,15 @@
     }
     var activeJob = readActiveJob();
     if (activeJob) {
-      resumeGeneration(activeJob);
-      return;
+      // The local Gemini Web adapter completes the full request in one POST
+      // and has no GET status endpoint. Discard stale local jobs from older
+      // sessions instead of polling them and showing a misleading 405 error.
+      if (isSynchronousLocalGeneration()) {
+        clearActiveJob();
+      } else {
+        resumeGeneration(activeJob);
+        return;
+      }
     }
     generateLook();
   });
@@ -470,7 +482,7 @@
         generationMode: state.mode
       }
     };
-    saveActiveJob(activeJob);
+    if (!isSynchronousLocalGeneration()) saveActiveJob(activeJob);
     generationPending = true;
     syncSubmitButton();
     var payload = {
@@ -522,7 +534,7 @@
       }
       if (body.jobId) {
         activeJob.jobId = body.jobId;
-        saveActiveJob(activeJob);
+        if (!isSynchronousLocalGeneration()) saveActiveJob(activeJob);
       }
       applyOutput(body.output || {});
       var completed = body.status === 'completed' ? body : await pollJob(activeJob);
