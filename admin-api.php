@@ -56,21 +56,21 @@ $resources = [
     ],
     'events' => [
         'table' => 'studio_events',
-        'select' => 'id,slug,label,description,cultural_context,sort_order,is_active,created_at,updated_at',
+        'select' => 'id,slug,label,description,cultural_context,preset,sort_order,is_active,created_at,updated_at',
         'order' => 'sort_order.asc',
-        'fields' => ['slug', 'label', 'description', 'cultural_context', 'sort_order', 'is_active'],
+        'fields' => ['slug', 'label', 'description', 'cultural_context', 'preset', 'sort_order', 'is_active'],
     ],
     'garments' => [
         'table' => 'studio_garments',
-        'select' => 'id,slug,name,category,description,origin_note,significance_note,image_url,source_id,sort_order,is_active,created_at,updated_at',
+        'select' => 'id,slug,name,category,description,origin_note,significance_note,image_url,thumbnail_url,prompt_descriptor,negative_descriptor,allowed_contexts,default_colors,source_id,sort_order,is_active,created_at,updated_at',
         'order' => 'sort_order.asc',
-        'fields' => ['slug', 'name', 'category', 'description', 'origin_note', 'significance_note', 'image_url', 'source_id', 'sort_order', 'is_active'],
+        'fields' => ['slug', 'name', 'category', 'description', 'origin_note', 'significance_note', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'negative_descriptor', 'allowed_contexts', 'default_colors', 'source_id', 'sort_order', 'is_active'],
     ],
     'accessories' => [
         'table' => 'studio_accessories',
-        'select' => 'id,slug,name,category,description,image_url,sort_order,is_active,created_at,updated_at',
+        'select' => 'id,slug,name,category,description,image_url,thumbnail_url,prompt_descriptor,compatibility,sort_order,is_active,created_at,updated_at',
         'order' => 'sort_order.asc',
-        'fields' => ['slug', 'name', 'category', 'description', 'image_url', 'sort_order', 'is_active'],
+        'fields' => ['slug', 'name', 'category', 'description', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'compatibility', 'sort_order', 'is_active'],
     ],
     'options' => [
         'table' => 'studio_options',
@@ -80,9 +80,9 @@ $resources = [
     ],
     'branches' => [
         'table' => 'experience_branches',
-        'select' => 'id,page_slug,branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url,is_base,sort_order,is_active,updated_at',
+        'select' => 'id,page_slug,branch_key,studio_event_slug,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url,thumbnail_url,is_base,sort_order,is_active,updated_at',
         'order' => 'sort_order.asc',
-        'fields' => ['page_slug', 'branch_key', 'label', 'forward_guard', 'reverse_guard', 'forward_media_url', 'reverse_media_url', 'is_base', 'sort_order', 'is_active'],
+        'fields' => ['page_slug', 'branch_key', 'studio_event_slug', 'label', 'forward_guard', 'reverse_guard', 'forward_media_url', 'reverse_media_url', 'thumbnail_url', 'is_base', 'sort_order', 'is_active'],
     ],
     'sources' => [
         'table' => 'cultural_sources',
@@ -110,6 +110,25 @@ $resources = [
         'order' => 'created_at.desc',
         'fields' => [],
         'readonly' => true,
+    ],
+    'rules' => [
+        'table' => 'cultural_rules',
+        'select' => 'id,garment_id,rule_text,severity,context,review_status,is_active,created_at,updated_at',
+        'order' => 'updated_at.desc',
+        'fields' => ['garment_id', 'rule_text', 'severity', 'context', 'review_status', 'is_active'],
+    ],
+    'looks' => [
+        'table' => 'looks',
+        'select' => 'id,name,occasion_slug,garment_slug,color_slug,pattern_slug,style_slug,scene_slug,selection,locks,image_url,visibility,created_at,updated_at',
+        'order' => 'created_at.desc',
+        'fields' => ['name', 'visibility'],
+        'readonly' => true,
+    ],
+    'discovery' => [
+        'table' => 'discovery_looks',
+        'select' => 'id,look_id,status,moderation_note,reviewed_at,created_at',
+        'order' => 'created_at.desc',
+        'fields' => ['status', 'moderation_note'],
     ],
 ];
 
@@ -203,14 +222,14 @@ try {
             $value = $record[$field];
             if (is_string($value)) {
                 $value = trim($value);
-                if (in_array($field, ['image_url', 'source_url', 'license', 'reverse_media_url', 'source_id'], true) && $value === '') {
+                if (in_array($field, ['image_url', 'thumbnail_url', 'source_url', 'license', 'reverse_media_url', 'source_id', 'studio_event_slug', 'garment_id'], true) && $value === '') {
                     $value = null;
                 }
                 if (mb_strlen($value ?? '') > 30000) {
                     $respond(['error' => 'Nội dung trường ' . $field . ' quá dài.'], 422);
                 }
             }
-            if (is_array($value) && !in_array($field, ['ui', 'frame_plan'], true)) {
+            if (is_array($value) && !in_array($field, ['ui', 'frame_plan', 'preset', 'allowed_contexts', 'default_colors', 'compatibility'], true)) {
                 $respond(['error' => 'Kiểu dữ liệu trường ' . $field . ' không hợp lệ.'], 422);
             }
             $payload[$field] = $value;

@@ -17,10 +17,15 @@ const runtimeSettingsCacheTtlMs = 15_000;
 type LookRequest = {
   clientRequestId?: string;
   eventSlug?: string;
+  location?: string;
+  season?: string;
   garmentSlug?: string;
   accessorySlugs?: string[];
   colorSlug?: string;
+  patternSlug?: string;
   styleSlug?: string;
+  sceneSlug?: string;
+  locks?: Record<string, boolean>;
   generationType?: "image" | "video" | "both";
   inputImage?: { mimeType: string; data: string };
   aspectRatio?: "16:9" | "1:1" | "9:16";
@@ -238,7 +243,7 @@ async function runtimeSettings(): Promise<RuntimeSettings> {
     textModel: Deno.env.get("GEMINI_TEXT_MODEL") || "gemini-2.5-flash",
     imageModel: Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image",
     videoModel: Deno.env.get("GEMINI_VIDEO_MODEL") || "veo-3.1-fast-generate-001",
-    imageVariants: Math.min(4, Math.max(1, Number.parseInt(Deno.env.get("GEMINI_IMAGE_VARIANTS") || "4", 10))),
+    imageVariants: Math.min(5, Math.max(1, Number.parseInt(Deno.env.get("GEMINI_IMAGE_VARIANTS") || "5", 10))),
     imageUnitCostVnd: 0,
     videoUnitCostVnd: 0,
     dailyBudgetVnd: 0,
@@ -261,7 +266,7 @@ async function runtimeSettings(): Promise<RuntimeSettings> {
       fallback.textModel = String(row.text_model || fallback.textModel);
       fallback.imageModel = String(row.image_model || fallback.imageModel);
       fallback.videoModel = String(row.video_model || fallback.videoModel);
-      fallback.imageVariants = Math.min(4, Math.max(1, Number(row.image_variants || fallback.imageVariants)));
+      fallback.imageVariants = Math.min(5, Math.max(1, Number(row.image_variants || fallback.imageVariants)));
       fallback.imageUnitCostVnd = Math.max(0, Number(row.image_unit_cost_vnd || 0));
       fallback.videoUnitCostVnd = Math.max(0, Number(row.video_unit_cost_vnd || 0));
       fallback.dailyBudgetVnd = Math.max(0, Number(row.daily_budget_vnd || 0));
@@ -410,10 +415,15 @@ async function askGemini(
     promptVersion.system_prompt,
     "Return JSON with keys: story, guardrail, genZTip, imagePrompt, confidence.",
     `Selected event: ${JSON.stringify(request.eventSlug)}`,
+    `Location: ${JSON.stringify(request.location)}`,
+    `Season: ${JSON.stringify(request.season)}`,
     `Selected garment: ${JSON.stringify(request.garmentSlug)}`,
     `Selected accessories: ${JSON.stringify(request.accessorySlugs || [])}`,
     `Selected color: ${JSON.stringify(request.colorSlug)}`,
+    `Selected pattern: ${JSON.stringify(request.patternSlug)}`,
     `Selected style: ${JSON.stringify(request.styleSlug)}`,
+    `Selected scene: ${JSON.stringify(request.sceneSlug)}`,
+    `Base look locks: ${JSON.stringify(request.locks || {})}`,
     `Catalog facts: ${JSON.stringify(catalog)}`,
   ].join("\n");
   const parts: Record<string, unknown>[] = [{ text: prompt }];
@@ -739,15 +749,22 @@ async function processLook(
   settings: RuntimeSettings,
 ) {
   await updateJob(job.id, "processing", {});
-  const [event, garment, accessories, options] = await Promise.all([
-    selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context`),
-    selectCatalog("studio_garments", `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&is_active=eq.true&select=slug,name,category,description,origin_note,significance_note,image_url`),
+  const [event, garment, accessories, options, rules] = await Promise.all([
+    selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context,preset`),
+    selectCatalog("studio_garments", `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&is_active=eq.true&select=id,slug,name,category,description,origin_note,significance_note,image_url,prompt_descriptor,negative_descriptor`),
     selectCatalog("studio_accessories", `${input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : ""}is_active=eq.true&select=slug,name,description`),
     selectCatalog("studio_options", "is_active=eq.true&select=option_type,slug,label,value,prompt_hint"),
+    selectCatalog("cultural_rules", `is_active=eq.true&review_status=eq.approved&select=garment_id,rule_text,severity,context`),
   ]);
   if (!event.length || !garment.length) throw new Error("Selection is not in the approved catalog.");
 
-  const catalog = { event: event[0], garment: garment[0], accessories, options };
+  const catalog = {
+    event: event[0],
+    garment: garment[0],
+    accessories,
+    options,
+    rules: rules.filter((rule: Record<string, unknown>) => !rule.garment_id || rule.garment_id === garment[0].id),
+  };
   let copy: Awaited<ReturnType<typeof askGemini>>;
   let copySource: "gemini" | "catalog-fallback" = "gemini";
   let copyWarning: string | undefined;

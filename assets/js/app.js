@@ -30,6 +30,7 @@
   var notice     = document.getElementById('notice');
   var noticeText = document.getElementById('noticeText');
   var retryBtn   = document.getElementById('retryBtn');
+  var exploreStudio = document.getElementById('exploreStudio');
   var buttons    = Array.prototype.slice.call(controller.querySelectorAll('button.cell'));
 
   var video = {};
@@ -54,6 +55,18 @@
   var cleanups = [];
   var loadingRevealTimer = null;
 
+  function updateStudioLink() {
+    if (!exploreStudio) return;
+    var selected = scene !== 'base' ? BRANCHES[scene] : null;
+    var params = new URLSearchParams();
+    if (selected) {
+      params.set('occasion', selected.studioEventSlug || scene);
+      params.set('branch', scene);
+      if (selected.label) params.set('label', selected.label);
+    }
+    exploreStudio.href = 'studio.php' + (params.toString() ? '?' + params.toString() : '');
+  }
+
   function isMobile() { return window.matchMedia('(max-width: 700px)').matches; }
   function say(msg) { statusEl.textContent = msg; }
   function addCleanup(fn) { cleanups.push(fn); }
@@ -63,6 +76,7 @@
     stage.dataset.playback = playback;
     stage.dataset.direction = direction;
     controller.setAttribute('aria-busy', locked ? 'true' : 'false');
+    updateStudioLink();
   }
 
   /* ---------------- readiness for all eight clips ---------------- */

@@ -36,7 +36,7 @@ final class SiteContentRepository
             $branchRows = $this->client->select('experience_branches', [
                 'page_slug' => 'eq.' . $this->pageSlug,
                 'is_active' => 'eq.true',
-                'select' => 'branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url,is_base',
+                'select' => 'branch_key,label,forward_guard,reverse_guard,forward_media_url,reverse_media_url,is_base,studio_event_slug,thumbnail_url',
                 'order' => 'sort_order.asc',
             ]);
 
@@ -64,6 +64,8 @@ final class SiteContentRepository
                     'reverseUrl' => $reverseUrl,
                     'reverseShared' => empty($row['reverse_media_url']) || $row['reverse_media_url'] === $forwardUrl,
                     'isBase' => (bool) ($row['is_base'] ?? false),
+                    'studioEventSlug' => (string) ($row['studio_event_slug'] ?? ''),
+                    'thumbnailUrl' => (string) ($row['thumbnail_url'] ?? ''),
                 ];
             }
 

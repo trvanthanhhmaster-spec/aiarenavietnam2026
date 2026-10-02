@@ -12,6 +12,19 @@ use App\Repositories\StudioRepository;
 use App\Support\Env;
 
 Env::load(__DIR__ . '/.env');
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_name('vremix_studio');
+    session_set_cookie_params([
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'path' => '/',
+    ]);
+    session_start();
+}
+if (empty($_SESSION['studio_csrf'])) {
+    $_SESSION['studio_csrf'] = bin2hex(random_bytes(24));
+}
 $database = require __DIR__ . '/config/database.php';
 $site = null;
 $catalog = null;
@@ -59,6 +72,8 @@ $studioData = $catalog + [
         : rtrim($database['url'], '/') . '/functions/v1/generate-look',
     'generationProvider' => $localWebGeneration ? 'gemini-webapi-local' : 'supabase-edge',
     'baseMedia' => $baseMedia,
+    'lookEndpoint' => 'look-api.php',
+    'lookCsrf' => (string) $_SESSION['studio_csrf'],
 ];
 ?>
 <!doctype html>
@@ -82,7 +97,11 @@ $studioData = $catalog + [
             <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>">
                 <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
             </a>
-            <span class="studio-header-middle">Tầng 02 / Interactive Studio</span>
+            <nav class="studio-header-middle" aria-label="Điều hướng chính">
+                <a href="index.php#stage">Khám phá</a>
+                <a class="is-active" href="studio.php" aria-current="page">Studio</a>
+                <a href="#studioVariants">Lookbook</a>
+            </nav>
             <div class="studio-header-actions">
                 <a class="studio-admin" href="admin.php">Quản trị</a>
                 <a class="studio-back" href="index.php#stage"><span aria-hidden="true">←</span> Tầng 01</a>
@@ -90,112 +109,182 @@ $studioData = $catalog + [
         </header>
 
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">
-            <div class="studio-plane" id="studioPlane">
-                <div class="studio-frame">
-                    <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
-                    <div class="studio-media-placeholder" aria-hidden="true">
-                        <span class="studio-media-placeholder__orb"></span>
-                        <span class="studio-media-placeholder__line"></span>
+            <div class="studio-workbench">
+                <aside class="studio-toolbox" aria-label="Tuỳ chỉnh bản phối">
+                    <div class="studio-intro" id="studioIntro">
+                        <p class="studio-kicker" id="projectKicker">Dự án mới / Tầng 02</p>
+                        <h1 id="projectTitle">Bắt đầu một<br><em>dáng Việt mới.</em></h1>
+                        <p class="studio-intro__note" id="projectContext">Chọn Việt phục, bối cảnh và phong cách hoặc dùng một gợi ý nhanh.</p>
                     </div>
-                    <div class="studio-frame__veil" aria-hidden="true"></div>
-                </div>
-                <div class="studio-hotspots" id="studioHotspots"></div>
+
+                    <section class="studio-quick-start" id="studioQuickStart" aria-label="Gợi ý nhanh">
+                        <div class="studio-quick-start__head">
+                            <span>Bạn muốn mặc đi đâu?</span>
+                            <small>Gợi ý nhanh</small>
+                        </div>
+                        <div class="studio-quick-start__options" id="quickStartOptions"></div>
+                    </section>
+
+                    <nav class="studio-tool-list" aria-label="Các lớp phối đồ">
+                        <button type="button" data-mode="garment"><span>01</span><strong>Trang phục</strong><small id="footerGarment">Chưa chọn</small></button>
+                        <button type="button" data-mode="color"><span>02</span><strong>Màu sắc</strong><small id="footerColor">Chưa chọn</small></button>
+                        <button type="button" data-mode="pattern"><span>03</span><strong>Họa tiết</strong><small id="footerPattern">Chưa chọn</small></button>
+                        <button type="button" data-mode="accessory"><span>04</span><strong>Phụ kiện</strong><small id="footerAccessory">Không phụ kiện</small></button>
+                        <button type="button" data-mode="style"><span>05</span><strong>Phong cách</strong><small id="footerStyle">Chưa chọn</small></button>
+                        <button type="button" data-mode="scene"><span>06</span><strong>Bối cảnh</strong><small id="footerScene">Chưa chọn</small></button>
+                        <button type="button" data-mode="event"><span>07</span><strong>Dịp mặc</strong><small id="footerEvent">Chưa chọn</small></button>
+                    </nav>
+
+                    <aside class="studio-dock" id="studioDock" aria-hidden="true" inert aria-labelledby="dockTitle">
+                        <div class="studio-dock__header">
+                            <div>
+                                <p class="studio-dock__index" id="dockIndex">01 / 07</p>
+                                <h2 id="dockTitle">Trang phục</h2>
+                            </div>
+                            <button class="icon-button" id="dockClose" type="button" aria-label="Đóng bảng lựa chọn">×</button>
+                        </div>
+                        <p class="studio-dock__description" id="dockDescription"></p>
+                        <div class="studio-dock__content" id="dockContent"></div>
+                        <div class="studio-dock__hint" id="dockHint">Chọn một phương án để cập nhật bản phối.</div>
+                    </aside>
+                </aside>
+
+                <section class="studio-preview" aria-label="AI Preview">
+                    <div class="studio-preview__top">
+                        <div>
+                            <p class="studio-kicker">AI preview / Base look</p>
+                            <h2 id="previewTitle">Khung ảnh A</h2>
+                        </div>
+                        <div class="studio-spec-grid">
+                            <label>Khung ảnh
+                                <select id="canvasAspect">
+                                    <option value="16:9">16:9</option>
+                                    <option value="1:1">1:1</option>
+                                    <option value="9:16">9:16</option>
+                                </select>
+                            </label>
+                            <label>Chất lượng
+                                <select id="targetResolution">
+                                    <option value="1080">1080</option>
+                                    <option value="720">720</option>
+                                    <option value="2160">2160</option>
+                                </select>
+                            </label>
+                            <label>Chế độ
+                                <select id="generationMode">
+                                    <option value="text-to-image">Text → image</option>
+                                    <option value="image-to-image">Image → image</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="studio-plane" id="studioPlane">
+                        <div class="studio-frame">
+                            <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
+                            <div class="studio-media-placeholder" aria-hidden="true">
+                                <span class="studio-media-placeholder__orb"></span>
+                                <span class="studio-media-placeholder__line"></span>
+                            </div>
+                            <div class="studio-frame__veil" aria-hidden="true"></div>
+                            <div class="studio-preview__empty" id="previewEmpty">
+                                <span>V–R / 02</span>
+                                <strong>Chọn ba lớp đầu tiên<br>để định hình Base Look.</strong>
+                                <small>Việt phục · Bối cảnh · Phong cách</small>
+                            </div>
+                        </div>
+                        <div class="studio-hotspots" id="studioHotspots"></div>
+                    </div>
+
+                    <section class="studio-locks" aria-label="Base Look Lock">
+                        <div>
+                            <span>Base Look Lock</span>
+                            <strong>Giữ phần không thay đổi</strong>
+                        </div>
+                        <div class="studio-locks__items" id="baseLookLocks">
+                            <?php foreach (['character' => 'Nhân vật', 'face' => 'Khuôn mặt', 'hair' => 'Tóc', 'garment' => 'Trang phục', 'background' => 'Bối cảnh', 'pose' => 'Pose', 'camera' => 'Camera', 'lighting' => 'Ánh sáng'] as $lockKey => $lockLabel): ?>
+                                <label><input type="checkbox" data-lock="<?= $escape($lockKey) ?>" checked><span><?= $escape($lockLabel) ?></span></label>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+
+                    <div class="studio-frame-plan" aria-label="Kế hoạch frame">
+                        <button type="button" class="studio-frame-step is-active" data-frame-step="A"><b>A</b><span><strong>Base</strong><small>Khoá bố cục</small></span></button>
+                        <button type="button" class="studio-frame-step" data-frame-step="B"><b>B</b><span><strong>Bối cảnh</strong><small id="frameBSummary">Chỉ thay nền</small></span></button>
+                        <button type="button" class="studio-frame-step" data-frame-step="C"><b>C</b><span><strong>Ánh sáng</strong><small id="frameCSummary">Chỉ thay sáng</small></span></button>
+                        <button type="button" class="studio-frame-step" data-frame-step="D"><b>D</b><span><strong>Trang phục</strong><small id="frameDSummary">Chỉ thay áo</small></span></button>
+                        <button type="button" class="studio-frame-step" data-frame-step="E"><b>E</b><span><strong>Phụ kiện</strong><small id="frameESummary">Chỉ thay điểm nhấn</small></span></button>
+                    </div>
+
+                    <form class="studio-rail" id="studioForm">
+                        <div class="studio-rail__copy">
+                            <span class="studio-rail__status"><i></i><span id="studioStatus">Dự án mới chưa có lựa chọn</span></span>
+                            <p id="selectionSummary">Chọn Việt phục, bối cảnh và phong cách để bắt đầu.</p>
+                        </div>
+                        <label class="studio-upload" for="inputImage">
+                            <span class="studio-upload__icon" aria-hidden="true">＋</span>
+                            <span><strong>Tải ảnh của bạn</strong><small id="uploadName">Tuỳ chọn · tối đa 8 MB</small></span>
+                            <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
+                        </label>
+                        <label class="studio-output">
+                            <span>Đầu ra</span>
+                            <select id="outputType" aria-label="Chọn loại đầu ra">
+                                <option value="image">Ảnh lookbook</option>
+                                <option value="video">Video Veo</option>
+                                <option value="both">Ảnh + video</option>
+                            </select>
+                        </label>
+                        <button class="studio-submit" type="submit">Generate <span aria-hidden="true">↗</span></button>
+                    </form>
+                </section>
+
+                <aside class="studio-insights" aria-label="Thông tin văn hoá và kiểm tra">
+                    <section class="studio-insight studio-passport">
+                        <div class="studio-insight__head"><span>Hộ chiếu Di sản</span><small>01</small></div>
+                        <h2 id="passportTitle">Chưa chọn Việt phục</h2>
+                        <dl>
+                            <div><dt>Nguồn gốc</dt><dd id="passportOrigin">Chọn một trang phục để xem nội dung đã được duyệt.</dd></div>
+                            <div><dt>Đặc điểm</dt><dd id="passportFeature">—</dd></div>
+                            <div><dt>Ý nghĩa</dt><dd id="passportMeaning">—</dd></div>
+                            <div><dt>Nguồn tham khảo</dt><dd id="passportSource">Đang chờ nguồn Approved.</dd></div>
+                        </dl>
+                    </section>
+                    <section class="studio-insight studio-check">
+                        <div class="studio-insight__head"><span>V-Remix Check</span><small>02</small></div>
+                        <ul id="culturalCheckList">
+                            <li data-check="color">○ Chưa chọn màu</li>
+                            <li data-check="event">○ Chưa chọn dịp mặc</li>
+                            <li data-check="accessory">○ Chưa chọn phụ kiện</li>
+                        </ul>
+                        <p id="culturalWarning">Hệ thống sẽ hiển thị quy tắc văn hoá đã được duyệt.</p>
+                    </section>
+                    <section class="studio-insight studio-tips">
+                        <div class="studio-insight__head"><span>Mẹo Gen Z</span><small>03</small></div>
+                        <div><span>Địa điểm</span><strong id="tipLocation">Campus · Phố cổ · Văn Miếu</strong></div>
+                        <div><span>Góc chụp</span><strong>Eye-level · 3/4 body · Walking shot</strong></div>
+                        <div><span>Styling</span><strong id="tipStyling">Chọn một điểm nhấn hiện đại vừa đủ.</strong></div>
+                    </section>
+                </aside>
             </div>
 
-            <div class="studio-intro" id="studioIntro">
-                <p class="studio-kicker">V-Remix / Tầng 02</p>
-                <h1>Giữ hồn Việt,<br><em>phối một nhịp mới.</em></h1>
-                <p class="studio-intro__note">Chốt ảnh A, rồi tinh chỉnh từng lớp Bối cảnh, Ánh sáng, Trang phục và Nhân vật.</p>
-            </div>
-
-            <section class="studio-console" aria-label="Bảng điều khiển tạo ảnh">
-                <div class="studio-console__head">
-                    <div>
-                        <p class="studio-console__eyebrow">Generation setup</p>
-                        <h2>Khung tạo ảnh</h2>
-                    </div>
-                    <span class="studio-console__badge">A → B / C / D / E</span>
+            <section class="studio-variants" id="studioVariants" aria-label="Các phiên bản look">
+                <div class="studio-variants__title">
+                    <span>Lookbook / Variants</span>
+                    <strong>Giữ Base, thử từng thay đổi.</strong>
                 </div>
-                <div class="studio-spec-grid">
-                    <label>Khung ảnh
-                        <select id="canvasAspect">
-                            <option value="16:9">16:9 ngang</option>
-                            <option value="1:1">1:1 vuông</option>
-                            <option value="9:16">9:16 dọc</option>
-                        </select>
-                    </label>
-                    <label>Chất lượng
-                        <select id="targetResolution">
-                            <option value="1080">1080</option>
-                            <option value="720">720</option>
-                            <option value="2160">2160</option>
-                        </select>
-                    </label>
-                    <label class="studio-spec-grid__wide">Chế độ
-                        <select id="generationMode">
-                            <option value="text-to-image">Text to image (prompt)</option>
-                            <option value="image-to-image">Image to image (prompt + image)</option>
-                        </select>
-                    </label>
+                <div class="studio-variants__strip" id="variantStrip">
+                    <button type="button" class="is-active" data-variant="base"><span>A</span><strong>Look gốc</strong><small>Chưa tạo ảnh</small></button>
+                    <button type="button" data-variant="1"><span>01</span><strong>Variant 1</strong><small>Chưa tạo</small></button>
+                    <button type="button" data-variant="2"><span>02</span><strong>Variant 2</strong><small>Chưa tạo</small></button>
+                    <button type="button" data-variant="3"><span>03</span><strong>Variant 3</strong><small>Chưa tạo</small></button>
                 </div>
-                <div class="studio-frame-plan">
-                    <div class="studio-frame-plan__header"><span>Biến đổi có kiểm soát</span><small>Chỉ thay phần ghi dưới đây</small></div>
-                    <button type="button" class="studio-frame-step is-active" data-frame-step="A"><b>A</b><span><strong>Ảnh gốc</strong><small>Khoá khuôn mặt, dáng, góc máy</small></span></button>
-                    <button type="button" class="studio-frame-step" data-frame-step="B"><b>B</b><span><strong>Bối cảnh</strong><small id="frameBSummary">Chỉ thay phông nền</small></span></button>
-                    <button type="button" class="studio-frame-step" data-frame-step="C"><b>C</b><span><strong>Ánh sáng</strong><small id="frameCSummary">Chỉ thay thời điểm trong ngày</small></span></button>
-                    <button type="button" class="studio-frame-step" data-frame-step="D"><b>D</b><span><strong>Trang phục</strong><small id="frameDSummary">Chỉ thay quần áo</small></span></button>
-                    <button type="button" class="studio-frame-step" data-frame-step="E"><b>E</b><span><strong>Nhân vật</strong><small id="frameESummary">Giữ vị trí và kích thước tương đương</small></span></button>
+                <div class="studio-variants__actions">
+                    <button type="button" id="compareLooks" disabled>So sánh</button>
+                    <button type="button" id="saveLook" disabled>Lưu Look</button>
+                    <button type="button" id="addVariant">＋ Tạo thêm</button>
                 </div>
-                <p class="studio-console__hint">Bấm một nhánh để mở đúng nhóm lựa chọn trên ảnh; không cần chạm vào vị trí cố định.</p>
             </section>
-
-            <aside class="studio-dock" id="studioDock" aria-hidden="true" inert aria-labelledby="dockTitle">
-                <div class="studio-dock__header">
-                    <div>
-                        <p class="studio-dock__index" id="dockIndex">01 / 04</p>
-                        <h2 id="dockTitle">Bối cảnh</h2>
-                    </div>
-                    <button class="icon-button" id="dockClose" type="button" aria-label="Đóng bảng lựa chọn">×</button>
-                </div>
-                <p class="studio-dock__description" id="dockDescription"></p>
-                <div class="studio-dock__content" id="dockContent"></div>
-                <div class="studio-dock__hint" id="dockHint">Chọn một phương án để cập nhật bản phối.</div>
-            </aside>
-
-            <form class="studio-rail" id="studioForm">
-                <div class="studio-rail__copy">
-                    <span class="studio-rail__status"><i></i><span id="studioStatus">Bản phối đang ở trạng thái nháp</span></span>
-                    <p id="selectionSummary">Chọn bối cảnh để bắt đầu.</p>
-                </div>
-                <label class="studio-upload" for="inputImage">
-                    <span class="studio-upload__icon" aria-hidden="true">＋</span>
-                    <span><strong>Ảnh đại diện</strong><small id="uploadName">Tuỳ chọn</small></span>
-                    <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
-                </label>
-                <label class="studio-output">
-                    <span>Đầu ra</span>
-                    <select id="outputType" aria-label="Chọn loại đầu ra">
-                        <option value="image">Ảnh lookbook</option>
-                        <option value="video">Video Veo</option>
-                        <option value="both">Ảnh + video</option>
-                    </select>
-                </label>
-                <button class="studio-submit" type="submit">Tạo bản phối <span aria-hidden="true">↗</span></button>
-            </form>
         </section>
-
-        <footer class="studio-footer">
-            <div class="studio-footer__notes" aria-label="Bốn điểm bắt đầu">
-                <button type="button" data-mode="event"><span>01</span><strong>Bối cảnh</strong><small id="footerEvent">Chọn nơi bạn sẽ xuất hiện</small></button>
-                <button type="button" data-mode="garment"><span>02</span><strong>Cổ phục</strong><small id="footerGarment">Chọn dáng áo làm gốc</small></button>
-                <button type="button" data-mode="style"><span>03</span><strong>Phối sắc</strong><small id="footerStyle">Màu và tinh thần tổng thể</small></button>
-                <button type="button" data-mode="accessory"><span>04</span><strong>Phụ kiện</strong><small id="footerAccessory">Thêm một nhịp hiện đại</small></button>
-            </div>
-            <div class="studio-footer__baseline">
-                <span>V-Remix — Việt phục Remix</span>
-                <span>Data từ catalog đã duyệt · AI server-side qua Edge Function</span>
-            </div>
-        </footer>
 
         <section class="studio-result" id="studioResult" aria-live="polite" hidden>
             <div class="studio-result__backdrop" aria-hidden="true"></div>

@@ -14,23 +14,23 @@ final class StudioRepository
     }
 
     /**
-     * @return array{events: array<int, array<string, mixed>>, garments: array<int, array<string, mixed>>, accessories: array<int, array<string, mixed>>, colors: array<int, array<string, mixed>>, styles: array<int, array<string, mixed>>, generation: array<string, mixed>}|null
+     * @return array<string, mixed>|null
      */
     public function getCatalog(): ?array
     {
         try {
             $events = $this->client->select('studio_events', [
-                'select' => 'slug,label,description,cultural_context',
+                'select' => 'slug,label,description,cultural_context,preset',
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
             $garments = $this->client->select('studio_garments', [
-                'select' => 'slug,name,category,description,origin_note,significance_note,image_url',
+                'select' => 'id,slug,name,category,description,origin_note,significance_note,image_url,thumbnail_url,prompt_descriptor,negative_descriptor,allowed_contexts,default_colors,source_id',
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
             $accessories = $this->client->select('studio_accessories', [
-                'select' => 'slug,name,category,description,image_url',
+                'select' => 'id,slug,name,category,description,image_url,thumbnail_url,prompt_descriptor,compatibility',
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
@@ -44,6 +44,17 @@ final class StudioRepository
                 'id' => 'eq.1',
                 'limit' => '1',
             ]);
+            $sources = $this->client->select('cultural_sources', [
+                'select' => 'id,title,source_url,license,curator_note,review_status',
+                'review_status' => 'eq.published',
+                'order' => 'updated_at.desc',
+            ]);
+            $rules = $this->client->select('cultural_rules', [
+                'select' => 'id,garment_id,rule_text,severity,context',
+                'is_active' => 'eq.true',
+                'review_status' => 'eq.approved',
+                'order' => 'created_at.asc',
+            ]);
 
             $catalog = [
                 'events' => $events,
@@ -51,6 +62,10 @@ final class StudioRepository
                 'accessories' => $accessories,
                 'colors' => [],
                 'styles' => [],
+                'patterns' => [],
+                'scenes' => [],
+                'sources' => $sources,
+                'rules' => $rules,
                 'generation' => $generationRows[0] ?? [
                     'canvas_aspect_ratio' => '16:9',
                     'target_resolution' => '1080',
@@ -65,6 +80,10 @@ final class StudioRepository
                     $catalog['colors'][] = $option;
                 } elseif ($type === 'style') {
                     $catalog['styles'][] = $option;
+                } elseif ($type === 'pattern') {
+                    $catalog['patterns'][] = $option;
+                } elseif ($type === 'scene') {
+                    $catalog['scenes'][] = $option;
                 }
             }
 

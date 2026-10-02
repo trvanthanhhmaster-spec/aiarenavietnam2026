@@ -128,14 +128,17 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <button data-resource="events"><span>02</span>Bối cảnh</button>
                 <button data-resource="garments"><span>03</span>Cổ phục</button>
                 <button data-resource="accessories"><span>04</span>Phụ kiện</button>
-                <button data-resource="options"><span>05</span>Màu & phong cách</button>
+                <button data-resource="options"><span>05</span>Màu, họa tiết & phong cách</button>
+                <button data-resource="rules"><span>06</span>Quy tắc văn hoá</button>
                 <p class="admin-nav__label">Editorial</p>
-                <button data-resource="branches"><span>06</span>Media tầng 1</button>
-                <button data-resource="sources"><span>07</span>Nguồn văn hoá</button>
-                <button data-resource="prompts"><span>08</span>Prompt versions</button>
-                <button data-resource="pages"><span>09</span>Trang chủ</button>
+                <button data-resource="branches"><span>07</span>Tầng 1 / Media</button>
+                <button data-resource="sources"><span>08</span>Nguồn văn hoá</button>
+                <button data-resource="prompts"><span>09</span>Prompt versions</button>
+                <button data-resource="pages"><span>10</span>Trang chủ</button>
                 <p class="admin-nav__label">Operations</p>
-                <button data-resource="jobs"><span>10</span>Generation jobs</button>
+                <button data-resource="looks"><span>11</span>Looks</button>
+                <button data-resource="discovery"><span>12</span>Discovery pool</button>
+                <button data-resource="jobs"><span>13</span>Generation jobs</button>
             </nav>
             <section class="admin-content">
                 <div class="admin-content__toolbar">

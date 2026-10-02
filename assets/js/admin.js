@@ -13,15 +13,18 @@
       columns: ['generation_enabled', 'image_provider', 'image_model', 'video_provider', 'video_model', 'gemini_api_key_hint', 'secret_source']
     },
     'studio-generation': { kicker: 'AI operations / 01', title: 'Studio generation', columns: ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'base_prompt'] },
-    events: { kicker: 'Collection / 02', title: 'Bối cảnh', columns: ['label', 'slug', 'description', 'is_active'] },
+    events: { kicker: 'Collection / 02', title: 'Dịp mặc & preset', columns: ['label', 'slug', 'description', 'is_active'] },
     garments: { kicker: 'Collection / 03', title: 'Cổ phục', columns: ['name', 'category', 'slug', 'is_active'] },
     accessories: { kicker: 'Collection / 04', title: 'Phụ kiện', columns: ['name', 'category', 'slug', 'is_active'] },
-    options: { kicker: 'Collection / 05', title: 'Màu & phong cách', columns: ['label', 'option_type', 'slug', 'is_active'] },
-    branches: { kicker: 'Editorial / 06', title: 'Media tầng 1', columns: ['label', 'branch_key', 'forward_media_url', 'is_base', 'is_active'] },
-    sources: { kicker: 'Editorial / 07', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
-    prompts: { kicker: 'Editorial / 08', title: 'Prompt versions', columns: ['slug', 'version', 'model', 'is_active'] },
-    pages: { kicker: 'Editorial / 09', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
-    jobs: { kicker: 'Operations / 10', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'error_message'] }
+    options: { kicker: 'Collection / 05', title: 'Màu, họa tiết & phong cách', columns: ['label', 'option_type', 'slug', 'is_active'] },
+    rules: { kicker: 'Collection / 06', title: 'Quy tắc văn hoá', columns: ['rule_text', 'severity', 'context', 'review_status', 'is_active'] },
+    branches: { kicker: 'Editorial / 07', title: 'Tầng 1 / Media', columns: ['label', 'branch_key', 'studio_event_slug', 'forward_media_url', 'is_base', 'is_active'] },
+    sources: { kicker: 'Editorial / 08', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
+    prompts: { kicker: 'Editorial / 09', title: 'Prompt versions', columns: ['slug', 'version', 'model', 'is_active'] },
+    pages: { kicker: 'Editorial / 10', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
+    looks: { kicker: 'Operations / 11', title: 'Looks đã lưu', columns: ['name', 'occasion_slug', 'garment_slug', 'visibility', 'created_at'] },
+    discovery: { kicker: 'Operations / 12', title: 'Discovery pool', columns: ['look_id', 'status', 'moderation_note', 'created_at'] },
+    jobs: { kicker: 'Operations / 13', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'estimated_cost_vnd', 'error_message'] }
   };
   var fields = {
     'ai-settings': [
@@ -46,31 +49,39 @@
     events: [
       ['slug', 'Branch key', 'text', true], ['label', 'Tên hiển thị', 'text', true],
       ['description', 'Mô tả', 'textarea', true], ['cultural_context', 'Bối cảnh văn hoá', 'textarea', true],
+      ['preset', 'Preset Studio JSON', 'json', true],
       ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     garments: [
       ['slug', 'Slug', 'text', true], ['name', 'Tên hiển thị', 'text', true], ['category', 'Nhóm', 'text', true],
       ['description', 'Mô tả', 'textarea', true], ['origin_note', 'Nguồn gốc', 'textarea', true],
       ['significance_note', 'Ý nghĩa', 'textarea', true], ['image_url', 'Ảnh catalog', 'url', false],
+      ['thumbnail_url', 'Thumbnail', 'url', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
+      ['negative_descriptor', 'Negative descriptor', 'textarea', false],
+      ['allowed_contexts', 'Allowed contexts JSON', 'json', false], ['default_colors', 'Default colors JSON', 'json', false],
       ['source_id', 'ID nguồn văn hoá', 'text', false], ['sort_order', 'Thứ tự', 'number', true],
       ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     accessories: [
       ['slug', 'Slug', 'text', true], ['name', 'Tên hiển thị', 'text', true], ['category', 'Nhóm', 'text', true],
       ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh catalog', 'url', false],
+      ['thumbnail_url', 'Thumbnail', 'url', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
+      ['compatibility', 'Compatibility JSON', 'json', false],
       ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     options: [
-      ['option_type', 'Loại', 'select', true, [['color', 'Màu'], ['style', 'Phong cách']]],
+      ['option_type', 'Loại', 'select', true, [['color', 'Màu'], ['style', 'Phong cách'], ['pattern', 'Họa tiết'], ['scene', 'Bối cảnh']]],
       ['slug', 'Slug', 'text', true], ['label', 'Tên hiển thị', 'text', true], ['value', 'Giá trị', 'text', true],
       ['prompt_hint', 'Gợi ý prompt', 'textarea', true], ['sort_order', 'Thứ tự', 'number', true],
       ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     branches: [
       ['page_slug', 'Page slug', 'text', true], ['branch_key', 'Branch key', 'text', true],
+      ['studio_event_slug', 'Studio event slug', 'text', false],
       ['label', 'Tên hiển thị', 'text', true], ['forward_guard', 'Forward guard', 'number', true],
       ['reverse_guard', 'Reverse guard', 'number', true], ['forward_media_url', 'Forward media URL', 'url', true],
       ['reverse_media_url', 'Reverse media URL (tuỳ chọn)', 'url', false],
+      ['thumbnail_url', 'Thumbnail', 'url', false],
       ['is_base', 'Media nền mặc định', 'checkbox', false], ['sort_order', 'Thứ tự', 'number', true],
       ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
@@ -83,6 +94,18 @@
       ['slug', 'Prompt slug', 'text', true], ['version', 'Version', 'number', true], ['model', 'Model', 'text', true],
       ['system_prompt', 'System prompt', 'textarea', true], ['eval_notes', 'Eval notes', 'textarea', false],
       ['is_active', 'Đang dùng', 'checkbox', false]
+    ],
+    rules: [
+      ['garment_id', 'Garment ID (để trống = mọi trang phục)', 'text', false],
+      ['rule_text', 'Quy tắc', 'textarea', true],
+      ['severity', 'Mức độ', 'select', true, [['info', 'Thông tin'], ['warning', 'Cảnh báo'], ['blocking', 'Chặn']]],
+      ['context', 'Bối cảnh áp dụng', 'text', true],
+      ['review_status', 'Trạng thái', 'select', true, [['draft', 'Nháp'], ['review', 'Đang duyệt'], ['approved', 'Approved']]],
+      ['is_active', 'Đang dùng', 'checkbox', false]
+    ],
+    discovery: [
+      ['status', 'Trạng thái', 'select', true, [['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected'], ['featured', 'Featured'], ['archived', 'Archived']]],
+      ['moderation_note', 'Ghi chú moderation', 'textarea', false]
     ],
     pages: [
       ['name', 'Tên trang', 'text', true], ['brand_mark', 'Brand mark', 'text', true], ['brand_name', 'Brand name', 'text', true],
