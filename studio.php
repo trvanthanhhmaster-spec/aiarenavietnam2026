@@ -66,7 +66,7 @@ $studioData = $catalog + [
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#07131c">
+    <meta name="theme-color" content="#f3efe7">
     <title>Studio — <?= $escape($site['title'] ?? 'V-Remix') ?></title>
     <meta name="description" content="Studio phối Việt phục V-Remix theo bối cảnh, dáng áo và điểm nhấn cá nhân.">
     <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
