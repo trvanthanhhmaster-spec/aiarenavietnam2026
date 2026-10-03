@@ -19,6 +19,11 @@ $next = SupabaseAuth::safeNext((string) ($_REQUEST['next'] ?? 'studio.php'));
 $mode = ($_GET['mode'] ?? '') === 'signup' ? 'signup' : 'login';
 $message = '';
 $error = '';
+$retryAfterSeconds = 0;
+$formValues = [
+    'display_name' => '',
+    'email' => '',
+];
 
 if (isset($_GET['error'])) {
     $error = match ((string) $_GET['error']) {
@@ -33,6 +38,8 @@ if (isset($_GET['message']) && $_GET['message'] === 'confirmed') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
+    $formValues['display_name'] = trim((string) ($_POST['display_name'] ?? ''));
+    $formValues['email'] = trim((string) ($_POST['email'] ?? ''));
     try {
         if (!$auth->verifyCsrf((string) ($_POST['csrf'] ?? ''))) {
             throw new RuntimeException('Phiên biểu mẫu đã hết hạn. Hãy tải lại trang.');
@@ -66,6 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
+        if (preg_match('/sau\s+(\d+)\s+giây/u', $error, $matches) === 1) {
+            $retryAfterSeconds = max(1, (int) $matches[1]);
+        } elseif (str_contains($error, 'thao tác quá nhanh')) {
+            $retryAfterSeconds = 60;
+        }
         $mode = $action === 'signup' ? 'signup' : 'login';
     }
 }
@@ -151,29 +163,31 @@ if ($user !== null) {
 
                 <div class="auth-divider"><span>hoặc bằng email</span></div>
 
-                <form method="post" class="auth-form">
+                <form method="post" class="auth-form" data-auth-form>
                     <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
                     <input type="hidden" name="action" value="<?= $mode === 'signup' ? 'signup' : 'login' ?>">
                     <input type="hidden" name="next" value="<?= $escape($next) ?>">
                     <?php if ($mode === 'signup'): ?>
                         <label>Họ và tên
-                            <input type="text" name="display_name" minlength="2" maxlength="80" autocomplete="name" required>
+                            <input type="text" name="display_name" value="<?= $escape($formValues['display_name']) ?>" minlength="2" maxlength="80" autocomplete="name" required>
                         </label>
                     <?php endif; ?>
                     <label>Email
-                        <input type="email" name="email" autocomplete="email" inputmode="email" required>
+                        <input type="email" name="email" value="<?= $escape($formValues['email']) ?>" autocomplete="email" inputmode="email" required>
                     </label>
                     <label>Mật khẩu
                         <input type="password" name="password" minlength="8" maxlength="128" autocomplete="<?= $mode === 'signup' ? 'new-password' : 'current-password' ?>" required>
                         <?php if ($mode === 'signup'): ?><small>Tối thiểu 8 ký tự.</small><?php endif; ?>
                     </label>
-                    <button class="auth-button auth-button--primary" type="submit">
+                    <button class="auth-button auth-button--primary" type="submit" data-auth-submit data-retry-after="<?= $retryAfterSeconds ?>">
                         <?= $mode === 'signup' ? 'Tạo tài khoản' : 'Đăng nhập' ?> <span>↗</span>
                     </button>
+                    <small class="auth-cooldown" data-auth-cooldown aria-live="polite"<?= $retryAfterSeconds > 0 ? '' : ' hidden' ?>></small>
                 </form>
                 <p class="auth-legal">Bằng việc tiếp tục, bạn đồng ý để V-Remix lưu thông tin tài khoản và thư viện look theo chính sách dữ liệu của dự án.</p>
             <?php endif; ?>
         </section>
     </main>
+    <script src="assets/js/auth.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/auth.js') ?>"></script>
 </body>
 </html>

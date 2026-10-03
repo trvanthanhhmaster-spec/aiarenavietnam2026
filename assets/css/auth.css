@@ -204,6 +204,20 @@ a, button { color: inherit; }
 .auth-form input:focus { border-color: var(--auth-accent); }
 .auth-form small { font-size: 8px; }
 .auth-form .auth-button { margin-top: 7px; }
+.auth-form .auth-button:disabled {
+  cursor: wait;
+  opacity: .58;
+  transform: none;
+}
+.auth-cooldown {
+  display: block;
+  margin-top: -9px;
+  color: var(--auth-danger);
+  font-size: 10px !important;
+  line-height: 1.55;
+  letter-spacing: .01em;
+}
+.auth-cooldown[hidden] { display: none; }
 .auth-alert {
   margin: -20px 0 28px;
   padding: 12px 14px;

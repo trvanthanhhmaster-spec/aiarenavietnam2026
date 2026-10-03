@@ -432,12 +432,25 @@ final class SupabaseAuth
     private function friendlyAuthError(string $message, int $status): string
     {
         $lower = mb_strtolower($message);
+        $retryAfter = 0;
+        if (
+            preg_match('/(?:after|in)\s+(\d+)\s+seconds?/i', $message, $matches) === 1
+            || preg_match('/(\d+)\s+seconds?/i', $message, $matches) === 1
+        ) {
+            $retryAfter = max(1, (int) $matches[1]);
+        }
+        $retryMessage = $retryAfter > 0
+            ? 'Vì lý do bảo mật, vui lòng thử lại sau ' . $retryAfter . ' giây.'
+            : 'Bạn thao tác quá nhanh. Vui lòng chờ 60 giây rồi thử lại.';
+
         return match (true) {
             str_contains($lower, 'invalid login credentials') => 'Email hoặc mật khẩu không đúng.',
             str_contains($lower, 'user already registered') => 'Email này đã có tài khoản.',
             str_contains($lower, 'email not confirmed') => 'Hãy xác nhận email trước khi đăng nhập.',
             str_contains($lower, 'password') && str_contains($lower, 'weak') => 'Mật khẩu chưa đáp ứng yêu cầu bảo mật.',
-            str_contains($lower, 'rate limit') => 'Bạn thao tác quá nhanh. Hãy chờ một lát rồi thử lại.',
+            str_contains($lower, 'rate limit'),
+            str_contains($lower, 'security purposes'),
+            str_contains($lower, 'request this after') => $retryMessage,
             $message !== '' => $message,
             default => 'Supabase Auth trả về HTTP ' . $status . '.',
         };
