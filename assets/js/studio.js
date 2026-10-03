@@ -25,6 +25,7 @@
   var passportFeature = document.getElementById('passportFeature');
   var passportMeaning = document.getElementById('passportMeaning');
   var passportSource = document.getElementById('passportSource');
+  var passportVisual = document.getElementById('passportVisual');
   var culturalWarning = document.getElementById('culturalWarning');
   var tipLocation = document.getElementById('tipLocation');
   var tipStyling = document.getElementById('tipStyling');
@@ -57,6 +58,16 @@
   var canvasAspect = document.getElementById('canvasAspect');
   var targetResolution = document.getElementById('targetResolution');
   var generationMode = document.getElementById('generationMode');
+  var headerSaveLook = document.getElementById('headerSaveLook');
+  var headerDownloadLookbook = document.getElementById('headerDownloadLookbook');
+  var catalogPanels = {
+    garment: document.getElementById('catalogGarments'),
+    color: document.getElementById('catalogColors'),
+    pattern: document.getElementById('catalogPatterns'),
+    accessory: document.getElementById('catalogAccessories'),
+    style: document.getElementById('catalogStyles'),
+    scene: document.getElementById('catalogScenes')
+  };
   var frameSteps = document.querySelectorAll('[data-frame-step]');
   var submitLabel = submitButton.innerHTML;
   var activeJobKey = 'vremix.active-generation-job.v1';
@@ -363,6 +374,50 @@
     }).join('');
   }
 
+  function compactCatalogList(items, kind, selectedValue, multiple, limit) {
+    return (items || []).slice(0, limit).map(function (item, index) {
+      var slug = String(item.slug || '');
+      var selected = multiple ? selectedValue.indexOf(slug) !== -1 : selectedValue === slug;
+      var name = item.label || item.name || slug;
+      var imageUrl = String(item.thumbnail_url || item.image_url || '');
+      var image = /^https?:\/\//i.test(imageUrl)
+        ? '<img src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy">'
+        : '';
+      var visualStyle = kind === 'color'
+        ? ' style="background:' + escapeHtml(item.value || '#d6d1c8') + '"'
+        : '';
+      return '<button type="button" class="studio-catalog-item' + (selected ? ' is-selected' : '') +
+        '" data-catalog-kind="' + escapeHtml(kind) + '" data-option-value="' + escapeHtml(slug) +
+        '" aria-pressed="' + String(selected) + '" title="' + escapeHtml(name) + '">' +
+        '<span class="studio-catalog-item__visual"' + visualStyle + '>' + image +
+        '<span class="studio-catalog-item__glyph" aria-hidden="true">' +
+        escapeHtml(String(index + 1).padStart(2, '0')) + '</span></span>' +
+        '<span class="studio-catalog-item__name">' + escapeHtml(name) + '</span></button>';
+    }).join('');
+  }
+
+  function renderCatalogPanels() {
+    var definitions = [
+      { kind: 'garment', items: catalog.garments, selected: state.garment, multiple: false, limit: 4 },
+      { kind: 'color', items: catalog.colors, selected: state.color, multiple: false, limit: 7 },
+      { kind: 'pattern', items: catalog.patterns, selected: state.pattern, multiple: false, limit: 4 },
+      { kind: 'accessory', items: catalog.accessories, selected: state.accessories, multiple: true, limit: 5 },
+      { kind: 'style', items: catalog.styles, selected: state.style, multiple: false, limit: 4 },
+      { kind: 'scene', items: catalog.scenes, selected: state.scene, multiple: false, limit: 5 }
+    ];
+    definitions.forEach(function (definition) {
+      var panel = catalogPanels[definition.kind];
+      if (!panel) return;
+      panel.innerHTML = compactCatalogList(
+        definition.items,
+        definition.kind,
+        definition.selected,
+        definition.multiple,
+        definition.limit
+      );
+    });
+  }
+
   function chooseOption(kind, value) {
     if (kind === 'accessory') {
       var position = state.accessories.indexOf(value);
@@ -375,9 +430,10 @@
         renderQuickStart();
       }
     }
-    renderDockContent(state.openMode);
+    if (state.openMode) renderDockContent(state.openMode);
+    renderCatalogPanels();
     updateSummary();
-    setStatus('Đã cập nhật ' + modeById(state.openMode).title.toLowerCase() + '.');
+    setStatus('Đã cập nhật ' + modeById(kind).title.toLowerCase() + '.');
   }
 
   function updateSummary() {
@@ -412,16 +468,18 @@
     document.getElementById('frameCSummary').textContent = style.label ? 'Ánh sáng: ' + style.label : 'Chỉ thay thời điểm trong ngày';
     document.getElementById('frameDSummary').textContent = garment.name ? 'Quần áo: ' + garment.name : 'Chỉ thay quần áo';
     document.getElementById('frameESummary').textContent = accessoryNames.length ? 'Điểm nhấn: ' + accessoryNames.join(', ') : 'Giữ vị trí và kích thước tương đương';
-    if (previewEmpty) previewEmpty.classList.toggle('is-ready', Boolean(state.event && state.garment && state.style));
+    var hasBaseLook = Boolean(state.event && state.garment && state.style);
+    if (previewEmpty) previewEmpty.classList.toggle('is-ready', hasBaseLook);
+    if (frame) frame.classList.toggle('has-look', hasBaseLook);
     if (projectKicker) projectKicker.textContent = state.event ? (event.label + ' / Tầng 02') : 'Dự án mới / Tầng 02';
     if (projectTitle) projectTitle.innerHTML = state.event
       ? 'Bản phối cho<br><em>' + escapeHtml(event.label.toLowerCase()) + '.</em>'
-      : 'Bắt đầu một<br><em>dáng Việt mới.</em>';
+      : 'Dự án mới';
     if (projectContext) {
       var preset = event.preset || {};
       projectContext.textContent = state.event
         ? [preset.location, preset.season, garment.name].filter(Boolean).join(' · ')
-        : 'Chọn Việt phục, bối cảnh và phong cách hoặc dùng một gợi ý nhanh.';
+        : 'Bắt đầu bằng cách chọn Việt phục, tải ảnh của bạn hoặc dùng gợi ý nhanh.';
     }
     updatePassport();
   }
@@ -438,6 +496,15 @@
     if (passportMeaning) passportMeaning.textContent = garment.significance_note || '—';
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
     if (passportSource) passportSource.textContent = source ? source.title : 'Nguồn Approved sẽ hiển thị tại đây.';
+    if (passportVisual) {
+      var passportImage = String(garment.thumbnail_url || garment.image_url || '');
+      passportVisual.style.backgroundImage = /^https?:\/\//i.test(passportImage)
+        ? 'url("' + passportImage.replace(/["\\]/g, '') + '")'
+        : '';
+      passportVisual.classList.toggle('has-image', Boolean(passportVisual.style.backgroundImage));
+      var mark = passportVisual.querySelector('span');
+      if (mark) mark.textContent = garment.name ? garment.name.charAt(0).toUpperCase() : 'V';
+    }
     if (tipLocation) tipLocation.textContent = [scene.label, event.label].filter(Boolean).join(' · ') || 'Campus · Phố cổ · Văn Miếu';
     if (tipStyling) tipStyling.textContent = [color.label, style.label].filter(Boolean).join(' + ') || 'Chọn một điểm nhấn hiện đại vừa đủ.';
     var colorCheck = document.querySelector('[data-check="color"]');
@@ -488,6 +555,23 @@
       if (state.openMode === modeButton.dataset.mode) closeDock(true);
       else openMode(modeButton.dataset.mode);
     }
+    var catalogModeButton = event.target.closest('.studio-catalog-card__head [data-mode]');
+    if (catalogModeButton) openMode(catalogModeButton.dataset.mode);
+    var catalogOption = event.target.closest('[data-catalog-kind]');
+    if (catalogOption) chooseOption(catalogOption.dataset.catalogKind, catalogOption.dataset.optionValue);
+  });
+  document.querySelectorAll('[data-start-mode]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      if (button.dataset.startMode === 'quick') {
+        if (quickStartOptions) {
+          quickStartOptions.hidden = !quickStartOptions.hidden;
+          if (!quickStartOptions.hidden) quickStartOptions.querySelector('button')?.focus();
+        }
+        setStatus('Chọn một gợi ý nhanh để dựng bản phối.');
+        return;
+      }
+      openMode(button.dataset.startMode);
+    });
   });
   document.querySelectorAll('[data-lock]').forEach(function (input) {
     input.addEventListener('change', function () {
@@ -1121,6 +1205,20 @@
     openMode('accessory');
     setStatus('Chọn một thay đổi nhỏ để tạo variant mới từ Base Look.');
   });
+  if (headerSaveLook) headerSaveLook.addEventListener('click', function () {
+    if (saveLookButton && !saveLookButton.disabled) saveLookButton.click();
+    else {
+      document.getElementById('studioVariants')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus('Tạo ảnh trước khi lưu Look.');
+    }
+  });
+  if (headerDownloadLookbook) headerDownloadLookbook.addEventListener('click', function () {
+    if (resultDownload && !resultDownload.hidden) resultDownload.click();
+    else {
+      document.getElementById('studioVariants')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setStatus('Tạo ảnh trước khi tải lookbook.');
+    }
+  });
 
   dockClose.addEventListener('click', function () {
     closeDock(true);
@@ -1153,6 +1251,7 @@
 
   buildHotspots();
   renderQuickStart();
+  renderCatalogPanels();
   renderDock();
   updateSummary();
   prepareMedia();

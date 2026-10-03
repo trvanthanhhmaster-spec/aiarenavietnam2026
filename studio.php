@@ -90,6 +90,7 @@ $studioData = $catalog + [
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/app.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/app.css') ?>">
     <link rel="stylesheet" href="assets/css/studio.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio.css') ?>">
+    <link rel="stylesheet" href="assets/css/studio-designer.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-designer.css') ?>">
 </head>
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
@@ -98,31 +99,66 @@ $studioData = $catalog + [
                 <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
             </a>
             <nav class="studio-header-middle" aria-label="Điều hướng chính">
-                <a href="index.php#stage">Khám phá</a>
                 <a class="is-active" href="studio.php" aria-current="page">Studio</a>
                 <a href="#studioVariants">Lookbook</a>
             </nav>
             <div class="studio-header-actions">
-                <a class="studio-admin" href="admin.php">Quản trị</a>
-                <a class="studio-back" href="index.php#stage"><span aria-hidden="true">←</span> Tầng 01</a>
+                <button class="studio-header-command" id="headerSaveLook" type="button"><span aria-hidden="true">♡</span> Lưu look</button>
+                <button class="studio-header-command" id="headerDownloadLookbook" type="button"><span aria-hidden="true">⇩</span> Tải lookbook</button>
+                <a class="studio-admin" href="admin.php" aria-label="Mở trang quản trị"><span aria-hidden="true">♙</span></a>
+                <a class="studio-back" href="index.php#stage" aria-label="Về tầng khám phá"><span aria-hidden="true">☰</span></a>
             </div>
         </header>
 
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">
             <div class="studio-workbench">
-                <aside class="studio-toolbox" aria-label="Tuỳ chỉnh bản phối">
-                    <div class="studio-intro" id="studioIntro">
-                        <p class="studio-kicker" id="projectKicker">Dự án mới / Tầng 02</p>
-                        <h1 id="projectTitle">Bắt đầu một<br><em>dáng Việt mới.</em></h1>
-                        <p class="studio-intro__note" id="projectContext">Chọn Việt phục, bối cảnh và phong cách hoặc dùng một gợi ý nhanh.</p>
+                <aside class="studio-toolbox" aria-label="Bộ sưu tập phối đồ">
+                    <div class="studio-collection-heading">
+                        <span class="studio-collection-heading__eyebrow">V-Remix / Catalog</span>
+                        <strong>Chọn chất liệu cho bản phối</strong>
                     </div>
 
-                    <section class="studio-quick-start" id="studioQuickStart" aria-label="Gợi ý nhanh">
-                        <div class="studio-quick-start__head">
-                            <span>Bạn muốn mặc đi đâu?</span>
-                            <small>Gợi ý nhanh</small>
+                    <section class="studio-catalog-card studio-catalog-card--garment" aria-labelledby="catalogGarmentTitle">
+                        <div class="studio-catalog-card__head">
+                            <h2 id="catalogGarmentTitle"><span aria-hidden="true">♧</span> Trang phục</h2>
+                            <button type="button" data-mode="garment">Xem tất cả <span aria-hidden="true">›</span></button>
                         </div>
-                        <div class="studio-quick-start__options" id="quickStartOptions"></div>
+                        <div class="studio-catalog-grid studio-catalog-grid--garment" id="catalogGarments"></div>
+                    </section>
+                    <section class="studio-catalog-card studio-catalog-card--color" aria-labelledby="catalogColorTitle">
+                        <div class="studio-catalog-card__head">
+                            <h2 id="catalogColorTitle"><span aria-hidden="true">✣</span> Màu sắc</h2>
+                            <button type="button" data-mode="color">Xem tất cả <span aria-hidden="true">›</span></button>
+                        </div>
+                        <div class="studio-catalog-grid studio-catalog-grid--color" id="catalogColors"></div>
+                    </section>
+                    <section class="studio-catalog-card studio-catalog-card--pattern" aria-labelledby="catalogPatternTitle">
+                        <div class="studio-catalog-card__head">
+                            <h2 id="catalogPatternTitle"><span aria-hidden="true">⌘</span> Họa tiết</h2>
+                            <button type="button" data-mode="pattern">Xem tất cả <span aria-hidden="true">›</span></button>
+                        </div>
+                        <div class="studio-catalog-grid studio-catalog-grid--pattern" id="catalogPatterns"></div>
+                    </section>
+                    <section class="studio-catalog-card studio-catalog-card--accessory" aria-labelledby="catalogAccessoryTitle">
+                        <div class="studio-catalog-card__head">
+                            <h2 id="catalogAccessoryTitle"><span aria-hidden="true">♙</span> Phụ kiện</h2>
+                            <button type="button" data-mode="accessory">Xem tất cả <span aria-hidden="true">›</span></button>
+                        </div>
+                        <div class="studio-catalog-grid studio-catalog-grid--accessory" id="catalogAccessories"></div>
+                    </section>
+                    <section class="studio-catalog-card studio-catalog-card--style" aria-labelledby="catalogStyleTitle">
+                        <div class="studio-catalog-card__head">
+                            <h2 id="catalogStyleTitle"><span aria-hidden="true">♢</span> Phong cách</h2>
+                            <button type="button" data-mode="style">Xem tất cả <span aria-hidden="true">›</span></button>
+                        </div>
+                        <div class="studio-catalog-grid studio-catalog-grid--style" id="catalogStyles"></div>
+                    </section>
+                    <section class="studio-catalog-card studio-catalog-card--scene" aria-labelledby="catalogSceneTitle">
+                        <div class="studio-catalog-card__head">
+                            <h2 id="catalogSceneTitle"><span aria-hidden="true">⌂</span> Bối cảnh</h2>
+                            <button type="button" data-mode="scene">Xem tất cả <span aria-hidden="true">›</span></button>
+                        </div>
+                        <div class="studio-catalog-grid studio-catalog-grid--scene" id="catalogScenes"></div>
                     </section>
 
                     <nav class="studio-tool-list" aria-label="Các lớp phối đồ">
@@ -150,6 +186,31 @@ $studioData = $catalog + [
                 </aside>
 
                 <section class="studio-preview" aria-label="AI Preview">
+                    <div class="studio-intro" id="studioIntro">
+                        <div>
+                            <p class="studio-kicker" id="projectKicker">Dự án mới / Tầng 02</p>
+                            <h1 id="projectTitle">Dự án mới</h1>
+                            <p class="studio-intro__note" id="projectContext">Bắt đầu bằng cách chọn Việt phục, tải ảnh của bạn hoặc dùng gợi ý nhanh.</p>
+                        </div>
+                        <div class="studio-intro__rule" aria-hidden="true"></div>
+                    </div>
+
+                    <section class="studio-quick-start" id="studioQuickStart" aria-label="Gợi ý nhanh">
+                        <button type="button" class="studio-start-card" data-start-mode="garment">
+                            <span class="studio-start-card__icon" aria-hidden="true">⌁</span>
+                            <span><strong>Chọn Việt phục</strong><small>Từ bộ sưu tập bên trái</small></span>
+                        </button>
+                        <label class="studio-start-card" for="inputImage">
+                            <span class="studio-start-card__icon" aria-hidden="true">▧</span>
+                            <span><strong>Tải ảnh của bạn</strong><small>JPG, PNG · Tối đa 8MB</small></span>
+                        </label>
+                        <button type="button" class="studio-start-card" data-start-mode="quick">
+                            <span class="studio-start-card__icon" aria-hidden="true">✦</span>
+                            <span><strong>Dùng gợi ý nhanh</strong><small>Tạo với AI</small></span>
+                        </button>
+                        <div class="studio-quick-start__options" id="quickStartOptions" hidden></div>
+                    </section>
+
                     <div class="studio-preview__top">
                         <div>
                             <p class="studio-kicker">AI preview / Base look</p>
@@ -236,11 +297,30 @@ $studioData = $catalog + [
                         </label>
                         <button class="studio-submit" type="submit">Generate <span aria-hidden="true">↗</span></button>
                     </form>
+
+                    <section class="studio-variants" id="studioVariants" aria-label="Các phiên bản look">
+                        <div class="studio-variants__title">
+                            <span>Lookbook / Variants</span>
+                            <strong>Giữ Base, thử từng thay đổi.</strong>
+                        </div>
+                        <div class="studio-variants__strip" id="variantStrip">
+                            <button type="button" class="is-active" data-variant="base"><span>A</span><strong>Look gốc</strong><small>Chưa tạo ảnh</small></button>
+                            <button type="button" data-variant="1"><span>01</span><strong>Variant 1</strong><small>Chưa tạo</small></button>
+                            <button type="button" data-variant="2"><span>02</span><strong>Variant 2</strong><small>Chưa tạo</small></button>
+                            <button type="button" data-variant="3"><span>03</span><strong>Variant 3</strong><small>Chưa tạo</small></button>
+                        </div>
+                        <div class="studio-variants__actions">
+                            <button type="button" id="compareLooks" disabled>So sánh</button>
+                            <button type="button" id="saveLook" disabled>Lưu Look</button>
+                            <button type="button" id="addVariant">＋ Tạo thêm</button>
+                        </div>
+                    </section>
                 </section>
 
                 <aside class="studio-insights" aria-label="Thông tin văn hoá và kiểm tra">
                     <section class="studio-insight studio-passport">
                         <div class="studio-insight__head"><span>Hộ chiếu Di sản</span><small>01</small></div>
+                        <div class="studio-passport__visual" id="passportVisual" aria-hidden="true"><span>V</span></div>
                         <h2 id="passportTitle">Chưa chọn Việt phục</h2>
                         <dl>
                             <div><dt>Nguồn gốc</dt><dd id="passportOrigin">Chọn một trang phục để xem nội dung đã được duyệt.</dd></div>
@@ -266,24 +346,6 @@ $studioData = $catalog + [
                     </section>
                 </aside>
             </div>
-
-            <section class="studio-variants" id="studioVariants" aria-label="Các phiên bản look">
-                <div class="studio-variants__title">
-                    <span>Lookbook / Variants</span>
-                    <strong>Giữ Base, thử từng thay đổi.</strong>
-                </div>
-                <div class="studio-variants__strip" id="variantStrip">
-                    <button type="button" class="is-active" data-variant="base"><span>A</span><strong>Look gốc</strong><small>Chưa tạo ảnh</small></button>
-                    <button type="button" data-variant="1"><span>01</span><strong>Variant 1</strong><small>Chưa tạo</small></button>
-                    <button type="button" data-variant="2"><span>02</span><strong>Variant 2</strong><small>Chưa tạo</small></button>
-                    <button type="button" data-variant="3"><span>03</span><strong>Variant 3</strong><small>Chưa tạo</small></button>
-                </div>
-                <div class="studio-variants__actions">
-                    <button type="button" id="compareLooks" disabled>So sánh</button>
-                    <button type="button" id="saveLook" disabled>Lưu Look</button>
-                    <button type="button" id="addVariant">＋ Tạo thêm</button>
-                </div>
-            </section>
         </section>
 
         <section class="studio-result" id="studioResult" aria-live="polite" hidden>
