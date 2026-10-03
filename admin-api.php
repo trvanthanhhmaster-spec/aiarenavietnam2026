@@ -48,9 +48,9 @@ $resources = [
     ],
     'studio-generation' => [
         'table' => 'studio_generation_settings',
-        'select' => 'id,canvas_aspect_ratio,target_resolution,default_generation_mode,base_prompt,frame_plan,updated_at',
+        'select' => 'id,canvas_aspect_ratio,target_resolution,default_generation_mode,default_output_type,base_prompt,frame_plan,updated_at',
         'order' => 'id.asc',
-        'fields' => ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'base_prompt', 'frame_plan'],
+        'fields' => ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'default_output_type', 'base_prompt', 'frame_plan'],
         'no_create' => true,
         'no_delete' => true,
     ],
@@ -71,6 +71,18 @@ $resources = [
         'select' => 'id,slug,name,category,description,image_url,thumbnail_url,prompt_descriptor,compatibility,sort_order,is_active,created_at,updated_at',
         'order' => 'sort_order.asc',
         'fields' => ['slug', 'name', 'category', 'description', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'compatibility', 'sort_order', 'is_active'],
+    ],
+    'marketplace' => [
+        'table' => 'studio_marketplace_listings',
+        'select' => 'id,item_type,garment_id,accessory_id,provider_name,listing_type,title,address,province,price_from_vnd,price_to_vnd,external_url,source_url,verified_at,sort_order,is_active,created_at,updated_at',
+        'order' => 'sort_order.asc',
+        'fields' => ['item_type', 'garment_id', 'accessory_id', 'provider_name', 'listing_type', 'title', 'address', 'province', 'price_from_vnd', 'price_to_vnd', 'external_url', 'source_url', 'verified_at', 'sort_order', 'is_active'],
+    ],
+    'locations' => [
+        'table' => 'studio_locations',
+        'select' => 'id,slug,name,address,province,latitude,longitude,map_url,booking_url,description,image_url,suitable_contexts,source_url,sort_order,is_active,created_at,updated_at',
+        'order' => 'sort_order.asc',
+        'fields' => ['slug', 'name', 'address', 'province', 'latitude', 'longitude', 'map_url', 'booking_url', 'description', 'image_url', 'suitable_contexts', 'source_url', 'sort_order', 'is_active'],
     ],
     'options' => [
         'table' => 'studio_options',
@@ -222,14 +234,14 @@ try {
             $value = $record[$field];
             if (is_string($value)) {
                 $value = trim($value);
-                if (in_array($field, ['image_url', 'thumbnail_url', 'source_url', 'license', 'reverse_media_url', 'source_id', 'studio_event_slug', 'garment_id'], true) && $value === '') {
+                if (in_array($field, ['image_url', 'thumbnail_url', 'source_url', 'license', 'reverse_media_url', 'source_id', 'studio_event_slug', 'garment_id', 'accessory_id', 'booking_url', 'verified_at'], true) && $value === '') {
                     $value = null;
                 }
                 if (mb_strlen($value ?? '') > 30000) {
                     $respond(['error' => 'Nội dung trường ' . $field . ' quá dài.'], 422);
                 }
             }
-            if (is_array($value) && !in_array($field, ['ui', 'frame_plan', 'preset', 'allowed_contexts', 'default_colors', 'compatibility'], true)) {
+            if (is_array($value) && !in_array($field, ['ui', 'frame_plan', 'preset', 'allowed_contexts', 'default_colors', 'compatibility', 'suitable_contexts'], true)) {
                 $respond(['error' => 'Kiểu dữ liệu trường ' . $field . ' không hợp lệ.'], 422);
             }
             $payload[$field] = $value;
@@ -291,6 +303,9 @@ try {
             if (!in_array($payload['default_generation_mode'] ?? '', ['text-to-image', 'image-to-image'], true)) {
                 $respond(['error' => 'Chế độ tạo ảnh không hợp lệ.'], 422);
             }
+            if (!in_array($payload['default_output_type'] ?? '', ['image', 'video', 'both'], true)) {
+                $respond(['error' => 'Đầu ra mặc định không hợp lệ.'], 422);
+            }
             if (!is_string($payload['base_prompt'] ?? null) || trim($payload['base_prompt']) === '') {
                 $respond(['error' => 'Prompt ảnh gốc A không được để trống.'], 422);
             }
@@ -318,6 +333,23 @@ try {
                 $respond(['error' => 'Frame plan phải chứa duy nhất A, B, C, D và E.'], 422);
             }
             $payload['updated_at'] = gmdate(DATE_ATOM);
+        }
+        if ($resourceKey === 'marketplace') {
+            if (!in_array($payload['item_type'] ?? '', ['garment', 'accessory'], true)
+                || !in_array($payload['listing_type'] ?? '', ['buy', 'rent', 'both'], true)) {
+                $respond(['error' => 'Loại catalog hoặc hình thức mua/thuê không hợp lệ.'], 422);
+            }
+            $hasGarment = is_string($payload['garment_id'] ?? null) && $payload['garment_id'] !== '';
+            $hasAccessory = is_string($payload['accessory_id'] ?? null) && $payload['accessory_id'] !== '';
+            if (($payload['item_type'] === 'garment' && (!$hasGarment || $hasAccessory))
+                || ($payload['item_type'] === 'accessory' && (!$hasAccessory || $hasGarment))) {
+                $respond(['error' => 'Hãy liên kết đúng một ID trang phục hoặc phụ kiện theo loại catalog.'], 422);
+            }
+        }
+        if ($resourceKey === 'locations') {
+            if (!is_array($payload['suitable_contexts'] ?? null)) {
+                $respond(['error' => 'Bối cảnh phù hợp phải là một JSON array.'], 422);
+            }
         }
         if ($payload === []) {
             $respond(['error' => 'Không có dữ liệu để lưu.'], 422);

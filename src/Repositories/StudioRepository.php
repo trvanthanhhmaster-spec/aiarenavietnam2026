@@ -39,11 +39,22 @@ final class StudioRepository
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
-            $generationRows = $this->client->select('studio_generation_settings', [
-                'select' => 'canvas_aspect_ratio,target_resolution,default_generation_mode,base_prompt,frame_plan',
-                'id' => 'eq.1',
-                'limit' => '1',
-            ]);
+            try {
+                $generationRows = $this->client->select('studio_generation_settings', [
+                    'select' => 'canvas_aspect_ratio,target_resolution,default_generation_mode,default_output_type,base_prompt,frame_plan',
+                    'id' => 'eq.1',
+                    'limit' => '1',
+                ]);
+            } catch (Throwable) {
+                $generationRows = $this->client->select('studio_generation_settings', [
+                    'select' => 'canvas_aspect_ratio,target_resolution,default_generation_mode,base_prompt,frame_plan',
+                    'id' => 'eq.1',
+                    'limit' => '1',
+                ]);
+                if (isset($generationRows[0])) {
+                    $generationRows[0]['default_output_type'] = 'image';
+                }
+            }
             $sources = $this->client->select('cultural_sources', [
                 'select' => 'id,title,source_url,license,curator_note,review_status',
                 'review_status' => 'eq.published',
@@ -55,6 +66,26 @@ final class StudioRepository
                 'review_status' => 'eq.approved',
                 'order' => 'created_at.asc',
             ]);
+            // These tables are optional while older Supabase projects are being
+            // migrated. A missing recommendation table must not take Studio down.
+            try {
+                $listings = $this->client->select('studio_marketplace_listings', [
+                    'select' => 'id,item_type,garment_id,accessory_id,provider_name,listing_type,title,address,province,price_from_vnd,price_to_vnd,external_url,source_url,verified_at',
+                    'is_active' => 'eq.true',
+                    'order' => 'sort_order.asc',
+                ]);
+            } catch (Throwable) {
+                $listings = [];
+            }
+            try {
+                $locations = $this->client->select('studio_locations', [
+                    'select' => 'id,slug,name,address,province,latitude,longitude,map_url,booking_url,description,image_url,suitable_contexts,source_url',
+                    'is_active' => 'eq.true',
+                    'order' => 'sort_order.asc',
+                ]);
+            } catch (Throwable) {
+                $locations = [];
+            }
 
             $catalog = [
                 'events' => $events,
@@ -66,10 +97,13 @@ final class StudioRepository
                 'scenes' => [],
                 'sources' => $sources,
                 'rules' => $rules,
+                'listings' => $listings,
+                'locations' => $locations,
                 'generation' => $generationRows[0] ?? [
                     'canvas_aspect_ratio' => '16:9',
                     'target_resolution' => '1080',
                     'default_generation_mode' => 'text-to-image',
+                    'default_output_type' => 'image',
                     'base_prompt' => '',
                     'frame_plan' => [],
                 ],

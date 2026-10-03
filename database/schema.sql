@@ -247,6 +247,7 @@ create table if not exists public.studio_generation_settings (
     canvas_aspect_ratio text not null default '16:9' check (canvas_aspect_ratio in ('16:9', '1:1', '9:16')),
     target_resolution text not null default '1080' check (target_resolution in ('720', '1080', '2160')),
     default_generation_mode text not null default 'text-to-image' check (default_generation_mode in ('text-to-image', 'image-to-image')),
+    default_output_type text not null default 'image' check (default_output_type in ('image', 'video', 'both')),
     base_prompt text not null default 'Ảnh gốc A: một nhân vật Việt mặc trang phục được chọn, đứng chính giữa, toàn thân, góc máy và bố cục ổn định.',
     frame_plan jsonb not null default '[]'::jsonb,
     updated_at timestamptz not null default now()
@@ -371,12 +372,13 @@ insert into public.ai_runtime_settings (
 on conflict (id) do nothing;
 
 insert into public.studio_generation_settings (
-    id, canvas_aspect_ratio, target_resolution, default_generation_mode, base_prompt, frame_plan
+    id, canvas_aspect_ratio, target_resolution, default_generation_mode, default_output_type, base_prompt, frame_plan
 ) values (
     1,
     '16:9',
     '1080',
     'text-to-image',
+    'image',
     'Ảnh gốc A: một nhân vật Việt mặc trang phục được chọn, đứng chính giữa, toàn thân, góc máy và bố cục ổn định.',
     jsonb_build_array(
         jsonb_build_object('key', 'A', 'label', 'Ảnh gốc', 'branch_key', 'base', 'change_scope', 'Cố định nhân vật, khuôn mặt, dáng đứng, góc máy và bố cục.', 'prompt_template', 'Create the locked source frame A. Preserve the subject identity, face, pose, camera angle and composition.'),
@@ -487,11 +489,68 @@ create table if not exists public.discovery_looks (
     created_at timestamptz not null default now()
 );
 
+create table if not exists public.studio_marketplace_listings (
+    id uuid primary key default gen_random_uuid(),
+    item_type text not null check (item_type in ('garment', 'accessory')),
+    garment_id uuid references public.studio_garments(id) on delete cascade,
+    accessory_id uuid references public.studio_accessories(id) on delete cascade,
+    provider_name text not null,
+    listing_type text not null default 'both' check (listing_type in ('buy', 'rent', 'both')),
+    title text not null,
+    address text not null default '',
+    province text not null default '',
+    price_from_vnd numeric(14, 2),
+    price_to_vnd numeric(14, 2),
+    external_url text not null,
+    source_url text,
+    verified_at timestamptz,
+    sort_order smallint not null default 0,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint marketplace_item_reference_check check (
+        (item_type = 'garment' and garment_id is not null and accessory_id is null)
+        or (item_type = 'accessory' and accessory_id is not null and garment_id is null)
+    )
+);
+
+create table if not exists public.studio_locations (
+    id uuid primary key default gen_random_uuid(),
+    slug text not null unique,
+    name text not null,
+    address text not null,
+    province text not null default '',
+    latitude numeric(10, 7),
+    longitude numeric(10, 7),
+    map_url text not null,
+    booking_url text,
+    description text not null default '',
+    image_url text,
+    suitable_contexts jsonb not null default '[]'::jsonb,
+    source_url text,
+    sort_order smallint not null default 0,
+    is_active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
 create index if not exists cultural_rules_garment_idx on public.cultural_rules (garment_id, review_status);
 create index if not exists looks_session_created_idx on public.looks (session_id, created_at desc);
 create index if not exists looks_user_created_idx on public.looks (user_id, created_at desc);
 create index if not exists look_variants_look_idx on public.look_variants (look_id, variant_index);
 create index if not exists discovery_looks_status_idx on public.discovery_looks (status, created_at desc);
+create index if not exists studio_marketplace_garment_idx on public.studio_marketplace_listings (garment_id, is_active, sort_order);
+create index if not exists studio_marketplace_accessory_idx on public.studio_marketplace_listings (accessory_id, is_active, sort_order);
+create index if not exists studio_locations_context_idx on public.studio_locations using gin (suitable_contexts);
+
+alter table public.studio_marketplace_listings enable row level security;
+alter table public.studio_locations enable row level security;
+drop policy if exists "public can read active marketplace listings" on public.studio_marketplace_listings;
+create policy "public can read active marketplace listings"
+    on public.studio_marketplace_listings for select using (is_active = true);
+drop policy if exists "public can read active studio locations" on public.studio_locations;
+create policy "public can read active studio locations"
+    on public.studio_locations for select using (is_active = true);
 
 update public.experience_branches
 set studio_event_slug = case branch_key
@@ -538,6 +597,67 @@ values
 on conflict (option_type, slug) do update set
     label = excluded.label, value = excluded.value, prompt_hint = excluded.prompt_hint,
     sort_order = excluded.sort_order, is_active = true;
+
+insert into public.studio_locations
+    (slug, name, address, province, latitude, longitude, map_url, description, suitable_contexts, source_url, sort_order)
+values
+    ('van-mieu-quoc-tu-giam', 'Văn Miếu – Quốc Tử Giám', '58 Quốc Tử Giám, Đống Đa', 'Hà Nội', 21.0242336, 105.8410067,
+     'https://www.google.com/maps/search/?api=1&query=V%C4%83n+Mi%E1%BA%BFu+Qu%E1%BB%91c+T%E1%BB%AD+Gi%C3%A1m+H%C3%A0+N%E1%BB%99i',
+     'Không gian di sản phù hợp ảnh chân dung và bản phối dự lễ. Kiểm tra quy định chụp ảnh trước khi đến.',
+     '["ceremony","portrait"]'::jsonb, 'https://www.openstreetmap.org/node/10591743723', 1),
+    ('hoang-thanh-thang-long', 'Hoàng thành Thăng Long', '19C Hoàng Diệu, Ba Đình', 'Hà Nội', 21.0362620, 105.8402826,
+     'https://www.google.com/maps/search/?api=1&query=Ho%C3%A0ng+th%C3%A0nh+Th%C4%83ng+Long+H%C3%A0+N%E1%BB%99i',
+     'Bối cảnh thành cổ có nhịp kiến trúc rõ, hợp ảnh editorial và trang phục lễ.',
+     '["ceremony","portrait","street"]'::jsonb, 'https://www.openstreetmap.org/relation/21425205', 2),
+    ('pho-co-ha-noi', 'Phố cổ Hà Nội', 'Khu phố cổ, Hoàn Kiếm', 'Hà Nội', 21.0340, 105.8500,
+     'https://www.google.com/maps/search/?api=1&query=Ph%E1%BB%91+c%E1%BB%95+H%C3%A0+N%E1%BB%99i',
+     'Nhịp phố đời thường cho bản phối dạo phố; ưu tiên góc chụp không cản trở lối đi.',
+     '["street","portrait"]'::jsonb, 'https://www.openstreetmap.org/search?query=Old%20Quarter%20Hanoi', 3)
+on conflict (slug) do update set
+    name = excluded.name, address = excluded.address, province = excluded.province,
+    latitude = excluded.latitude, longitude = excluded.longitude, map_url = excluded.map_url,
+    description = excluded.description, suitable_contexts = excluded.suitable_contexts,
+    source_url = excluded.source_url, sort_order = excluded.sort_order,
+    is_active = true, updated_at = now();
+
+insert into public.studio_marketplace_listings (
+    item_type, garment_id, provider_name, listing_type, title,
+    address, province, external_url, source_url, verified_at, sort_order
+)
+select 'garment', garment.id, 'V''style – Việt Cổ Phục', 'both',
+       'Xem danh mục ' || garment.name, 'SN 3B, ngõ 94 Hoàng Ngân, Cầu Giấy', 'Hà Nội',
+       'https://vietphuc.net/trang-phuc-cho-thue', 'https://vietphuc.net/', now(), 1
+from public.studio_garments as garment
+where not exists (
+    select 1 from public.studio_marketplace_listings as listing
+    where listing.garment_id = garment.id and listing.provider_name = 'V''style – Việt Cổ Phục'
+);
+
+insert into public.studio_marketplace_listings (
+    item_type, garment_id, provider_name, listing_type, title,
+    province, external_url, source_url, verified_at, sort_order
+)
+select 'garment', garment.id, 'Tô Hà Style', 'both',
+       'Tham khảo ' || garment.name, 'Hà Nội',
+       'https://tohastyle.com.vn/', 'https://tohastyle.com.vn/', now(), 2
+from public.studio_garments as garment
+where not exists (
+    select 1 from public.studio_marketplace_listings as listing
+    where listing.garment_id = garment.id and listing.provider_name = 'Tô Hà Style'
+);
+
+insert into public.studio_marketplace_listings (
+    item_type, garment_id, provider_name, listing_type, title,
+    address, province, external_url, source_url, verified_at, sort_order
+)
+select 'garment', garment.id, 'Việt Phục Hoàng Thành', 'rent',
+       'Thuê ' || garment.name, 'Khu di tích Hoàng thành Thăng Long', 'Hà Nội',
+       'https://vietphuchoangthanh.com/', 'https://vietphuchoangthanh.com/', now(), 3
+from public.studio_garments as garment
+where not exists (
+    select 1 from public.studio_marketplace_listings as listing
+    where listing.garment_id = garment.id and listing.provider_name = 'Việt Phục Hoàng Thành'
+);
 
 insert into public.cultural_rules (garment_id, rule_text, severity, context, review_status)
 select id, 'Không để phụ kiện che hàng khuy chính hoặc làm mất cấu trúc năm thân.', 'warning', 'all', 'approved'

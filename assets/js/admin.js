@@ -12,11 +12,13 @@
       title: 'API, model & chi phí',
       columns: ['generation_enabled', 'image_provider', 'image_model', 'video_provider', 'video_model', 'gemini_api_key_hint', 'secret_source']
     },
-    'studio-generation': { kicker: 'AI operations / 01', title: 'Studio generation', columns: ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'base_prompt'] },
+    'studio-generation': { kicker: 'AI operations / 01', title: 'Studio generation', columns: ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'default_output_type', 'base_prompt'] },
     events: { kicker: 'Collection / 02', title: 'Dịp mặc & preset', columns: ['label', 'slug', 'description', 'is_active'] },
     garments: { kicker: 'Collection / 03', title: 'Cổ phục', columns: ['name', 'category', 'slug', 'is_active'] },
     accessories: { kicker: 'Collection / 04', title: 'Phụ kiện', columns: ['name', 'category', 'slug', 'is_active'] },
     options: { kicker: 'Collection / 05', title: 'Màu, họa tiết & phong cách', columns: ['label', 'option_type', 'slug', 'is_active'] },
+    marketplace: { kicker: 'Collection / 05A', title: 'Nơi mua / thuê', columns: ['provider_name', 'item_type', 'listing_type', 'title', 'province', 'verified_at', 'is_active'] },
+    locations: { kicker: 'Collection / 05B', title: 'Địa điểm chụp thật', columns: ['name', 'province', 'address', 'suitable_contexts', 'source_url', 'is_active'] },
     rules: { kicker: 'Collection / 06', title: 'Quy tắc văn hoá', columns: ['rule_text', 'severity', 'context', 'review_status', 'is_active'] },
     branches: { kicker: 'Editorial / 07', title: 'Tầng 1 / Media', columns: ['label', 'branch_key', 'studio_event_slug', 'forward_media_url', 'is_base', 'is_active'] },
     sources: { kicker: 'Editorial / 08', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
@@ -43,6 +45,7 @@
       ['canvas_aspect_ratio', 'Khung ảnh', 'select', true, [['16:9', '16:9 ngang'], ['1:1', '1:1 vuông'], ['9:16', '9:16 dọc']]],
       ['target_resolution', 'Chất lượng mục tiêu', 'select', true, [['720', '720p'], ['1080', '1080p'], ['2160', '2160p']]],
       ['default_generation_mode', 'Chế độ mặc định', 'select', true, [['text-to-image', 'Text to image'], ['image-to-image', 'Image to image']]],
+      ['default_output_type', 'Đầu ra mặc định', 'select', true, [['image', 'Ảnh'], ['video', 'Video'], ['both', 'Ảnh + video']]],
       ['base_prompt', 'Prompt ảnh gốc A', 'textarea', true],
       ['frame_plan', 'Frame plan A → B/C/D/E', 'json', true]
     ],
@@ -67,6 +70,25 @@
       ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh catalog', 'url', false],
       ['thumbnail_url', 'Thumbnail', 'url', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
       ['compatibility', 'Compatibility JSON', 'json', false],
+      ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
+    ],
+    marketplace: [
+      ['item_type', 'Loại catalog', 'select', true, [['garment', 'Trang phục'], ['accessory', 'Phụ kiện']]],
+      ['garment_id', 'ID trang phục', 'text', false], ['accessory_id', 'ID phụ kiện', 'text', false],
+      ['provider_name', 'Tên brand / cửa hàng', 'text', true],
+      ['listing_type', 'Hình thức', 'select', true, [['buy', 'Mua'], ['rent', 'Thuê'], ['both', 'Mua + thuê']]],
+      ['title', 'Tên listing', 'text', true], ['address', 'Địa chỉ', 'text', false],
+      ['province', 'Tỉnh / thành', 'text', false], ['price_from_vnd', 'Giá từ (VND)', 'number', false],
+      ['price_to_vnd', 'Giá đến (VND)', 'number', false], ['external_url', 'Link mua / thuê', 'url', true],
+      ['source_url', 'Nguồn xác minh', 'url', false], ['verified_at', 'Xác minh lúc', 'datetime-local', false],
+      ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
+    ],
+    locations: [
+      ['slug', 'Slug', 'text', true], ['name', 'Tên địa điểm', 'text', true], ['address', 'Địa chỉ', 'text', true],
+      ['province', 'Tỉnh / thành', 'text', true], ['latitude', 'Vĩ độ', 'number', false], ['longitude', 'Kinh độ', 'number', false],
+      ['map_url', 'Link bản đồ', 'url', true], ['booking_url', 'Link đặt lịch / quy định', 'url', false],
+      ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh địa điểm', 'url', false],
+      ['suitable_contexts', 'Bối cảnh phù hợp JSON', 'json', false], ['source_url', 'Nguồn xác minh', 'url', false],
       ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     options: [
@@ -168,7 +190,7 @@
       return value || '•••••••• (Edge secret)';
     }
     if (/_cost_vnd$|_budget_vnd$/.test(key)) return formatVnd(value);
-    if (key === 'created_at' || key === 'updated_at' || key === 'completed_at') {
+    if (key === 'created_at' || key === 'updated_at' || key === 'completed_at' || key === 'verified_at') {
       try { return new Date(value).toLocaleString('vi-VN'); } catch (error) { return value; }
     }
     if (key === 'output' || key === 'input') {
@@ -231,7 +253,7 @@
     quickConfig.hidden = false;
     metrics.hidden = false;
     var settings = rows[0] || {};
-    var keyStatus = settings.gemini_api_key_configured
+    var keyStatusText = settings.gemini_api_key_configured
       ? 'Admin mã hoá ' + (settings.gemini_api_key_hint || '')
       : '•••••••• (Edge secret fallback)';
     var configuredVideoRoute = settings.video_provider === 'gemini'
@@ -251,7 +273,7 @@
       '<article><span>Đơn giá đang tính</span><strong>' + escapeHtml(formatVnd(settings.image_unit_cost_vnd)) + ' / ảnh · ' + escapeHtml(formatVnd(settings.video_unit_cost_vnd)) + ' / video</strong></article>' +
       '<article><span>Ngân sách ngày</span><strong>' + (Number(settings.daily_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.daily_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
       '<article><span>Ngân sách tháng</span><strong>' + (Number(settings.monthly_budget_vnd || 0) > 0 ? escapeHtml(formatVnd(settings.monthly_budget_vnd)) : 'Không giới hạn') + '</strong></article>' +
-      '<p><strong>API key:</strong> ' + escapeHtml(keyStatus) + ' · <strong>Video:</strong> ' + escapeHtml(configuredVideoRoute) + ' / ' + escapeHtml(settings.video_model || 'chưa chọn') + '. Nhấn <strong>Cấu hình API & video</strong> để thay đổi.</p>';
+      '<p><strong>API key:</strong> ' + escapeHtml(keyStatusText) + ' · <strong>Video:</strong> ' + escapeHtml(configuredVideoRoute) + ' / ' + escapeHtml(settings.video_model || 'chưa chọn') + '. Nhấn <strong>Cấu hình API & video</strong> để thay đổi.</p>';
   }
 
   function renderTable(columns) {

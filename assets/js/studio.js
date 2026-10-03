@@ -20,6 +20,9 @@
   var projectTitle = document.getElementById('projectTitle');
   var projectContext = document.getElementById('projectContext');
   var previewEmpty = document.getElementById('previewEmpty');
+  var previewImage = document.getElementById('studioPreviewImage');
+  var previewGenerationStatus = document.getElementById('previewGenerationStatus');
+  var previewGenerationMessage = document.getElementById('previewGenerationMessage');
   var passportTitle = document.getElementById('passportTitle');
   var passportOrigin = document.getElementById('passportOrigin');
   var passportFeature = document.getElementById('passportFeature');
@@ -54,7 +57,7 @@
   var resultVideo = document.getElementById('resultVideo');
   var resultDownload = document.getElementById('resultDownload');
   var resultVideoBranches = document.getElementById('resultVideoBranches');
-  var submitButton = form.querySelector('.studio-submit');
+  var submitButton = form && form.querySelector('.studio-submit');
   var canvasAspect = document.getElementById('canvasAspect');
   var targetResolution = document.getElementById('targetResolution');
   var generationMode = document.getElementById('generationMode');
@@ -69,12 +72,15 @@
     scene: document.getElementById('catalogScenes')
   };
   var frameSteps = document.querySelectorAll('[data-frame-step]');
-  var submitLabel = submitButton.innerHTML;
+  var submitLabel = submitButton ? submitButton.innerHTML : '';
   var activeJobKey = 'vremix.active-generation-job.v1';
   var generationPending = false;
   var lastOutputFingerprint = '';
   var currentLookbookItems = [];
   var currentVideo = null;
+  var autoGenerateTimer = null;
+  var queuedAutoGeneration = false;
+  var pendingAutoFingerprint = '';
 
   var modes = [
     { id: 'garment', index: '01 / 07', title: 'Trang phục', description: 'Chọn dáng áo làm cấu trúc gốc. Những chi tiết nhận diện cần được giữ nguyên trong bản phối.', anchor: { x: 58, y: 28 } },
@@ -102,6 +108,7 @@
     aspectRatio: catalog.generation && catalog.generation.canvas_aspect_ratio || '16:9',
     resolution: catalog.generation && catalog.generation.target_resolution || '1080',
     mode: catalog.generation && catalog.generation.default_generation_mode || 'text-to-image',
+    outputType: catalog.generation && catalog.generation.default_output_type || (document.getElementById('outputType') || {}).value || 'image',
     activeFrame: 'A',
     locks: {
       character: true, face: true, hair: true, garment: true,
@@ -123,9 +130,9 @@
 
   if (hasContext) applyEventPreset(contextOccasion, false);
 
-  canvasAspect.value = state.aspectRatio;
-  targetResolution.value = state.resolution;
-  generationMode.value = state.mode;
+  if (canvasAspect) canvasAspect.value = state.aspectRatio;
+  if (targetResolution) targetResolution.value = state.resolution;
+  if (generationMode) generationMode.value = state.mode;
 
   function renderQuickStart() {
     if (!quickStartOptions) return;
@@ -138,6 +145,7 @@
         applyEventPreset(button.dataset.quickEvent, true);
         renderQuickStart();
         updateSummary();
+        scheduleAutoGeneration();
       });
     });
   }
@@ -182,6 +190,7 @@
   }
 
   function syncSubmitButton() {
+    if (!submitButton) return;
     submitButton.disabled = generationPending && !result.hidden;
     submitButton.innerHTML = generationPending
       ? 'Xem tiến trình <span aria-hidden="true">↗</span>'
@@ -203,17 +212,17 @@
       : [];
     if (selection.aspectRatio) {
       state.aspectRatio = selection.aspectRatio;
-      canvasAspect.value = selection.aspectRatio;
+      if (canvasAspect) canvasAspect.value = selection.aspectRatio;
     }
     if (selection.targetResolution) {
       state.resolution = selection.targetResolution;
-      targetResolution.value = selection.targetResolution;
+      if (targetResolution) targetResolution.value = selection.targetResolution;
     }
     if (selection.generationMode) {
       state.mode = selection.generationMode;
-      generationMode.value = selection.generationMode;
+      if (generationMode) generationMode.value = selection.generationMode;
     }
-    if (selection.generationType) outputType.value = selection.generationType;
+    if (selection.generationType) state.outputType = selection.generationType;
     if (selection.locks && typeof selection.locks === 'object') {
       Object.keys(state.locks).forEach(function (key) {
         if (Object.prototype.hasOwnProperty.call(selection.locks, key)) state.locks[key] = Boolean(selection.locks[key]);
@@ -428,12 +437,26 @@
       if (kind === 'event') {
         applyEventPreset(value, false);
         renderQuickStart();
+      } else if (kind === 'scene' && !state.event) {
+        var inferredEvent = {
+          campus: 'school',
+          'old-quarter': 'street',
+          temple: 'ceremony',
+          citadel: 'ceremony',
+          studio: 'portrait',
+          'ceremonial-space': 'ceremony'
+        }[value];
+        if (inferredEvent && lookup(catalog.events, inferredEvent).slug) {
+          state.event = inferredEvent;
+          renderQuickStart();
+        }
       }
     }
     if (state.openMode) renderDockContent(state.openMode);
     renderCatalogPanels();
     updateSummary();
     setStatus('Đã cập nhật ' + modeById(kind).title.toLowerCase() + '.');
+    scheduleAutoGeneration();
   }
 
   function updateSummary() {
@@ -482,6 +505,7 @@
         : 'Bắt đầu bằng cách chọn Việt phục, tải ảnh của bạn hoặc dùng gợi ý nhanh.';
     }
     updatePassport();
+    updateRecommendations();
   }
 
   function updatePassport() {
@@ -528,6 +552,68 @@
     if (culturalWarning) culturalWarning.textContent = rule ? rule.rule_text : 'Hệ thống sẽ hiển thị quy tắc văn hoá đã được duyệt.';
   }
 
+  function formatMoney(value) {
+    var amount = Number(value);
+    if (!Number.isFinite(amount) || amount <= 0) return '';
+    return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+  }
+
+  function safeExternalUrl(value, fallback) {
+    try {
+      var url = new URL(String(value || fallback || ''), window.location.href);
+      return /^https?:$/i.test(url.protocol) ? url.href : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function updateRecommendations() {
+    var listingsPanel = document.getElementById('studioListings');
+    var locationsPanel = document.getElementById('studioLocations');
+    var listingSearchLink = document.getElementById('listingSearchLink');
+    var locationSearchLink = document.getElementById('locationSearchLink');
+    if (!listingsPanel || !locationsPanel) return;
+
+    var garment = lookup(catalog.garments, state.garment);
+    var selectedAccessories = state.accessories.map(function (slug) { return lookup(catalog.accessories, slug); });
+    var listings = (catalog.listings || []).filter(function (item) {
+      return item && item.is_active !== false && item.item_type &&
+        ((item.item_type === 'garment' && item.garment_id === garment.id) ||
+          (item.item_type === 'accessory' && selectedAccessories.some(function (accessory) { return accessory.id === item.accessory_id; })));
+    }).slice(0, 3);
+    if (listings.length === 0) {
+      listingsPanel.innerHTML = '<p class="studio-recommendation-empty">Chưa có đối tác được biên tập cho lựa chọn này. Bạn có thể mở bản đồ để tìm nơi mua hoặc thuê gần mình.</p>';
+    } else {
+      listingsPanel.innerHTML = listings.map(function (item) {
+        var price = [formatMoney(item.price_from_vnd), formatMoney(item.price_to_vnd)].filter(Boolean).join(' – ');
+        var typeLabel = item.listing_type === 'rent' ? 'Thuê' : item.listing_type === 'buy' ? 'Mua' : 'Mua · thuê';
+        return '<a class="studio-recommendation" href="' + escapeHtml(safeExternalUrl(item.external_url, '#')) + '" target="_blank" rel="noopener noreferrer">' +
+          '<span><strong>' + escapeHtml(item.provider_name || item.title) + '</strong><small>' +
+          escapeHtml([typeLabel, item.province, price].filter(Boolean).join(' · ')) + '</small></span><span aria-hidden="true">↗</span></a>';
+      }).join('');
+    }
+    var locationQuery = [lookup(catalog.scenes, state.scene).label, lookup(catalog.events, state.event).label, 'Hà Nội'].filter(Boolean).join(' ');
+    if (listingSearchLink) {
+      var listingQuery = [garment.name].concat(selectedAccessories.map(function (item) { return item.name; })).filter(Boolean).join(' ');
+      listingSearchLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('mua thuê ' + (listingQuery || 'cổ phục') + ' ' + ((lookup(catalog.events, state.event).preset || {}).location || 'Hà Nội'));
+    }
+    var suitableContexts = [state.scene, state.event].filter(Boolean);
+    var locations = (catalog.locations || []).filter(function (item) {
+      var contexts = Array.isArray(item.suitable_contexts) ? item.suitable_contexts : [];
+      return contexts.length === 0 || suitableContexts.some(function (context) { return contexts.indexOf(context) !== -1; });
+    }).slice(0, 3);
+    if (!locations.length) locations = (catalog.locations || []).slice(0, 3);
+    if (!locations.length) {
+      locationsPanel.innerHTML = '<p class="studio-recommendation-empty">Chưa có địa điểm đã xác minh cho lựa chọn này.</p>';
+    } else {
+      locationsPanel.innerHTML = locations.map(function (item) {
+        return '<a class="studio-recommendation" href="' + escapeHtml(safeExternalUrl(item.map_url, '#')) + '" target="_blank" rel="noopener noreferrer">' +
+          '<span><strong>' + escapeHtml(item.name) + '</strong><small>' + escapeHtml([item.address, item.province].filter(Boolean).join(' · ')) + '</small></span><span aria-hidden="true">↗</span></a>';
+      }).join('');
+    }
+    if (locationSearchLink) locationSearchLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationQuery || 'địa điểm chụp ảnh Việt phục Hà Nội');
+  }
+
   function syncFrameSteps() {
     Array.prototype.forEach.call(frameSteps, function (step) {
       step.classList.toggle('is-active', step.dataset.frameStep === state.activeFrame);
@@ -550,6 +636,8 @@
   experience.addEventListener('click', function (event) {
     var step = event.target.closest('[data-frame-step]');
     if (step) selectFrame(step);
+    var variant = event.target.closest('[data-variant]');
+    if (variant && variant.dataset.previewIndex !== undefined) selectPreviewAsset(variant.dataset.previewIndex);
     var modeButton = event.target.closest('.studio-tool-list [data-mode]');
     if (modeButton) {
       if (state.openMode === modeButton.dataset.mode) closeDock(true);
@@ -578,13 +666,15 @@
       state.locks[input.dataset.lock] = input.checked;
     });
   });
-  canvasAspect.addEventListener('change', function () { state.aspectRatio = canvasAspect.value; setStatus('Đã chọn khung ảnh ' + state.aspectRatio + '.'); });
-  targetResolution.addEventListener('change', function () { state.resolution = targetResolution.value; setStatus('Đã chọn chất lượng ' + state.resolution + '.'); });
-  generationMode.addEventListener('change', function () { state.mode = generationMode.value; setStatus(state.mode === 'image-to-image' ? 'Image to image: ảnh A sẽ làm nguồn cố định.' : 'Text to image: prompt sẽ tạo ảnh A.'); });
+  // Aspect ratio, resolution, provider and output type are intentionally
+  // admin-owned. Studio only displays the active preset and sends it along.
 
   function setStatus(message) {
     studioStatus.textContent = message;
     srStatus.textContent = message;
+    if (previewGenerationMessage && previewGenerationStatus && !generationPending) {
+      previewGenerationMessage.textContent = message;
+    }
   }
 
   document.querySelectorAll('.studio-tool-list [data-mode]').forEach(function (button) {
@@ -635,28 +725,39 @@
     }
     uploadName.textContent = file.name;
     setStatus('Đã thêm ảnh đại diện.');
+    scheduleAutoGeneration();
   });
 
-  form.addEventListener('submit', function (event) {
-    event.preventDefault();
+  function selectionFingerprint() {
+    return JSON.stringify({
+      event: state.event,
+      garment: state.garment,
+      color: state.color,
+      pattern: state.pattern,
+      style: state.style,
+      scene: state.scene,
+      accessories: state.accessories.slice().sort(),
+      outputType: state.outputType,
+      image: imageInput.files && imageInput.files[0] ? imageInput.files[0].name + ':' + imageInput.files[0].size : ''
+    });
+  }
+
+  function scheduleAutoGeneration() {
+    if (!state.event || !state.garment || !state.style) return;
+    pendingAutoFingerprint = selectionFingerprint();
+    if (autoGenerateTimer) window.clearTimeout(autoGenerateTimer);
     if (generationPending) {
-      showResult();
+      queuedAutoGeneration = true;
+      setStatus('Đã nhận thay đổi. AI sẽ cập nhật preview sau khi job hiện tại hoàn tất.');
       return;
     }
-    var activeJob = readActiveJob();
-    if (activeJob) {
-      // The local Gemini Web adapter completes the full request in one POST
-      // and has no GET status endpoint. Discard stale local jobs from older
-      // sessions instead of polling them and showing a misleading 405 error.
-      if (isSynchronousLocalGeneration()) {
-        clearActiveJob();
-      } else {
-        resumeGeneration(activeJob);
-        return;
-      }
-    }
-    generateLook();
-  });
+    setStatus('Đã đủ lựa chọn chính. AI đang chuẩn bị preview…');
+    autoGenerateTimer = window.setTimeout(function () {
+      autoGenerateTimer = null;
+      queuedAutoGeneration = false;
+      generateLook();
+    }, 850);
+  }
 
   async function generateLook() {
     if (generationPending) return;
@@ -672,6 +773,7 @@
       imageInput.focus();
       return;
     }
+    var requestFingerprint = selectionFingerprint();
     showResult();
     setResultState('queued', 'Đang xếp hàng bản phối.');
     prepareResultCopy();
@@ -690,7 +792,7 @@
         scene: state.scene,
         accessories: state.accessories.slice(),
         locks: Object.assign({}, state.locks),
-        generationType: outputType.value,
+        generationType: state.outputType,
         aspectRatio: state.aspectRatio,
         targetResolution: state.resolution,
         generationMode: state.mode
@@ -711,7 +813,7 @@
       styleSlug: state.style,
       sceneSlug: state.scene,
       locks: Object.assign({}, state.locks),
-      generationType: outputType.value,
+      generationType: state.outputType,
       aspectRatio: state.aspectRatio,
       targetResolution: state.resolution,
       generationMode: state.mode,
@@ -733,6 +835,7 @@
           throw new Error('Ảnh vượt quá 8 MB. Hãy chọn ảnh nhỏ hơn 8 MB.');
         }
         payload.inputImage = await readImage(file);
+        payload.generationMode = 'image-to-image';
       }
 
       if (!catalog.generationEndpoint) {
@@ -766,6 +869,10 @@
       generationPending = false;
       syncSubmitButton();
       setResultState('completed', resultMessage(completed.output || {}));
+      if (pendingAutoFingerprint && pendingAutoFingerprint !== requestFingerprint) {
+        queuedAutoGeneration = false;
+        scheduleAutoGeneration();
+      }
     } catch (error) {
       if (terminalFailure) clearActiveJob();
       generationPending = false;
@@ -773,7 +880,11 @@
       var message = humanizeGenerationError(error && error.message
         ? error.message
         : 'Không thể hoàn tất generation job.');
-      setResultState('failed', message + ' Bạn có thể đóng kết quả và thử lại sau.');
+      setResultState('failed', message + ' Preview hiện tại vẫn được giữ; hãy thay đổi một lựa chọn để hệ thống thử lại.');
+      if (pendingAutoFingerprint && pendingAutoFingerprint !== requestFingerprint) {
+        queuedAutoGeneration = false;
+        scheduleAutoGeneration();
+      }
     }
   }
 
@@ -803,7 +914,7 @@
       var message = humanizeGenerationError(error && error.message
         ? error.message
         : 'Không thể nối lại generation job.');
-      setResultState('failed', message + ' Bạn có thể thử lại bằng cùng nút tạo.');
+      setResultState('failed', message + ' Preview hiện tại vẫn được giữ; hãy thay đổi một lựa chọn để hệ thống thử lại.');
     } finally {
       generationPending = false;
       syncSubmitButton();
@@ -902,6 +1013,15 @@
     resultImages.hidden = items.length === 0;
     currentLookbookItems = items.slice(0, 5);
     var outputAspect = output.lookbook && output.lookbook.aspectRatio || state.aspectRatio || '16:9';
+    if (frame) frame.style.aspectRatio = outputAspect.replace(':', ' / ');
+    if (previewImage && items[0]) {
+      previewImage.src = items[0].url;
+      previewImage.hidden = false;
+      previewImage.onload = function () {
+        frame.classList.add('has-ai-preview', 'has-look');
+        if (previewEmpty) previewEmpty.classList.add('is-ready');
+      };
+    }
     resultVisual.style.aspectRatio = outputAspect.replace(':', ' / ');
     resultVisual.classList.toggle('is-landscape', outputAspect === '16:9');
     resultVisual.classList.toggle('has-images', items.length > 0);
@@ -979,8 +1099,22 @@
         button.classList.toggle('is-ready', hasImage);
         var detail = button.querySelector('small');
         if (detail) detail.textContent = hasImage ? 'Đã có ảnh' : 'Chưa tạo';
+        button.dataset.previewIndex = String(index);
       });
     }
+  }
+
+  function selectPreviewAsset(index) {
+    var item = currentLookbookItems[Number(index)];
+    if (!item || !previewImage) return;
+    previewImage.src = item.url;
+    previewImage.hidden = false;
+    frame.classList.add('has-ai-preview', 'has-look');
+    if (previewEmpty) previewEmpty.classList.add('is-ready');
+    Array.prototype.forEach.call(variantStrip ? variantStrip.querySelectorAll('[data-variant]') : [], function (button, buttonIndex) {
+      button.classList.toggle('is-active', buttonIndex === Number(index));
+    });
+    setStatus('Đang xem ' + (Number(index) === 0 ? 'frame A' : 'phương án ' + Number(index)) + '.');
   }
 
   function loadCanvasImage(url) {
@@ -1108,11 +1242,17 @@
     resultProgress.textContent = message;
     experience.setAttribute('aria-busy', String(value === 'queued' || value === 'processing'));
     srStatus.textContent = message;
+    studioStatus.textContent = message;
+    if (previewGenerationStatus && previewGenerationMessage) {
+      previewGenerationStatus.hidden = !(value === 'queued' || value === 'processing');
+      previewGenerationStatus.classList.toggle('is-error', value === 'failed');
+      previewGenerationMessage.textContent = message;
+    }
   }
 
   function showResult() {
     result.hidden = false;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = '';
     resultImages.innerHTML = '';
     resultImages.hidden = true;
     resultVideo.pause();
@@ -1128,7 +1268,7 @@
     resultVisualLabel.hidden = false;
     resultDownload.hidden = true;
     syncSubmitButton();
-    resultClose.focus();
+    if (resultClose && resultClose.offsetParent !== null) resultClose.focus();
   }
 
   function hideResult() {
@@ -1136,7 +1276,8 @@
     document.body.style.overflow = '';
     experience.setAttribute('aria-busy', 'false');
     syncSubmitButton();
-    form.querySelector('.studio-submit').focus();
+    if (previewGenerationStatus) previewGenerationStatus.hidden = true;
+    if (imageInput) imageInput.focus();
   }
 
   function readImage(file) {
@@ -1209,14 +1350,14 @@
     if (saveLookButton && !saveLookButton.disabled) saveLookButton.click();
     else {
       document.getElementById('studioVariants')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setStatus('Tạo ảnh trước khi lưu Look.');
+      setStatus('Hãy hoàn thành ba lựa chọn chính để AI tạo preview trước khi lưu Look.');
     }
   });
   if (headerDownloadLookbook) headerDownloadLookbook.addEventListener('click', function () {
     if (resultDownload && !resultDownload.hidden) resultDownload.click();
     else {
       document.getElementById('studioVariants')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setStatus('Tạo ảnh trước khi tải lookbook.');
+      setStatus('Hãy hoàn thành ba lựa chọn chính để AI tạo preview trước khi tải lookbook.');
     }
   });
 
@@ -1257,4 +1398,5 @@
   prepareMedia();
   var pendingJob = readActiveJob();
   if (pendingJob) resumeGeneration(pendingJob);
+  else if (hasContext) scheduleAutoGeneration();
 })();

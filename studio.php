@@ -216,33 +216,17 @@ $studioData = $catalog + [
                             <p class="studio-kicker">AI preview / Base look</p>
                             <h2 id="previewTitle">Khung ảnh A</h2>
                         </div>
-                        <div class="studio-spec-grid">
-                            <label>Khung ảnh
-                                <select id="canvasAspect">
-                                    <option value="16:9">16:9</option>
-                                    <option value="1:1">1:1</option>
-                                    <option value="9:16">9:16</option>
-                                </select>
-                            </label>
-                            <label>Chất lượng
-                                <select id="targetResolution">
-                                    <option value="1080">1080</option>
-                                    <option value="720">720</option>
-                                    <option value="2160">2160</option>
-                                </select>
-                            </label>
-                            <label>Chế độ
-                                <select id="generationMode">
-                                    <option value="text-to-image">Text → image</option>
-                                    <option value="image-to-image">Image → image</option>
-                                </select>
-                            </label>
+                        <div class="studio-preview__preset">
+                            <span>Studio preset</span>
+                            <strong><?= $escape((string) ($catalog['generation']['canvas_aspect_ratio'] ?? '16:9')) ?> · <?= $escape((string) ($catalog['generation']['target_resolution'] ?? '1080')) ?>p</strong>
+                            <small>Được quản lý trong Admin</small>
                         </div>
                     </div>
 
                     <div class="studio-plane" id="studioPlane">
                         <div class="studio-frame">
                             <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
+                            <img id="studioPreviewImage" class="studio-preview-image" alt="Bản phối AI đang xem trước" hidden>
                             <div class="studio-media-placeholder" aria-hidden="true">
                                 <span class="studio-media-placeholder__orb"></span>
                                 <span class="studio-media-placeholder__line"></span>
@@ -252,6 +236,10 @@ $studioData = $catalog + [
                                 <span>V–R / 02</span>
                                 <strong>Chọn ba lớp đầu tiên<br>để định hình Base Look.</strong>
                                 <small>Việt phục · Bối cảnh · Phong cách</small>
+                            </div>
+                            <div class="studio-preview-progress" id="previewGenerationStatus" hidden>
+                                <i aria-hidden="true"></i>
+                                <span id="previewGenerationMessage">Đang chuẩn bị bản phối.</span>
                             </div>
                         </div>
                         <div class="studio-hotspots" id="studioHotspots"></div>
@@ -277,7 +265,7 @@ $studioData = $catalog + [
                         <button type="button" class="studio-frame-step" data-frame-step="E"><b>E</b><span><strong>Phụ kiện</strong><small id="frameESummary">Chỉ thay điểm nhấn</small></span></button>
                     </div>
 
-                    <form class="studio-rail" id="studioForm">
+                    <section class="studio-auto-create" id="studioForm" aria-live="polite">
                         <div class="studio-rail__copy">
                             <span class="studio-rail__status"><i></i><span id="studioStatus">Dự án mới chưa có lựa chọn</span></span>
                             <p id="selectionSummary">Chọn Việt phục, bối cảnh và phong cách để bắt đầu.</p>
@@ -287,16 +275,9 @@ $studioData = $catalog + [
                             <span><strong>Tải ảnh của bạn</strong><small id="uploadName">Tuỳ chọn · tối đa 8 MB</small></span>
                             <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                         </label>
-                        <label class="studio-output">
-                            <span>Đầu ra</span>
-                            <select id="outputType" aria-label="Chọn loại đầu ra">
-                                <option value="image">Ảnh lookbook</option>
-                                <option value="video">Video Veo</option>
-                                <option value="both">Ảnh + video</option>
-                            </select>
-                        </label>
-                        <button class="studio-submit" type="submit">Generate <span aria-hidden="true">↗</span></button>
-                    </form>
+                        <input id="outputType" type="hidden" value="<?= $escape((string) ($catalog['generation']['default_output_type'] ?? 'image')) ?>">
+                        <span class="studio-auto-create__hint">Chọn đủ 3 lớp chính, AI sẽ tự xử lý và cập nhật preview.</span>
+                    </section>
 
                     <section class="studio-variants" id="studioVariants" aria-label="Các phiên bản look">
                         <div class="studio-variants__title">
@@ -344,6 +325,20 @@ $studioData = $catalog + [
                         <div><span>Góc chụp</span><strong>Eye-level · 3/4 body · Walking shot</strong></div>
                         <div><span>Styling</span><strong id="tipStyling">Chọn một điểm nhấn hiện đại vừa đủ.</strong></div>
                     </section>
+                    <section class="studio-insight studio-sourcing">
+                        <div class="studio-insight__head"><span>Nơi mua / thuê</span><small>04</small></div>
+                        <div class="studio-recommendation-list" id="studioListings">
+                            <p class="studio-recommendation-empty">Chọn trang phục hoặc phụ kiện để xem gợi ý đã xác minh.</p>
+                        </div>
+                        <a class="studio-search-link" id="listingSearchLink" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Tìm quanh vị trí của bạn <span aria-hidden="true">↗</span></a>
+                    </section>
+                    <section class="studio-insight studio-places">
+                        <div class="studio-insight__head"><span>Nơi chụp thật</span><small>05</small></div>
+                        <div class="studio-recommendation-list" id="studioLocations">
+                            <p class="studio-recommendation-empty">Chọn bối cảnh để xem địa điểm phù hợp trên bản đồ.</p>
+                        </div>
+                        <a class="studio-search-link" id="locationSearchLink" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Khám phá thêm địa điểm <span aria-hidden="true">↗</span></a>
+                    </section>
                 </aside>
             </div>
         </section>
@@ -355,7 +350,7 @@ $studioData = $catalog + [
                     <p class="studio-kicker">Bản phối / <span id="resultState">queued</span></p>
                     <h2 id="resultTitle">Đang chuẩn bị một dáng Việt mới.</h2>
                 </div>
-                <button class="icon-button icon-button--light" id="resultClose" type="button" aria-label="Đóng kết quả">×</button>
+                <button class="icon-button icon-button--light" id="resultClose" type="button" aria-label="Thu gọn chi tiết bản phối">×</button>
             </div>
             <div class="studio-result__grid">
                 <div class="studio-result__visual">

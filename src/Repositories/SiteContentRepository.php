@@ -143,7 +143,12 @@ final class SiteContentRepository
 
         $json = json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json !== false) {
-            file_put_contents($this->cacheFile, $json, LOCK_EX);
+            if (is_file($this->cacheFile) && !is_writable($this->cacheFile)) {
+                return;
+            }
+            if (@file_put_contents($this->cacheFile, $json, LOCK_EX) === false) {
+                error_log('[V-Remix] Site content cache is not writable: ' . $this->cacheFile);
+            }
         }
     }
 }

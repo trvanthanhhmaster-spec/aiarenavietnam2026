@@ -49,8 +49,11 @@ trạng thái tải và vị trí capsule sẽ tự sinh theo dữ liệu.
 ## Studio tầng 2
 
 Mở `http://localhost/aiarenavietnam2026/studio.php` để chọn sự kiện, cổ phục, màu,
-phong cách và phụ kiện. Catalog được đọc từ `studio_events`, `studio_garments`,
-`studio_accessories` và `studio_options`; không cần sửa PHP khi thêm lựa chọn mới.
+phong cách, phụ kiện và bối cảnh. Khi đã đủ sự kiện, trang phục và phong cách,
+Studio tự tạo/cập nhật AI preview sau một khoảng debounce ngắn; người dùng không
+phải chọn thông số kỹ thuật hoặc bấm Generate. Catalog được đọc từ
+`studio_events`, `studio_garments`, `studio_accessories` và `studio_options`;
+không cần sửa PHP khi thêm lựa chọn mới.
 
 Migration Studio tạo `generation_jobs` và `studio_prompt_versions` làm contract
 cho Supabase Edge Function. Bản hiện tại đã gọi Gemini server-side để tạo Story
@@ -67,9 +70,16 @@ sau đó gửi chính ảnh đầu tiên sang Veo qua Cloud Run Vertex bridge. C
 `video` tạo một first frame; chế độ `both` dùng ảnh đầu tiên của lookbook. Video
 lỗi hoặc timeout không làm thất bại phần ảnh đã hoàn tất.
 
-Kết quả ảnh luôn được yêu cầu theo canvas dọc `9:16` ở cả request Gemini,
-prompt và khung hiển thị Studio. Provider có thể trả kích thước pixel gần
-9:16 (ví dụ `768×1344`), nhưng không còn bị trình bày như một khung ngang.
+Khung ảnh, độ phân giải, chế độ và loại đầu ra là preset do Admin quản lý trong
+`studio_generation_settings`; Studio chỉ hiển thị preset đang hoạt động. Mặc
+định demo là canvas ngang `16:9` ở chất lượng mục tiêu `1080p`. Kết quả trả về
+được hiển thị trực tiếp trong AI Preview, còn bảng chi tiết job nằm bên dưới,
+không chặn toàn màn hình.
+
+Gợi ý mua/thuê và địa điểm chụp thật được đọc từ
+`studio_marketplace_listings` và `studio_locations`. Admin có CRUD riêng cho
+hai catalog này; mỗi bản ghi có nguồn, trạng thái hoạt động và thời điểm xác
+minh để Studio không phải hardcode brand hoặc địa điểm.
 
 Mở `admin.php` từ localhost để thiết lập mật khẩu quản trị lần đầu. Trang
 `API & chi phí` là màn hình mặc định: tại đây có thể bật/tắt generation, chọn
@@ -83,7 +93,8 @@ API. Nếu video chọn Vertex AI / Cloud Run bridge, bridge URL và secret ti�
 
 Admin chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa
 secret vào HTML/JavaScript. Ngoài AI operations, có thể sửa catalog Studio,
-media tầng 1, nguồn văn hoá, prompt versions và xem generation jobs. Chi phí
+nơi mua/thuê, địa điểm chụp, media tầng 1, nguồn văn hoá, prompt versions và
+xem generation jobs. Chi phí
 trên dashboard là dự toán theo đơn giá đã cấu hình, không phải số liệu hoá đơn
 Google Cloud. Với XAMPP, đặt `ADMIN_AUTH_FILE` và `SUPABASE_CACHE_FILE` ở thư
 mục runtime ngoài document root (ví dụ `/tmp`) để PHP user `daemon` có quyền

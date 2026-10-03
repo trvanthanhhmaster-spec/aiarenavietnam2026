@@ -129,6 +129,8 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <button data-resource="garments"><span>03</span>Cổ phục</button>
                 <button data-resource="accessories"><span>04</span>Phụ kiện</button>
                 <button data-resource="options"><span>05</span>Màu, họa tiết & phong cách</button>
+                <button data-resource="marketplace"><span>05A</span>Nơi mua / thuê</button>
+                <button data-resource="locations"><span>05B</span>Địa điểm chụp</button>
                 <button data-resource="rules"><span>06</span>Quy tắc văn hoá</button>
                 <p class="admin-nav__label">Editorial</p>
                 <button data-resource="branches"><span>07</span>Tầng 1 / Media</button>

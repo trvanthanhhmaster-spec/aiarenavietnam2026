@@ -168,7 +168,13 @@ video-only cũng tạo một lookbook frame trước. Live `both` đã kiểm th
 công: operation hoàn tất, MP4 H.264/AAC 8 giây 720×1280 được lưu vào Storage;
 browser có fallback về ảnh nếu video media không tải được.
 
-Ảnh Studio được khóa dọc `9:16` ở request Gemini, prompt và result overlay.
+Thông số tạo ảnh không còn xuất hiện như lựa chọn của người dùng trong Studio.
+Khung ảnh, độ phân giải, chế độ và đầu ra được Admin quản lý; preset demo hiện
+là `16:9`, `1080p`. Khi người dùng chọn đủ dịp, trang phục và phong cách,
+Studio tự tạo preview, hiển thị ảnh ngay trên canvas và giữ chi tiết job ở một
+panel nội tuyến. Catalog mua/thuê và địa điểm chụp thật được quản lý bằng
+`studio_marketplace_listings` và `studio_locations`.
+
 Admin control room đã có tại `admin.php`: thiết lập mật khẩu lần đầu trên
 localhost, sửa catalog/media/prompt/source qua Supabase server-side và xem
 generation jobs mà không lộ service-role key ở client. Màn hình `API & chi
@@ -187,7 +193,8 @@ job; dashboard là dự toán nội bộ, không thay thế hoá đơn Google Cl
 
 - Tầng 1 vào được Studio mà không mất trải nghiệm cinematic.
 - Thêm option catalog mới không cần sửa PHP/JavaScript lõi.
-- Một lần bấm tạo chỉ sinh một generation job.
+- Một trạng thái lựa chọn ổn định chỉ sinh một generation job; thay đổi nhanh
+  được debounce và job mới nhất được xếp sau job đang chạy.
 - Reload trang trong lúc tạo vẫn tiếp tục dùng job cũ.
 - Ảnh kết quả, Story Card và Guardrail hiển thị khi video chưa sẵn sàng.
 - Kết quả có thể tải ở tỉ lệ 9:16.
