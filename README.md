@@ -81,7 +81,14 @@ Gợi ý mua/thuê và địa điểm chụp thật được đọc từ
 hai catalog này; mỗi bản ghi có nguồn, trạng thái hoạt động và thời điểm xác
 minh để Studio không phải hardcode brand hoặc địa điểm.
 
-Mở `admin.php` từ localhost để thiết lập mật khẩu quản trị lần đầu. Trang
+Mở `auth.php` để đăng ký/đăng nhập bằng email hoặc Google OAuth. Phiên đăng
+nhập dùng cookie HttpOnly và được dùng chung giữa Studio, thư viện Look và
+Admin. Google cần được bật trong Supabase Authentication > Providers, kèm
+redirect URL `http://localhost/aiarenavietnam2026/auth-callback.php`.
+
+Mở `admin.php` sau khi đăng nhập bằng tài khoản có role `admin`. Trên một dự án
+trống, tài khoản Supabase đầu tiên mở Admin từ localhost sẽ được cấp role
+`admin`; các môi trường khác phải cấp role trong `user_roles`. Trang
 `API & chi phí` là màn hình mặc định: tại đây có thể bật/tắt generation, chọn
 provider/model ảnh và video, nhập Gemini API key dạng write-only, đặt số biến
 thể, đơn giá ước tính và ngân sách ngày/tháng. API key được mã hoá AES-256-GCM
@@ -91,14 +98,14 @@ Một Gemini API key dùng chung cho text, ảnh và video khi chọn Gemini Dev
 API. Nếu video chọn Vertex AI / Cloud Run bridge, bridge URL và secret tiếp tục
 được giữ ở Edge Function/Cloud Run và không hiển thị trong trình duyệt.
 
-Admin chạy qua PHP session, CSRF và service-role key chỉ ở server; không đưa
-secret vào HTML/JavaScript. Ngoài AI operations, có thể sửa catalog Studio,
+Admin chạy qua PHP session Supabase, role `admin`, CSRF và service-role key chỉ
+ở server; không đưa secret vào HTML/JavaScript. Ngoài AI operations, có thể sửa catalog Studio,
 nơi mua/thuê, địa điểm chụp, media tầng 1, nguồn văn hoá, prompt versions và
 xem generation jobs. Chi phí
 trên dashboard là dự toán theo đơn giá đã cấu hình, không phải số liệu hoá đơn
-Google Cloud. Với XAMPP, đặt `ADMIN_AUTH_FILE` và `SUPABASE_CACHE_FILE` ở thư
-mục runtime ngoài document root (ví dụ `/tmp`) để PHP user `daemon` có quyền
-ghi mà không phải mở quyền cho source tree.
+Google Cloud. Với XAMPP, đặt `SUPABASE_CACHE_FILE` ở thư mục runtime ngoài
+document root (ví dụ `/tmp`) để PHP user `daemon` có quyền ghi mà không phải mở
+quyền cho source tree.
 
 Sau khi cập nhật repo chính, đồng bộ bản XAMPP:
 

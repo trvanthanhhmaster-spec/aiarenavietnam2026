@@ -2,10 +2,12 @@
 declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
+require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 
 use App\Infrastructure\SupabaseAdminClient;
 use App\Support\Env;
+use App\Support\SupabaseAuth;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -17,21 +19,20 @@ $respond = static function (mixed $body, int $status = 200): never {
 };
 
 Env::load(__DIR__ . '/.env');
-session_name('vremix_studio');
-session_set_cookie_params([
-    'httponly' => true,
-    'samesite' => 'Lax',
-    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-    'path' => '/',
-]);
-session_start();
-
-if (
-    empty($_SESSION['studio_csrf'])
-    || !hash_equals((string) $_SESSION['studio_csrf'], (string) ($_SERVER['HTTP_X_VREMIX_CSRF'] ?? ''))
-) {
+$auth = new SupabaseAuth(
+    (string) getenv('SUPABASE_URL'),
+    (string) getenv('SUPABASE_ANON_KEY'),
+    (string) getenv('SUPABASE_SERVICE_ROLE_KEY')
+);
+$auth->boot();
+$user = $auth->user();
+if ($user === null) {
+    $respond(['error' => 'Hãy đăng nhập để lưu Look vào thư viện riêng.'], 401);
+}
+if (!$auth->verifyCsrf((string) ($_SERVER['HTTP_X_VREMIX_CSRF'] ?? ''))) {
     $respond(['error' => 'Phiên Studio không hợp lệ. Hãy tải lại trang.'], 403);
 }
+$userId = (string) $user['id'];
 
 $supabaseUrl = rtrim((string) getenv('SUPABASE_URL'), '/');
 $serviceRoleKey = (string) getenv('SUPABASE_SERVICE_ROLE_KEY');
@@ -55,11 +56,8 @@ try {
     $sessionId = (string) ($sessionRows[0]['id'] ?? '');
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        if ($sessionId === '') {
-            $respond(['items' => []]);
-        }
         $items = $client->select('looks', [
-            'session_id' => 'eq.' . $sessionId,
+            'user_id' => 'eq.' . $userId,
             'select' => 'id,name,occasion_slug,garment_slug,color_slug,pattern_slug,style_slug,scene_slug,selection,locks,image_url,visibility,created_at',
             'order' => 'created_at.desc',
             'limit' => '20',
@@ -114,6 +112,7 @@ try {
     ));
     $visibility = ($input['visibility'] ?? '') === 'public' ? 'public' : 'private';
     $lookRows = $client->insert('looks', [
+        'user_id' => $userId,
         'session_id' => $sessionId,
         'name' => mb_substr(trim((string) ($input['name'] ?? 'Look V-Remix')), 0, 120),
         'occasion_slug' => $occasion,

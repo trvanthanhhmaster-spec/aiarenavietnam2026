@@ -2,12 +2,12 @@
 declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
-require __DIR__ . '/src/Support/AdminAuth.php';
+require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 
 use App\Infrastructure\SupabaseAdminClient;
-use App\Support\AdminAuth;
 use App\Support\Env;
+use App\Support\SupabaseAuth;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -19,11 +19,14 @@ $respond = static function (mixed $body, int $status = 200): never {
 };
 
 Env::load(__DIR__ . '/.env');
-$adminAuthFile = (string) (getenv('ADMIN_AUTH_FILE') ?: __DIR__ . '/storage/admin-auth.json');
-$auth = new AdminAuth($adminAuthFile);
+$auth = new SupabaseAuth(
+    (string) getenv('SUPABASE_URL'),
+    (string) getenv('SUPABASE_ANON_KEY'),
+    (string) getenv('SUPABASE_SERVICE_ROLE_KEY')
+);
 $auth->boot();
-if (!$auth->isAuthenticated()) {
-    $respond(['error' => 'Phiên quản trị đã hết hạn.'], 401);
+if ($auth->user() === null || !$auth->isAdmin()) {
+    $respond(['error' => 'Tài khoản không có quyền quản trị.'], 403);
 }
 
 $csrf = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
@@ -115,6 +118,20 @@ $resources = [
         'fields' => ['name', 'brand_mark', 'brand_name', 'title', 'description', 'hero_line_one', 'hero_line_two', 'hero_description_one', 'hero_description_two', 'controller_label', 'cta_label', 'ui', 'media_url'],
         'no_create' => true,
         'no_delete' => true,
+    ],
+    'users' => [
+        'table' => 'profiles',
+        'select' => 'id,email,display_name,avatar_url,created_at,updated_at',
+        'order' => 'created_at.desc',
+        'fields' => ['display_name', 'avatar_url'],
+        'no_create' => true,
+        'no_delete' => true,
+    ],
+    'roles' => [
+        'table' => 'user_roles',
+        'select' => 'id,user_id,role,created_at',
+        'order' => 'created_at.desc',
+        'fields' => ['user_id', 'role'],
     ],
     'jobs' => [
         'table' => 'generation_jobs',
@@ -351,6 +368,14 @@ try {
                 $respond(['error' => 'Bối cảnh phù hợp phải là một JSON array.'], 422);
             }
         }
+        if ($resourceKey === 'roles') {
+            if (!in_array($payload['role'] ?? '', ['member', 'admin', 'editor', 'cultural_reviewer', 'partner'], true)) {
+                $respond(['error' => 'Role người dùng không hợp lệ.'], 422);
+            }
+            if (!is_string($payload['user_id'] ?? null) || preg_match('/^[0-9a-f-]{36}$/i', $payload['user_id']) !== 1) {
+                $respond(['error' => 'User ID không hợp lệ.'], 422);
+            }
+        }
         if ($payload === []) {
             $respond(['error' => 'Không có dữ liệu để lưu.'], 422);
         }
@@ -373,6 +398,23 @@ try {
         } elseif ($id !== '') {
             if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
                 $respond(['error' => 'ID bản ghi không hợp lệ.'], 422);
+            }
+            if ($resourceKey === 'roles' && ($payload['role'] ?? '') !== 'admin') {
+                $currentRole = $client->select('user_roles', [
+                    'id' => 'eq.' . $id,
+                    'select' => 'role',
+                    'limit' => '1',
+                ]);
+                if (($currentRole[0]['role'] ?? '') === 'admin') {
+                    $admins = $client->select('user_roles', [
+                        'role' => 'eq.admin',
+                        'select' => 'id',
+                        'limit' => '2',
+                    ]);
+                    if (count($admins) < 2) {
+                        $respond(['error' => 'Không thể hạ quyền Admin cuối cùng.'], 422);
+                    }
+                }
             }
             $saved = $client->update((string) $resource['table'], ['id' => 'eq.' . $id], $payload);
         } else {
@@ -397,6 +439,23 @@ try {
         $id = (string) ($input['id'] ?? '');
         if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
             $respond(['error' => 'ID bản ghi không hợp lệ.'], 422);
+        }
+        if ($resourceKey === 'roles') {
+            $currentRole = $client->select('user_roles', [
+                'id' => 'eq.' . $id,
+                'select' => 'role',
+                'limit' => '1',
+            ]);
+            if (($currentRole[0]['role'] ?? '') === 'admin') {
+                $admins = $client->select('user_roles', [
+                    'role' => 'eq.admin',
+                    'select' => 'id',
+                    'limit' => '2',
+                ]);
+                if (count($admins) < 2) {
+                    $respond(['error' => 'Không thể xoá quyền Admin cuối cùng.'], 422);
+                }
+            }
         }
         $client->delete((string) $resource['table'], ['id' => 'eq.' . $id]);
         $respond(['message' => 'Đã xoá bản ghi khỏi Supabase.']);

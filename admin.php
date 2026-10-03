@@ -2,14 +2,17 @@
 declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
-require __DIR__ . '/src/Support/AdminAuth.php';
+require __DIR__ . '/src/Support/SupabaseAuth.php';
 
-use App\Support\AdminAuth;
 use App\Support\Env;
+use App\Support\SupabaseAuth;
 
 Env::load(__DIR__ . '/.env');
-$adminAuthFile = (string) (getenv('ADMIN_AUTH_FILE') ?: __DIR__ . '/storage/admin-auth.json');
-$auth = new AdminAuth($adminAuthFile);
+$auth = new SupabaseAuth(
+    (string) getenv('SUPABASE_URL'),
+    (string) getenv('SUPABASE_ANON_KEY'),
+    (string) getenv('SUPABASE_SERVICE_ROLE_KEY')
+);
 $auth->boot();
 $message = '';
 $error = '';
@@ -17,21 +20,9 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
     try {
-        if ($action === 'setup') {
-            $auth->configure((string) ($_POST['password'] ?? ''));
-            header('Location: admin.php');
-            exit;
-        }
-        if ($action === 'login') {
-            if (!$auth->login((string) ($_POST['password'] ?? ''))) {
-                throw new RuntimeException('Mật khẩu quản trị không đúng.');
-            }
-            header('Location: admin.php');
-            exit;
-        }
         if ($action === 'logout' && $auth->verifyCsrf((string) ($_POST['csrf'] ?? ''))) {
             $auth->logout();
-            header('Location: admin.php');
+            header('Location: auth.php?next=admin.php');
             exit;
         }
     } catch (Throwable $exception) {
@@ -40,8 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-$configured = $auth->isConfigured();
-$authenticated = $auth->isAuthenticated();
+$user = $auth->user();
+if ($user !== null && $auth->isLocalRequest()) {
+    try {
+        if ($auth->bootstrapFirstLocalAdmin()) {
+            $message = 'Tài khoản đầu tiên đã được cấp quyền Admin trên localhost.';
+        }
+    } catch (Throwable $exception) {
+        $error = 'Không thể kiểm tra quyền Admin: ' . $exception->getMessage();
+    }
+}
+$authenticated = $user !== null && $auth->isAdmin();
 $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPABASE_SERVICE_ROLE_KEY') !== '';
 ?>
 <!doctype html>
@@ -70,27 +70,19 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
             <div class="admin-card__topline"><span>V-REMIX ADMIN</span><span><?= $serviceReady ? 'SUPABASE / READY' : 'SUPABASE / SETUP' ?></span></div>
             <?php if ($error !== ''): ?><p class="admin-alert admin-alert--error"><?= $escape($error) ?></p><?php endif; ?>
             <?php if ($message !== ''): ?><p class="admin-alert"><?= $escape($message) ?></p><?php endif; ?>
-            <?php if (!$configured): ?>
-                <p class="admin-card__kicker">Thiết lập lần đầu</p>
-                <h2>Tạo khoá quản trị cục bộ.</h2>
-                <p class="admin-card__copy">Thiết lập này chỉ được phép từ localhost và mật khẩu không được lưu vào Git. Hãy dùng ít nhất 12 ký tự.</p>
-                <form method="post" class="admin-form">
-                    <input type="hidden" name="action" value="setup">
-                    <label>Mật khẩu quản trị
-                        <input type="password" name="password" minlength="12" autocomplete="new-password" required>
-                    </label>
-                    <button class="admin-button admin-button--solid" type="submit">Tạo quyền truy cập <span>↗</span></button>
-                </form>
+            <?php if ($user === null): ?>
+                <p class="admin-card__kicker">Supabase account</p>
+                <h2>Đăng nhập bằng tài khoản.</h2>
+                <p class="admin-card__copy">Admin không còn dùng khoá hoặc mật khẩu chia sẻ. Hãy đăng nhập bằng email hoặc Google; quyền quản trị được kiểm tra theo role trong Supabase.</p>
+                <a class="admin-button admin-button--solid" href="auth.php?next=admin.php">Đăng nhập Admin <span>↗</span></a>
             <?php else: ?>
-                <p class="admin-card__kicker">Private access</p>
-                <h2>Đăng nhập control room.</h2>
-                <p class="admin-card__copy">Phiên quản trị được giữ bằng cookie HttpOnly và mọi lệnh thay đổi đều yêu cầu CSRF token.</p>
+                <p class="admin-card__kicker">Chưa có quyền Admin</p>
+                <h2>Tài khoản đã đăng nhập.</h2>
+                <p class="admin-card__copy"><?= $escape((string) ($user['email'] ?? '')) ?> chưa có role <strong>admin</strong>. Quản trị viên hiện tại có thể cấp role trong bảng <code>user_roles</code>.</p>
                 <form method="post" class="admin-form">
-                    <input type="hidden" name="action" value="login">
-                    <label>Mật khẩu quản trị
-                        <input type="password" name="password" autocomplete="current-password" required autofocus>
-                    </label>
-                    <button class="admin-button admin-button--solid" type="submit">Mở admin <span>↗</span></button>
+                    <input type="hidden" name="action" value="logout">
+                    <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
+                    <button class="admin-button admin-button--solid" type="submit">Đăng xuất và đổi tài khoản <span>↗</span></button>
                 </form>
             <?php endif; ?>
             <a class="admin-backlink" href="studio.php">← Quay lại Studio</a>
@@ -137,6 +129,9 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <button data-resource="sources"><span>08</span>Nguồn văn hoá</button>
                 <button data-resource="prompts"><span>09</span>Prompt versions</button>
                 <button data-resource="pages"><span>10</span>Trang chủ</button>
+                <p class="admin-nav__label">Accounts</p>
+                <button data-resource="users"><span>10A</span>Người dùng</button>
+                <button data-resource="roles"><span>10B</span>Phân quyền</button>
                 <p class="admin-nav__label">Operations</p>
                 <button data-resource="looks"><span>11</span>Looks</button>
                 <button data-resource="discovery"><span>12</span>Discovery pool</button>

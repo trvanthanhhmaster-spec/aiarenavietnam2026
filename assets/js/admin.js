@@ -24,6 +24,8 @@
     sources: { kicker: 'Editorial / 08', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
     prompts: { kicker: 'Editorial / 09', title: 'Prompt versions', columns: ['slug', 'version', 'model', 'is_active'] },
     pages: { kicker: 'Editorial / 10', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
+    users: { kicker: 'Accounts / 10A', title: 'Người dùng', columns: ['email', 'display_name', 'created_at'] },
+    roles: { kicker: 'Accounts / 10B', title: 'Phân quyền', columns: ['user_id', 'role', 'created_at'] },
     looks: { kicker: 'Operations / 11', title: 'Looks đã lưu', columns: ['name', 'occasion_slug', 'garment_slug', 'visibility', 'created_at'] },
     discovery: { kicker: 'Operations / 12', title: 'Discovery pool', columns: ['look_id', 'status', 'moderation_note', 'created_at'] },
     jobs: { kicker: 'Operations / 13', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'estimated_cost_vnd', 'error_message'] }
@@ -136,6 +138,20 @@
       ['hero_description_one', 'Hero description 1', 'text', true], ['hero_description_two', 'Hero description 2', 'text', true],
       ['controller_label', 'Controller label', 'text', true], ['cta_label', 'CTA label', 'text', true],
       ['ui', 'UI copy JSON', 'json', true], ['media_url', 'Media URL', 'url', true]
+    ],
+    users: [
+      ['display_name', 'Tên hiển thị', 'text', true],
+      ['avatar_url', 'Avatar URL', 'url', false]
+    ],
+    roles: [
+      ['user_id', 'User ID', 'text', true],
+      ['role', 'Role', 'select', true, [
+        ['member', 'Member'],
+        ['admin', 'Admin'],
+        ['editor', 'Biên tập'],
+        ['cultural_reviewer', 'Duyệt văn hoá'],
+        ['partner', 'Đối tác']
+      ]]
     ]
   };
 
@@ -219,7 +235,7 @@
     usage = null;
     document.getElementById('adminResourceKicker').textContent = metadata.kicker;
     document.getElementById('adminResourceTitle').textContent = metadata.title;
-    createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages'
+    createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'users'
       || resourceKey === 'ai-settings' || resourceKey === 'studio-generation';
     renderMetrics();
     setStatus('Đang đồng bộ Supabase…');
@@ -278,7 +294,8 @@
 
   function renderTable(columns) {
     var showActions = resourceKey !== 'jobs';
-    var allowDelete = resourceKey !== 'pages' && resourceKey !== 'ai-settings' && resourceKey !== 'studio-generation';
+    var allowDelete = resourceKey !== 'pages' && resourceKey !== 'users'
+      && resourceKey !== 'ai-settings' && resourceKey !== 'studio-generation';
     tableHead.innerHTML = '<tr>' + columns.map(function (key) {
       return '<th>' + escapeHtml(labelFor(key)) + '</th>';
     }).join('') + (showActions ? '<th class="admin-table__actions">Thao tác</th>' : '') + '</tr>';

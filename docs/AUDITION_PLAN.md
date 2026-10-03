@@ -175,12 +175,20 @@ Studio tự tạo preview, hiển thị ảnh ngay trên canvas và giữ chi ti
 panel nội tuyến. Catalog mua/thuê và địa điểm chụp thật được quản lý bằng
 `studio_marketplace_listings` và `studio_locations`.
 
-Admin control room đã có tại `admin.php`: thiết lập mật khẩu lần đầu trên
-localhost, sửa catalog/media/prompt/source qua Supabase server-side và xem
+Admin control room đã có tại `admin.php`: đăng nhập bằng tài khoản Supabase có
+role `admin`, sửa catalog/media/prompt/source qua Supabase server-side và xem
 generation jobs mà không lộ service-role key ở client. Màn hình `API & chi
 phí` quản lý provider/model, Gemini API key được mã hoá, số biến thể, đơn giá
 ước tính và hạn mức ngày/tháng. Edge Function kiểm tra hạn mức trước khi tạo
 job; dashboard là dự toán nội bộ, không thay thế hoá đơn Google Cloud.
+
+Tài khoản Studio/Admin đã chuyển sang Supabase Auth. Người dùng có thể đăng ký
+và đăng nhập email/password, lưu Look theo `auth.users.id`, và dùng chung phiên
+HttpOnly giữa Studio với Admin. Admin không còn dùng mật khẩu chia sẻ: quyền
+được kiểm tra qua `user_roles`; tài khoản đầu tiên chỉ được bootstrap thành
+Admin khi truy cập từ localhost. Route Google OAuth dùng PKCE đã sẵn sàng,
+nhưng nút Google chỉ hoạt động sau khi bật provider và thêm redirect URL
+`/auth-callback.php` trong Supabase.
 
 ### Milestone E - Deploy
 

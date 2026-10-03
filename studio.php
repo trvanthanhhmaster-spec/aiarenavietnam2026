@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
+require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseClient.php';
 require __DIR__ . '/src/Repositories/SiteContentRepository.php';
 require __DIR__ . '/src/Repositories/StudioRepository.php';
@@ -10,22 +11,18 @@ use App\Infrastructure\SupabaseClient;
 use App\Repositories\SiteContentRepository;
 use App\Repositories\StudioRepository;
 use App\Support\Env;
+use App\Support\SupabaseAuth;
 
 Env::load(__DIR__ . '/.env');
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_name('vremix_studio');
-    session_set_cookie_params([
-        'httponly' => true,
-        'samesite' => 'Lax',
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-        'path' => '/',
-    ]);
-    session_start();
-}
-if (empty($_SESSION['studio_csrf'])) {
-    $_SESSION['studio_csrf'] = bin2hex(random_bytes(24));
-}
 $database = require __DIR__ . '/config/database.php';
+$auth = new SupabaseAuth(
+    (string) getenv('SUPABASE_URL'),
+    (string) getenv('SUPABASE_ANON_KEY'),
+    (string) getenv('SUPABASE_SERVICE_ROLE_KEY')
+);
+$auth->boot();
+$authUser = $auth->user();
+$authNext = 'studio.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . (string) $_SERVER['QUERY_STRING'] : '');
 $site = null;
 $catalog = null;
 $branches = [];
@@ -73,7 +70,12 @@ $studioData = $catalog + [
     'generationProvider' => $localWebGeneration ? 'gemini-webapi-local' : 'supabase-edge',
     'baseMedia' => $baseMedia,
     'lookEndpoint' => 'look-api.php',
-    'lookCsrf' => (string) $_SESSION['studio_csrf'],
+    'lookCsrf' => $auth->csrfToken(),
+    'auth' => [
+        'authenticated' => $authUser !== null,
+        'loginUrl' => 'auth.php?next=' . rawurlencode(SupabaseAuth::safeNext($authNext)),
+        'email' => (string) ($authUser['email'] ?? ''),
+    ],
 ];
 ?>
 <!doctype html>
@@ -105,6 +107,14 @@ $studioData = $catalog + [
             <div class="studio-header-actions">
                 <button class="studio-header-command" id="headerSaveLook" type="button"><span aria-hidden="true">♡</span> Lưu look</button>
                 <button class="studio-header-command" id="headerDownloadLookbook" type="button"><span aria-hidden="true">⇩</span> Tải lookbook</button>
+                <?php if ($authUser !== null): ?>
+                    <a class="studio-account is-authenticated" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>" aria-label="Mở tài khoản <?= $escape((string) ($authUser['email'] ?? '')) ?>">
+                        <span aria-hidden="true"><?= $escape(mb_strtoupper(mb_substr((string) ($authUser['email'] ?? 'V'), 0, 1))) ?></span>
+                        <small>Tài khoản</small>
+                    </a>
+                <?php else: ?>
+                    <a class="studio-account" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>">Đăng nhập</a>
+                <?php endif; ?>
                 <a class="studio-admin" href="admin.php" aria-label="Mở trang quản trị"><span aria-hidden="true">♙</span></a>
                 <a class="studio-back" href="index.php#stage" aria-label="Về tầng khám phá"><span aria-hidden="true">☰</span></a>
             </div>

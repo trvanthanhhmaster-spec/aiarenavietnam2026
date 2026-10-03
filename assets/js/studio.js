@@ -1293,6 +1293,12 @@
 
   async function saveCurrentLook() {
     if (!catalog.lookEndpoint || currentLookbookItems.length === 0) return;
+    if (!catalog.auth || !catalog.auth.authenticated) {
+      window.location.href = catalog.auth && catalog.auth.loginUrl
+        ? catalog.auth.loginUrl
+        : 'auth.php?next=studio.php';
+      return;
+    }
     saveLookButton.disabled = true;
     saveLookButton.textContent = 'Đang lưu…';
     try {

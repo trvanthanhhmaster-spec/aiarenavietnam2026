@@ -1089,3 +1089,37 @@ body.studio-page {
   .studio-auto-create .studio-upload { width: 100%; }
   .studio-result__copy { grid-template-columns: 1fr; }
 }
+
+.studio-account {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid var(--designer-line);
+  color: var(--designer-ink);
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-decoration: none;
+  transition: border-color 180ms ease, color 180ms ease;
+}
+.studio-account:hover { border-color: var(--designer-accent); color: var(--designer-accent); }
+.studio-account.is-authenticated {
+  border: 0;
+}
+.studio-account.is-authenticated > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--designer-line);
+  border-radius: 50%;
+  background: var(--designer-card-soft);
+  font-family: "Lora", Georgia, serif;
+  font-size: 12px;
+}
+.studio-account small { color: var(--designer-muted); font-size: 8px; }
+
+@media (max-width: 620px) {
+  .studio-account small { display: none; }
+  .studio-account:not(.is-authenticated) { font-size: 8px; }
+}
