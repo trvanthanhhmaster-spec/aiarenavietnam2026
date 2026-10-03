@@ -363,6 +363,7 @@
         chooseOption(button.dataset.optionKind, button.dataset.optionValue);
       });
     });
+    bindCatalogImageFallback(dockContent);
   }
 
   function optionList(items, kind, selectedValue, multiple, swatches) {
@@ -371,16 +372,39 @@
       var selected = multiple ? selectedValue.indexOf(slug) !== -1 : selectedValue === slug;
       var name = item.label || item.name || slug;
       var detail = item.description || item.category || item.origin_note || '';
+      var imageUrl = catalogImageUrl(item);
+      var media = imageUrl
+        ? '<span class="studio-option__media has-image"><img src="' + escapeHtml(imageUrl) +
+          '" alt="Ảnh tham khảo ' + escapeHtml(name) + '" loading="lazy"></span>'
+        : '';
       var swatch = swatches
         ? '<span class="studio-option__swatch" style="background:' + escapeHtml(item.value || '#d6d6cf') + '"></span>'
         : '';
       return '<button type="button" class="studio-option' + (selected ? ' is-selected' : '') + (swatches ? ' studio-option--swatch' : '') +
         '" data-option-kind="' + escapeHtml(kind) + '" data-option-value="' + escapeHtml(slug) +
-        '" aria-pressed="' + String(selected) + '">' + swatch +
-        '<span><span class="studio-option__name">' + escapeHtml(name) + '</span>' +
+        '" aria-pressed="' + String(selected) + '">' + media + swatch +
+        '<span class="studio-option__copy"><span class="studio-option__name">' + escapeHtml(name) + '</span>' +
         (detail ? '<span class="studio-option__meta">' + escapeHtml(detail) + '</span>' : '') +
+        (imageUrl ? '<span class="studio-option__source">Ảnh tham chiếu có nguồn</span>' : '') +
         '</span><span class="studio-option__check" aria-hidden="true">✓</span></button>';
     }).join('');
+  }
+
+  function catalogImageUrl(item) {
+    var value = String(item.thumbnail_url || item.image_url || '').trim();
+    if (/^https?:\/\//i.test(value)) return value;
+    if (/^assets\/media\/catalog\/[a-z0-9._/-]+$/i.test(value)) return value;
+    return '';
+  }
+
+  function bindCatalogImageFallback(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('img'), function (image) {
+      image.addEventListener('error', function () {
+        var media = image.closest('.has-image');
+        if (media) media.classList.remove('has-image');
+        image.remove();
+      }, { once: true });
+    });
   }
 
   function compactCatalogList(items, kind, selectedValue, multiple, limit) {
@@ -388,9 +412,9 @@
       var slug = String(item.slug || '');
       var selected = multiple ? selectedValue.indexOf(slug) !== -1 : selectedValue === slug;
       var name = item.label || item.name || slug;
-      var imageUrl = String(item.thumbnail_url || item.image_url || '');
-      var image = /^https?:\/\//i.test(imageUrl)
-        ? '<img src="' + escapeHtml(imageUrl) + '" alt="" loading="lazy">'
+      var imageUrl = catalogImageUrl(item);
+      var image = imageUrl
+        ? '<img src="' + escapeHtml(imageUrl) + '" alt="Ảnh tham khảo ' + escapeHtml(name) + '" loading="lazy">'
         : '';
       var visualStyle = kind === 'color'
         ? ' style="background:' + escapeHtml(item.value || '#d6d1c8') + '"'
@@ -398,7 +422,7 @@
       return '<button type="button" class="studio-catalog-item' + (selected ? ' is-selected' : '') +
         '" data-catalog-kind="' + escapeHtml(kind) + '" data-option-value="' + escapeHtml(slug) +
         '" aria-pressed="' + String(selected) + '" title="' + escapeHtml(name) + '">' +
-        '<span class="studio-catalog-item__visual"' + visualStyle + '>' + image +
+        '<span class="studio-catalog-item__visual' + (imageUrl ? ' has-image' : '') + '"' + visualStyle + '>' + image +
         '<span class="studio-catalog-item__glyph" aria-hidden="true">' +
         escapeHtml(String(index + 1).padStart(2, '0')) + '</span></span>' +
         '<span class="studio-catalog-item__name">' + escapeHtml(name) + '</span></button>';
@@ -424,6 +448,7 @@
         definition.multiple,
         definition.limit
       );
+      bindCatalogImageFallback(panel);
     });
   }
 

@@ -89,9 +89,9 @@ $resources = [
     ],
     'options' => [
         'table' => 'studio_options',
-        'select' => 'id,option_type,slug,label,value,prompt_hint,sort_order,is_active',
+        'select' => 'id,option_type,slug,label,value,prompt_hint,description,thumbnail_url,source_url,sort_order,is_active',
         'order' => 'option_type.asc,sort_order.asc',
-        'fields' => ['option_type', 'slug', 'label', 'value', 'prompt_hint', 'sort_order', 'is_active'],
+        'fields' => ['option_type', 'slug', 'label', 'value', 'prompt_hint', 'description', 'thumbnail_url', 'source_url', 'sort_order', 'is_active'],
     ],
     'branches' => [
         'table' => 'experience_branches',

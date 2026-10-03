@@ -184,7 +184,11 @@ body.studio-page {
   box-shadow: var(--designer-shadow);
 }
 .studio-catalog-card {
+  width: 100%;
+  min-width: 0;
   padding: 13px 13px 12px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .studio-catalog-card__head {
   display: flex;
@@ -228,7 +232,17 @@ body.studio-page {
   gap: 8px;
   min-width: 0;
 }
-.studio-catalog-grid--garment { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.studio-catalog-grid--garment {
+  grid-auto-columns: minmax(106px, 1fr);
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  padding: 1px 1px 7px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--designer-accent-soft) transparent;
+  scrollbar-width: thin;
+  scroll-snap-type: inline proximity;
+}
 .studio-catalog-grid--color { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
 .studio-catalog-grid--pattern { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .studio-catalog-grid--accessory { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
@@ -245,6 +259,7 @@ body.studio-page {
   color: var(--designer-ink);
   text-align: center;
   transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+  scroll-snap-align: start;
 }
 .studio-catalog-item:hover { transform: translateY(-2px); }
 .studio-catalog-item.is-selected {
@@ -302,10 +317,39 @@ body.studio-page {
 }
 .studio-catalog-item__visual img {
   position: absolute;
+  z-index: 1;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 26%;
+  filter: saturate(.82) contrast(1.02);
+  transition: filter 220ms ease, transform 420ms cubic-bezier(.16, 1, .3, 1);
+}
+.studio-catalog-item:hover .studio-catalog-item__visual img {
+  filter: saturate(.95) contrast(1.03);
+  transform: scale(1.045);
+}
+.studio-catalog-item__visual.has-image::before,
+.studio-catalog-item__visual.has-image::after { display: none; }
+.studio-catalog-item__visual.has-image .studio-catalog-item__glyph {
+  padding: 3px 5px;
+  border: 1px solid rgb(255 255 255 / .46);
+  border-radius: 999px;
+  background: rgb(18 25 35 / .44);
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-size: 8px;
+  backdrop-filter: blur(8px);
+}
+.studio-catalog-grid--garment .studio-catalog-item__visual { min-height: 118px; }
+.studio-catalog-grid--garment .studio-catalog-item__name {
+  min-height: 31px;
+  padding: 2px 5px 6px;
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: initial;
+  white-space: normal;
 }
 .studio-catalog-grid--color .studio-catalog-item {
   display: grid;
@@ -352,6 +396,12 @@ body.studio-page {
   background:
     repeating-linear-gradient(45deg, transparent 0 5px, rgb(156 132 103 / .5) 5px 6px),
     #eee9df;
+}
+.studio-catalog-grid--pattern .studio-catalog-item__visual.has-image,
+.studio-catalog-grid--accessory .studio-catalog-item__visual.has-image,
+.studio-catalog-grid--style .studio-catalog-item__visual.has-image,
+.studio-catalog-grid--scene .studio-catalog-item__visual.has-image {
+  background: #ddd7cc;
 }
 .studio-catalog-grid--accessory .studio-catalog-item__visual {
   min-height: 58px;
@@ -804,7 +854,7 @@ body.studio-page {
   z-index: 60;
   top: 78px;
   left: max(24px, calc((100vw - 1760px) / 2 + 330px));
-  width: min(380px, calc(100vw - 48px));
+  width: min(520px, calc(100vw - 48px));
   max-height: min(720px, calc(100dvh - 104px));
   border: 1px solid var(--designer-line);
   border-radius: 17px;
@@ -828,6 +878,39 @@ body.studio-page {
 .studio-option { border-color: var(--designer-line); border-radius: 9px; }
 .studio-option:hover,
 .studio-option.is-selected { border-color: var(--designer-ink); background: #fbf5ed; }
+.studio-option:not(.studio-option--swatch) {
+  min-height: 106px;
+  align-items: center;
+  padding: 9px;
+}
+.studio-option__media {
+  position: relative;
+  width: 94px;
+  height: 86px;
+  flex: 0 0 94px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e8e2d8;
+}
+.studio-option__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 27%;
+}
+.studio-option__copy {
+  min-width: 0;
+  flex: 1;
+}
+.studio-option__source {
+  display: block;
+  margin-top: 7px;
+  color: var(--designer-accent);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
 
 @media (max-width: 1320px) {
   .studio-workbench { grid-template-columns: minmax(290px, .92fr) minmax(470px, 1.55fr) minmax(275px, .86fr); }

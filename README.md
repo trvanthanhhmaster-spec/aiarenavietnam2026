@@ -55,6 +55,12 @@ phải chọn thông số kỹ thuật hoặc bấm Generate. Catalog được �
 `studio_events`, `studio_garments`, `studio_accessories` và `studio_options`;
 không cần sửa PHP khi thêm lựa chọn mới.
 
+Ảnh chọn trang phục, phụ kiện, họa tiết và bối cảnh được lưu cục bộ trong
+`assets/media/catalog` để Catalog tải nhanh và không phụ thuộc hotlink. Nguồn,
+tác giả và giấy phép của từng ảnh tham chiếu được ghi tại
+[`assets/media/catalog/CREDITS.md`](assets/media/catalog/CREDITS.md); metadata
+ảnh và mô tả hiển thị vẫn do Supabase quản lý.
+
 Migration Studio tạo `generation_jobs` và `studio_prompt_versions` làm contract
 cho Supabase Edge Function. Bản hiện tại đã gọi Gemini server-side để tạo Story
 Card, Cultural Guardrail, prompt ảnh, lookbook và video tùy chọn. Asset hoàn tất

@@ -60,8 +60,8 @@
     garments: [
       ['slug', 'Slug', 'text', true], ['name', 'Tên hiển thị', 'text', true], ['category', 'Nhóm', 'text', true],
       ['description', 'Mô tả', 'textarea', true], ['origin_note', 'Nguồn gốc', 'textarea', true],
-      ['significance_note', 'Ý nghĩa', 'textarea', true], ['image_url', 'Ảnh catalog', 'url', false],
-      ['thumbnail_url', 'Thumbnail', 'url', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
+      ['significance_note', 'Ý nghĩa', 'textarea', true], ['image_url', 'Ảnh catalog hoặc asset', 'text', false],
+      ['thumbnail_url', 'Thumbnail hoặc asset', 'text', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
       ['negative_descriptor', 'Negative descriptor', 'textarea', false],
       ['allowed_contexts', 'Allowed contexts JSON', 'json', false], ['default_colors', 'Default colors JSON', 'json', false],
       ['source_id', 'ID nguồn văn hoá', 'text', false], ['sort_order', 'Thứ tự', 'number', true],
@@ -69,8 +69,8 @@
     ],
     accessories: [
       ['slug', 'Slug', 'text', true], ['name', 'Tên hiển thị', 'text', true], ['category', 'Nhóm', 'text', true],
-      ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh catalog', 'url', false],
-      ['thumbnail_url', 'Thumbnail', 'url', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
+      ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh catalog hoặc asset', 'text', false],
+      ['thumbnail_url', 'Thumbnail hoặc asset', 'text', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
       ['compatibility', 'Compatibility JSON', 'json', false],
       ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
@@ -89,14 +89,16 @@
       ['slug', 'Slug', 'text', true], ['name', 'Tên địa điểm', 'text', true], ['address', 'Địa chỉ', 'text', true],
       ['province', 'Tỉnh / thành', 'text', true], ['latitude', 'Vĩ độ', 'number', false], ['longitude', 'Kinh độ', 'number', false],
       ['map_url', 'Link bản đồ', 'url', true], ['booking_url', 'Link đặt lịch / quy định', 'url', false],
-      ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh địa điểm', 'url', false],
+      ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh địa điểm hoặc asset', 'text', false],
       ['suitable_contexts', 'Bối cảnh phù hợp JSON', 'json', false], ['source_url', 'Nguồn xác minh', 'url', false],
       ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     options: [
       ['option_type', 'Loại', 'select', true, [['color', 'Màu'], ['style', 'Phong cách'], ['pattern', 'Họa tiết'], ['scene', 'Bối cảnh']]],
       ['slug', 'Slug', 'text', true], ['label', 'Tên hiển thị', 'text', true], ['value', 'Giá trị', 'text', true],
-      ['prompt_hint', 'Gợi ý prompt', 'textarea', true], ['sort_order', 'Thứ tự', 'number', true],
+      ['prompt_hint', 'Gợi ý prompt', 'textarea', true], ['description', 'Mô tả cho người dùng', 'textarea', false],
+      ['thumbnail_url', 'Ảnh catalog hoặc đường dẫn asset', 'text', false], ['source_url', 'Nguồn ảnh', 'url', false],
+      ['sort_order', 'Thứ tự', 'number', true],
       ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
     branches: [

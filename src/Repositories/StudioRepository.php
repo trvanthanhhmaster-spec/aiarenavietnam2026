@@ -35,7 +35,7 @@ final class StudioRepository
                 'order' => 'sort_order.asc',
             ]);
             $options = $this->client->select('studio_options', [
-                'select' => 'option_type,slug,label,value,prompt_hint',
+                'select' => 'option_type,slug,label,value,prompt_hint,description,thumbnail_url,source_url',
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
