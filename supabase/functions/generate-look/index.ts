@@ -20,7 +20,9 @@ type LookRequest = {
   location?: string;
   season?: string;
   garmentSlug?: string;
+  garmentVariantSlug?: string;
   accessorySlugs?: string[];
+  accessoryVariantSlugs?: string[];
   colorSlug?: string;
   patternSlug?: string;
   styleSlug?: string;
@@ -418,7 +420,9 @@ async function askGemini(
     `Location: ${JSON.stringify(request.location)}`,
     `Season: ${JSON.stringify(request.season)}`,
     `Selected garment: ${JSON.stringify(request.garmentSlug)}`,
+    `Selected concrete garment variant: ${JSON.stringify(request.garmentVariantSlug)}`,
     `Selected accessories: ${JSON.stringify(request.accessorySlugs || [])}`,
+    `Selected concrete accessory variants: ${JSON.stringify(request.accessoryVariantSlugs || [])}`,
     `Selected color: ${JSON.stringify(request.colorSlug)}`,
     `Selected pattern: ${JSON.stringify(request.patternSlug)}`,
     `Selected style: ${JSON.stringify(request.styleSlug)}`,
@@ -749,19 +753,29 @@ async function processLook(
   settings: RuntimeSettings,
 ) {
   await updateJob(job.id, "processing", {});
-  const [event, garment, accessories, options, rules] = await Promise.all([
+  const [event, garment, garmentVariant, accessories, accessoryVariants, options, rules] = await Promise.all([
     selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context,preset`),
     selectCatalog("studio_garments", `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&is_active=eq.true&select=id,slug,name,category,description,origin_note,significance_note,image_url,prompt_descriptor,negative_descriptor`),
+    selectCatalog("studio_garment_variants", `slug=eq.${encodeURIComponent(input.garmentVariantSlug || "")}&is_active=eq.true&review_status=eq.published&select=id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,prompt_descriptor,negative_descriptor,source_url,source_provider`),
     selectCatalog("studio_accessories", `${input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : ""}is_active=eq.true&select=slug,name,description`),
+    selectCatalog("studio_accessory_variants", `${input.accessoryVariantSlugs?.length ? `slug=in.(${input.accessoryVariantSlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&review_status=eq.published&select=id,accessory_id,slug,name,description,material,color_palette,image_url,prompt_descriptor,source_url,source_provider`),
     selectCatalog("studio_options", "is_active=eq.true&select=option_type,slug,label,value,prompt_hint"),
     selectCatalog("cultural_rules", `is_active=eq.true&review_status=eq.approved&select=garment_id,rule_text,severity,context`),
   ]);
   if (!event.length || !garment.length) throw new Error("Selection is not in the approved catalog.");
+  if (input.garmentVariantSlug && (!garmentVariant.length || garmentVariant[0].garment_id !== garment[0].id)) {
+    throw new Error("Selected garment variant does not belong to the approved garment type.");
+  }
+  if ((input.accessoryVariantSlugs?.length || 0) !== accessoryVariants.length) {
+    throw new Error("One or more accessory variants are not in the approved catalog.");
+  }
 
   const catalog = {
     event: event[0],
     garment: garment[0],
+    garmentVariant: garmentVariant[0] || null,
     accessories,
+    accessoryVariants,
     options,
     rules: rules.filter((rule: Record<string, unknown>) => !rule.garment_id || rule.garment_id === garment[0].id),
   };

@@ -57,17 +57,21 @@ try {
     $selection = [
         'event' => (string) ($input['eventSlug'] ?? ''),
         'garment' => (string) ($input['garmentSlug'] ?? ''),
+        'garment_variant' => (string) ($input['garmentVariantSlug'] ?? ''),
         'color' => (string) ($input['colorSlug'] ?? ''),
         'style' => (string) ($input['styleSlug'] ?? ''),
         'accessories' => array_values(array_filter((array) ($input['accessorySlugs'] ?? []), 'is_string')),
+        'accessory_variants' => array_values(array_filter((array) ($input['accessoryVariantSlugs'] ?? []), 'is_string')),
     ];
     $basePrompt = sprintf(
-        'Generate a premium editorial Vietnamese fashion photograph. Event/context: %s. Garment: %s. Color: %s. Style/lighting: %s. Accessories: %s. One centered subject, culturally accurate construction, stable full-body pose and camera composition.',
+        'Generate a premium editorial Vietnamese fashion photograph. Event/context: %s. Garment type: %s. Concrete garment variant: %s. Color: %s. Style/lighting: %s. Accessory types: %s. Concrete accessory variants: %s. One centered subject, culturally accurate construction, stable full-body pose and camera composition.',
         $selection['event'],
         $selection['garment'],
+        $selection['garment_variant'],
         $selection['color'],
         $selection['style'],
-        $selection['accessories'] === [] ? 'none' : implode(', ', $selection['accessories'])
+        $selection['accessories'] === [] ? 'none' : implode(', ', $selection['accessories']),
+        $selection['accessory_variants'] === [] ? 'none' : implode(', ', $selection['accessory_variants'])
     );
     $scopes = [
         'A' => 'Create and lock the source frame: subject identity, face, pose, camera angle, position, scale and composition.',

@@ -15,7 +15,9 @@
     'studio-generation': { kicker: 'AI operations / 01', title: 'Studio generation', columns: ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'default_output_type', 'base_prompt'] },
     events: { kicker: 'Collection / 02', title: 'Dịp mặc & preset', columns: ['label', 'slug', 'description', 'is_active'] },
     garments: { kicker: 'Collection / 03', title: 'Cổ phục', columns: ['name', 'category', 'slug', 'is_active'] },
+    'garment-variants': { kicker: 'Collection / 03A', title: 'Mẫu cổ phục cụ thể', columns: ['name', 'slug', 'material', 'review_status', 'is_active'] },
     accessories: { kicker: 'Collection / 04', title: 'Phụ kiện', columns: ['name', 'category', 'slug', 'is_active'] },
+    'accessory-variants': { kicker: 'Collection / 04A', title: 'Mẫu phụ kiện cụ thể', columns: ['name', 'slug', 'material', 'review_status', 'is_active'] },
     options: { kicker: 'Collection / 05', title: 'Màu, họa tiết & phong cách', columns: ['label', 'option_type', 'slug', 'is_active'] },
     marketplace: { kicker: 'Collection / 05A', title: 'Nơi mua / thuê', columns: ['provider_name', 'item_type', 'listing_type', 'title', 'province', 'verified_at', 'is_active'] },
     locations: { kicker: 'Collection / 05B', title: 'Địa điểm chụp thật', columns: ['name', 'province', 'address', 'suitable_contexts', 'source_url', 'is_active'] },
@@ -67,12 +69,39 @@
       ['source_id', 'ID nguồn văn hoá', 'text', false], ['sort_order', 'Thứ tự', 'number', true],
       ['is_active', 'Đang hiển thị', 'checkbox', false]
     ],
+    'garment-variants': [
+      ['garment_id', 'ID loại trang phục cha', 'text', true], ['slug', 'Slug mẫu', 'text', true],
+      ['name', 'Tên mẫu', 'text', true], ['description', 'Mô tả mẫu', 'textarea', true],
+      ['silhouette', 'Kiểu dáng', 'text', false], ['material', 'Chất liệu', 'text', false],
+      ['pattern_notes', 'Họa tiết / chi tiết', 'textarea', false],
+      ['color_palette', 'Bảng màu JSON', 'json', false],
+      ['image_url', 'Ảnh mẫu', 'text', false], ['thumbnail_url', 'Thumbnail mẫu', 'text', false],
+      ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
+      ['negative_descriptor', 'Negative descriptor', 'textarea', false],
+      ['source_id', 'ID nguồn văn hoá', 'text', false], ['source_url', 'URL nguồn ảnh', 'url', false],
+      ['source_provider', 'Nguồn', 'select', true, [['curated', 'Biên tập'], ['wikimedia', 'Wikimedia'], ['partner', 'Đối tác / brand']]],
+      ['source_external_id', 'ID nguồn ngoài', 'text', false],
+      ['review_status', 'Trạng thái duyệt', 'select', true, [['draft', 'Nháp'], ['reviewed', 'Đã rà soát'], ['published', 'Đã xuất bản']]],
+      ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị ở Studio', 'checkbox', false]
+    ],
     accessories: [
       ['slug', 'Slug', 'text', true], ['name', 'Tên hiển thị', 'text', true], ['category', 'Nhóm', 'text', true],
       ['description', 'Mô tả', 'textarea', true], ['image_url', 'Ảnh catalog hoặc asset', 'text', false],
       ['thumbnail_url', 'Thumbnail hoặc asset', 'text', false], ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
       ['compatibility', 'Compatibility JSON', 'json', false],
       ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị', 'checkbox', false]
+    ],
+    'accessory-variants': [
+      ['accessory_id', 'ID loại phụ kiện cha', 'text', true], ['slug', 'Slug mẫu', 'text', true],
+      ['name', 'Tên mẫu', 'text', true], ['description', 'Mô tả mẫu', 'textarea', true],
+      ['material', 'Chất liệu', 'text', false], ['color_palette', 'Bảng màu JSON', 'json', false],
+      ['image_url', 'Ảnh mẫu', 'text', false], ['thumbnail_url', 'Thumbnail mẫu', 'text', false],
+      ['prompt_descriptor', 'Prompt descriptor', 'textarea', false],
+      ['source_id', 'ID nguồn văn hoá', 'text', false], ['source_url', 'URL nguồn ảnh', 'url', false],
+      ['source_provider', 'Nguồn', 'select', true, [['curated', 'Biên tập'], ['wikimedia', 'Wikimedia'], ['partner', 'Đối tác / brand']]],
+      ['source_external_id', 'ID nguồn ngoài', 'text', false],
+      ['review_status', 'Trạng thái duyệt', 'select', true, [['draft', 'Nháp'], ['reviewed', 'Đã rà soát'], ['published', 'Đã xuất bản']]],
+      ['sort_order', 'Thứ tự', 'number', true], ['is_active', 'Đang hiển thị ở Studio', 'checkbox', false]
     ],
     marketplace: [
       ['item_type', 'Loại catalog', 'select', true, [['garment', 'Trang phục'], ['accessory', 'Phụ kiện']]],
@@ -344,7 +373,11 @@
         keyPreview = '<div class="admin-key-preview"><input type="text" value="' + escapeHtml(editing.gemini_api_key_hint || '••••••••') + '" readonly aria-label="API key hiện tại dạng che khuất"><small>Không thể đọc lại plaintext từ secret đã mã hoá.</small></div>';
       }
       if (type === 'textarea' || type === 'json') {
-        var textValue = type === 'json' ? JSON.stringify(value || {}, null, 2) : (value || '');
+        var jsonFallback = key === 'color_palette' || key === 'allowed_contexts'
+          || key === 'default_colors' || key === 'compatibility' || key === 'suitable_contexts'
+          ? []
+          : {};
+        var textValue = type === 'json' ? JSON.stringify(value || jsonFallback, null, 2) : (value || '');
         control = '<textarea data-field="' + key + '" ' + (required ? 'required' : '') + '>' + escapeHtml(textValue) + '</textarea>';
       } else if (type === 'select') {
         control = '<select data-field="' + key + '" ' + (required ? 'required' : '') + '>' +

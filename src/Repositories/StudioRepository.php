@@ -34,6 +34,25 @@ final class StudioRepository
                 'is_active' => 'eq.true',
                 'order' => 'sort_order.asc',
             ]);
+            try {
+                $garmentVariants = $this->client->select('studio_garment_variants', [
+                    'select' => 'id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,thumbnail_url,prompt_descriptor,negative_descriptor,source_id,source_url,source_provider,sort_order',
+                    'review_status' => 'eq.published',
+                    'is_active' => 'eq.true',
+                    'order' => 'sort_order.asc',
+                ]);
+                $accessoryVariants = $this->client->select('studio_accessory_variants', [
+                    'select' => 'id,accessory_id,slug,name,description,material,color_palette,image_url,thumbnail_url,prompt_descriptor,source_id,source_url,source_provider,sort_order',
+                    'review_status' => 'eq.published',
+                    'is_active' => 'eq.true',
+                    'order' => 'sort_order.asc',
+                ]);
+            } catch (Throwable) {
+                // Keep Studio available while an older database is awaiting the
+                // catalog-variant migration.
+                $garmentVariants = [];
+                $accessoryVariants = [];
+            }
             $options = $this->client->select('studio_options', [
                 'select' => 'option_type,slug,label,value,prompt_hint,description,thumbnail_url,source_url',
                 'is_active' => 'eq.true',
@@ -90,7 +109,9 @@ final class StudioRepository
             $catalog = [
                 'events' => $events,
                 'garments' => $garments,
+                'garmentVariants' => $garmentVariants,
                 'accessories' => $accessories,
+                'accessoryVariants' => $accessoryVariants,
                 'colors' => [],
                 'styles' => [],
                 'patterns' => [],

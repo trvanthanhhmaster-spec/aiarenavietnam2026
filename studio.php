@@ -152,6 +152,17 @@ $studioData = $catalog + [
                         </div>
                         <div class="studio-catalog-grid studio-catalog-grid--garment" id="catalogGarments"></div>
                     </section>
+                    <section class="studio-catalog-card studio-catalog-card--variant" id="garmentVariantSection" aria-labelledby="catalogGarmentVariantTitle" hidden>
+                        <div class="studio-catalog-card__head">
+                            <div>
+                                <span class="studio-catalog-card__step">Bước 02</span>
+                                <h2 id="catalogGarmentVariantTitle">Chọn mẫu cụ thể</h2>
+                            </div>
+                            <span class="studio-catalog-card__count" id="garmentVariantCount"></span>
+                        </div>
+                        <p class="studio-catalog-card__note">Mỗi mẫu có chất liệu, họa tiết, màu và nguồn ảnh riêng để AI bám đúng hơn.</p>
+                        <div class="studio-variant-grid" id="catalogGarmentVariants"></div>
+                    </section>
                     <section class="studio-catalog-card studio-catalog-card--color" aria-labelledby="catalogColorTitle">
                         <div class="studio-catalog-card__head">
                             <h2 id="catalogColorTitle"><span aria-hidden="true">✣</span> Màu sắc</h2>
@@ -172,6 +183,16 @@ $studioData = $catalog + [
                             <button type="button" data-mode="accessory">Xem tất cả <span aria-hidden="true">›</span></button>
                         </div>
                         <div class="studio-catalog-grid studio-catalog-grid--accessory" id="catalogAccessories"></div>
+                    </section>
+                    <section class="studio-catalog-card studio-catalog-card--variant" id="accessoryVariantSection" aria-labelledby="catalogAccessoryVariantTitle" hidden>
+                        <div class="studio-catalog-card__head">
+                            <div>
+                                <span class="studio-catalog-card__step">Mẫu phụ kiện</span>
+                                <h2 id="catalogAccessoryVariantTitle">Chọn sản phẩm cụ thể</h2>
+                            </div>
+                            <span class="studio-catalog-card__count" id="accessoryVariantCount"></span>
+                        </div>
+                        <div class="studio-variant-grid studio-variant-grid--accessory" id="catalogAccessoryVariants"></div>
                     </section>
                     <section class="studio-catalog-card studio-catalog-card--style" aria-labelledby="catalogStyleTitle">
                         <div class="studio-catalog-card__head">

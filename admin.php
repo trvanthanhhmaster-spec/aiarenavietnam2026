@@ -119,7 +119,10 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <p class="admin-nav__label">Collections</p>
                 <button data-resource="events"><span>02</span>Bối cảnh</button>
                 <button data-resource="garments"><span>03</span>Cổ phục</button>
+                <button data-resource="garment-variants"><span>03A</span>Mẫu cổ phục</button>
                 <button data-resource="accessories"><span>04</span>Phụ kiện</button>
+                <button data-resource="accessory-variants"><span>04A</span>Mẫu phụ kiện</button>
+                <a class="admin-nav__link" href="catalog-search.php"><span>04B</span>Tìm & nhập nguồn</a>
                 <button data-resource="options"><span>05</span>Màu, họa tiết & phong cách</button>
                 <button data-resource="marketplace"><span>05A</span>Nơi mua / thuê</button>
                 <button data-resource="locations"><span>05B</span>Địa điểm chụp</button>
@@ -177,11 +180,11 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
         <form method="dialog" class="admin-dialog__card" id="adminEditor">
             <div class="admin-dialog__header">
                 <div><p class="admin-eyebrow" id="editorKicker">Edit</p><h2 id="editorTitle">Chỉnh sửa</h2></div>
-                <button class="admin-dialog__close" value="cancel" type="submit" aria-label="Đóng">×</button>
+                <button class="admin-dialog__close" value="cancel" type="submit" formnovalidate aria-label="Đóng">×</button>
             </div>
             <div class="admin-editor__fields" id="editorFields"></div>
             <div class="admin-dialog__footer">
-                <button class="admin-button admin-button--ghost" value="cancel" type="submit">Huỷ</button>
+                <button class="admin-button admin-button--ghost" value="cancel" type="submit" formnovalidate>Huỷ</button>
                 <button class="admin-button admin-button--solid" id="editorSave" value="default" type="submit">Lưu vào Supabase <span>↗</span></button>
             </div>
         </form>

@@ -61,6 +61,12 @@
   var canvasAspect = document.getElementById('canvasAspect');
   var targetResolution = document.getElementById('targetResolution');
   var generationMode = document.getElementById('generationMode');
+  var garmentVariantSection = document.getElementById('garmentVariantSection');
+  var garmentVariantGrid = document.getElementById('catalogGarmentVariants');
+  var garmentVariantCount = document.getElementById('garmentVariantCount');
+  var accessoryVariantSection = document.getElementById('accessoryVariantSection');
+  var accessoryVariantGrid = document.getElementById('catalogAccessoryVariants');
+  var accessoryVariantCount = document.getElementById('accessoryVariantCount');
   var catalogPanels = {
     garment: document.getElementById('catalogGarments'),
     color: document.getElementById('catalogColors'),
@@ -98,11 +104,13 @@
     openMode: null,
     event: hasContext ? contextOccasion : '',
     garment: '',
+    garmentVariant: '',
     color: '',
     pattern: '',
     style: '',
     scene: '',
     accessories: [],
+    accessoryVariants: [],
     aspectRatio: catalog.generation && catalog.generation.canvas_aspect_ratio || '16:9',
     resolution: catalog.generation && catalog.generation.target_resolution || '1080',
     mode: catalog.generation && catalog.generation.default_generation_mode || 'text-to-image',
@@ -120,6 +128,7 @@
     state.event = event.slug;
     var preset = event.preset && typeof event.preset === 'object' ? event.preset : {};
     if (lookup(catalog.garments, preset.garment).slug) state.garment = preset.garment;
+    syncVariantSelections();
     if (lookup(catalog.colors, preset.color).slug) state.color = preset.color;
     if (lookup(catalog.styles, preset.style).slug) state.style = preset.style;
     if (lookup(catalog.scenes, preset.scene).slug) state.scene = preset.scene;
@@ -199,6 +208,9 @@
     if (!selection) return;
     if (lookup(catalog.events, selection.event).slug) state.event = selection.event;
     if (lookup(catalog.garments, selection.garment).slug) state.garment = selection.garment;
+    if (lookup(catalog.garmentVariants, selection.garmentVariant).slug) {
+      state.garmentVariant = selection.garmentVariant;
+    }
     if (lookup(catalog.colors, selection.color).slug) state.color = selection.color;
     if (lookup(catalog.patterns, selection.pattern).slug) state.pattern = selection.pattern;
     if (lookup(catalog.styles, selection.style).slug) state.style = selection.style;
@@ -208,6 +220,12 @@
         return Boolean(lookup(catalog.accessories, slug).slug);
       })
       : [];
+    state.accessoryVariants = Array.isArray(selection.accessoryVariants)
+      ? selection.accessoryVariants.filter(function (slug) {
+        return Boolean(lookup(catalog.accessoryVariants, slug).slug);
+      })
+      : [];
+    syncVariantSelections();
     if (selection.aspectRatio) {
       state.aspectRatio = selection.aspectRatio;
       if (canvasAspect) canvasAspect.value = selection.aspectRatio;
@@ -249,6 +267,43 @@
     return (items || []).find(function (item) {
       return item.slug === slug;
     }) || {};
+  }
+
+  function variantsForGarment() {
+    var garment = lookup(catalog.garments, state.garment);
+    return (catalog.garmentVariants || []).filter(function (item) {
+      return item.garment_id === garment.id;
+    });
+  }
+
+  function variantsForAccessories() {
+    var parentIds = state.accessories.map(function (slug) {
+      return lookup(catalog.accessories, slug).id;
+    }).filter(Boolean);
+    return (catalog.accessoryVariants || []).filter(function (item) {
+      return parentIds.indexOf(item.accessory_id) !== -1;
+    });
+  }
+
+  function syncVariantSelections() {
+    var garmentVariants = variantsForGarment();
+    if (!garmentVariants.some(function (item) { return item.slug === state.garmentVariant; })) {
+      state.garmentVariant = garmentVariants[0] ? garmentVariants[0].slug : '';
+    }
+    var accessoryVariants = variantsForAccessories();
+    state.accessoryVariants = state.accessoryVariants.filter(function (slug) {
+      return accessoryVariants.some(function (item) { return item.slug === slug; });
+    });
+    state.accessories.forEach(function (accessorySlug) {
+      var accessory = lookup(catalog.accessories, accessorySlug);
+      var hasSelection = state.accessoryVariants.some(function (variantSlug) {
+        return lookup(catalog.accessoryVariants, variantSlug).accessory_id === accessory.id;
+      });
+      if (!hasSelection) {
+        var first = accessoryVariants.find(function (item) { return item.accessory_id === accessory.id; });
+        if (first) state.accessoryVariants.push(first.slug);
+      }
+    });
   }
 
   function escapeHtml(value) {
@@ -448,10 +503,53 @@
       );
       bindCatalogImageFallback(panel);
     });
+    renderVariantPanels();
+  }
+
+  function variantCards(items, kind, selected) {
+    return items.map(function (item) {
+      var imageUrl = catalogImageUrl(item);
+      var meta = [item.material, item.pattern_notes].filter(Boolean).join(' · ');
+      return '<button type="button" class="studio-variant-card' +
+        (selected.indexOf(item.slug) !== -1 ? ' is-selected' : '') +
+        '" data-catalog-kind="' + escapeHtml(kind) + '" data-option-value="' + escapeHtml(item.slug) +
+        '" aria-pressed="' + String(selected.indexOf(item.slug) !== -1) + '">' +
+        '<span class="studio-variant-card__media' + (imageUrl ? ' has-image' : '') + '">' +
+        (imageUrl ? '<img src="' + escapeHtml(imageUrl) + '" alt="Mẫu ' + escapeHtml(item.name) + '" loading="lazy">' : '') +
+        '</span><span class="studio-variant-card__copy"><strong>' + escapeHtml(item.name) + '</strong>' +
+        (meta ? '<small>' + escapeHtml(meta) + '</small>' : '') +
+        '<small class="studio-variant-card__source">' + escapeHtml(item.source_provider === 'wikimedia' ? 'Wikimedia · đã duyệt' : 'Nguồn biên tập') +
+        '</small></span></button>';
+    }).join('');
+  }
+
+  function renderVariantPanels() {
+    var garmentVariants = variantsForGarment();
+    if (garmentVariantSection && garmentVariantGrid) {
+      garmentVariantSection.hidden = !state.garment || garmentVariants.length === 0;
+      garmentVariantGrid.innerHTML = variantCards(garmentVariants, 'garmentVariant', [state.garmentVariant]);
+      if (garmentVariantCount) garmentVariantCount.textContent = garmentVariants.length + ' mẫu';
+      bindCatalogImageFallback(garmentVariantGrid);
+    }
+    var accessoryVariants = variantsForAccessories();
+    if (accessoryVariantSection && accessoryVariantGrid) {
+      accessoryVariantSection.hidden = state.accessories.length === 0 || accessoryVariants.length === 0;
+      accessoryVariantGrid.innerHTML = variantCards(accessoryVariants, 'accessoryVariant', state.accessoryVariants);
+      if (accessoryVariantCount) accessoryVariantCount.textContent = accessoryVariants.length + ' mẫu';
+      bindCatalogImageFallback(accessoryVariantGrid);
+    }
   }
 
   function chooseOption(kind, value) {
-    if (kind === 'accessory') {
+    if (kind === 'garmentVariant') {
+      state.garmentVariant = value;
+    } else if (kind === 'accessoryVariant') {
+      var selectedVariant = lookup(catalog.accessoryVariants, value);
+      state.accessoryVariants = state.accessoryVariants.filter(function (slug) {
+        return lookup(catalog.accessoryVariants, slug).accessory_id !== selectedVariant.accessory_id;
+      });
+      if (selectedVariant.slug) state.accessoryVariants.push(selectedVariant.slug);
+    } else if (kind === 'accessory') {
       var position = state.accessories.indexOf(value);
       if (position === -1) state.accessories.push(value);
       else state.accessories.splice(position, 1);
@@ -475,16 +573,21 @@
         }
       }
     }
+    syncVariantSelections();
     if (state.openMode) renderDockContent(state.openMode);
     renderCatalogPanels();
     updateSummary();
-    setStatus('Đã cập nhật ' + modeById(kind).title.toLowerCase() + '.');
+    var updatedLabel = kind === 'garmentVariant'
+      ? 'mẫu trang phục'
+      : kind === 'accessoryVariant' ? 'mẫu phụ kiện' : modeById(kind).title.toLowerCase();
+    setStatus('Đã cập nhật ' + updatedLabel + '.');
     scheduleAutoGeneration();
   }
 
   function updateSummary() {
     var event = lookup(catalog.events, state.event);
     var garment = lookup(catalog.garments, state.garment);
+    var garmentVariant = lookup(catalog.garmentVariants, state.garmentVariant);
     var color = lookup(catalog.colors, state.color);
     var pattern = lookup(catalog.patterns, state.pattern);
     var style = lookup(catalog.styles, state.style);
@@ -496,6 +599,7 @@
     summary.textContent = [
       event.label,
       garment.name,
+      garmentVariant.name,
       color.label,
       pattern.label,
       style.label,
@@ -504,7 +608,7 @@
     ].filter(Boolean).join(' · ');
 
     document.getElementById('footerEvent').textContent = event.label || 'Chưa chọn';
-    document.getElementById('footerGarment').textContent = garment.name || 'Chưa chọn';
+    document.getElementById('footerGarment').textContent = garmentVariant.name || garment.name || 'Chưa chọn';
     document.getElementById('footerColor').textContent = color.label || 'Chưa chọn';
     document.getElementById('footerPattern').textContent = pattern.label || 'Chưa chọn';
     document.getElementById('footerStyle').textContent = style.label || 'Chưa chọn';
@@ -512,7 +616,9 @@
     document.getElementById('footerAccessory').textContent = accessoryNames.length ? accessoryNames.join(', ') : 'Không phụ kiện';
     document.getElementById('frameBSummary').textContent = scene.label ? 'Nền: ' + scene.label : event.label ? 'Nền: ' + event.label : 'Chỉ thay phông nền';
     document.getElementById('frameCSummary').textContent = style.label ? 'Ánh sáng: ' + style.label : 'Chỉ thay thời điểm trong ngày';
-    document.getElementById('frameDSummary').textContent = garment.name ? 'Quần áo: ' + garment.name : 'Chỉ thay quần áo';
+    document.getElementById('frameDSummary').textContent = garment.name
+      ? 'Quần áo: ' + (garmentVariant.name || garment.name)
+      : 'Chỉ thay quần áo';
     document.getElementById('frameESummary').textContent = accessoryNames.length ? 'Điểm nhấn: ' + accessoryNames.join(', ') : 'Giữ vị trí và kích thước tương đương';
     var hasBaseLook = Boolean(state.event && state.garment && state.style);
     if (previewEmpty) previewEmpty.classList.toggle('is-ready', hasBaseLook);
@@ -533,24 +639,29 @@
 
   function updatePassport() {
     var garment = lookup(catalog.garments, state.garment);
+    var garmentVariant = lookup(catalog.garmentVariants, state.garmentVariant);
     var event = lookup(catalog.events, state.event);
     var color = lookup(catalog.colors, state.color);
     var style = lookup(catalog.styles, state.style);
     var scene = lookup(catalog.scenes, state.scene);
-    if (passportTitle) passportTitle.textContent = garment.name || 'Chưa chọn Việt phục';
+    if (passportTitle) passportTitle.textContent = garmentVariant.name || garment.name || 'Chưa chọn Việt phục';
     if (passportOrigin) passportOrigin.textContent = garment.origin_note || 'Chọn một trang phục để xem nội dung đã được duyệt.';
-    if (passportFeature) passportFeature.textContent = garment.description || '—';
+    if (passportFeature) passportFeature.textContent = [
+      garmentVariant.description || garment.description,
+      garmentVariant.material ? 'Chất liệu: ' + garmentVariant.material : '',
+      garmentVariant.pattern_notes ? 'Họa tiết: ' + garmentVariant.pattern_notes : ''
+    ].filter(Boolean).join(' · ') || '—';
     if (passportMeaning) passportMeaning.textContent = garment.significance_note || '—';
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
     if (passportSource) passportSource.textContent = source ? source.title : 'Nguồn Approved sẽ hiển thị tại đây.';
     if (passportVisual) {
-      var passportImage = String(garment.thumbnail_url || garment.image_url || '');
+      var passportImage = String(garmentVariant.thumbnail_url || garmentVariant.image_url || garment.thumbnail_url || garment.image_url || '');
       passportVisual.style.backgroundImage = /^https?:\/\//i.test(passportImage)
         ? 'url("' + passportImage.replace(/["\\]/g, '') + '")'
         : '';
       passportVisual.classList.toggle('has-image', Boolean(passportVisual.style.backgroundImage));
       var mark = passportVisual.querySelector('span');
-      if (mark) mark.textContent = garment.name ? garment.name.charAt(0).toUpperCase() : 'V';
+      if (mark) mark.textContent = (garmentVariant.name || garment.name || 'V').charAt(0).toUpperCase();
     }
     if (tipLocation) tipLocation.textContent = [scene.label, event.label].filter(Boolean).join(' · ') || 'Campus · Phố cổ · Văn Miếu';
     if (tipStyling) tipStyling.textContent = [color.label, style.label].filter(Boolean).join(' + ') || 'Chọn một điểm nhấn hiện đại vừa đủ.';
@@ -755,11 +866,13 @@
     return JSON.stringify({
       event: state.event,
       garment: state.garment,
+      garmentVariant: state.garmentVariant,
       color: state.color,
       pattern: state.pattern,
       style: state.style,
       scene: state.scene,
       accessories: state.accessories.slice().sort(),
+      accessoryVariants: state.accessoryVariants.slice().sort(),
       outputType: state.outputType,
       image: imageInput.files && imageInput.files[0] ? imageInput.files[0].name + ':' + imageInput.files[0].size : ''
     });
@@ -809,11 +922,13 @@
       selection: {
         event: state.event,
         garment: state.garment,
+        garmentVariant: state.garmentVariant,
         color: state.color,
         pattern: state.pattern,
         style: state.style,
         scene: state.scene,
         accessories: state.accessories.slice(),
+        accessoryVariants: state.accessoryVariants.slice(),
         locks: Object.assign({}, state.locks),
         generationType: state.outputType,
         aspectRatio: state.aspectRatio,
@@ -830,7 +945,9 @@
       location: (lookup(catalog.events, state.event).preset || {}).location || '',
       season: (lookup(catalog.events, state.event).preset || {}).season || '',
       garmentSlug: state.garment,
+      garmentVariantSlug: state.garmentVariant,
       accessorySlugs: state.accessories.slice(),
+      accessoryVariantSlugs: state.accessoryVariants.slice(),
       colorSlug: state.color,
       patternSlug: state.pattern,
       styleSlug: state.style,
@@ -844,8 +961,8 @@
         A: { changeScope: 'fixed subject identity, face, pose, camera angle and composition' },
         B: { branch: 'event', changeScope: 'background and scene only', value: state.scene || state.event },
         C: { branch: 'lighting', changeScope: 'lighting and time of day only', value: state.style },
-        D: { branch: 'garment', changeScope: 'clothing only', value: state.garment },
-        E: { branch: 'character', changeScope: 'subject identity only; preserve position and scale', value: state.accessories }
+        D: { branch: 'garment', changeScope: 'clothing only', value: state.garmentVariant || state.garment },
+        E: { branch: 'character', changeScope: 'subject identity only; preserve position and scale', value: state.accessoryVariants.length ? state.accessoryVariants : state.accessories }
       }
     };
 
@@ -1337,11 +1454,13 @@
           selection: {
             event: state.event,
             garment: state.garment,
+            garmentVariant: state.garmentVariant,
             color: state.color,
             pattern: state.pattern,
             style: state.style,
             scene: state.scene,
-            accessories: state.accessories.slice()
+            accessories: state.accessories.slice(),
+            accessoryVariants: state.accessoryVariants.slice()
           },
           locks: Object.assign({}, state.locks),
           images: currentLookbookItems.map(function (item) { return item.url; }),

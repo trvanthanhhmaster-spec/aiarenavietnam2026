@@ -69,11 +69,23 @@ $resources = [
         'order' => 'sort_order.asc',
         'fields' => ['slug', 'name', 'category', 'description', 'origin_note', 'significance_note', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'negative_descriptor', 'allowed_contexts', 'default_colors', 'source_id', 'sort_order', 'is_active'],
     ],
+    'garment-variants' => [
+        'table' => 'studio_garment_variants',
+        'select' => 'id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,thumbnail_url,prompt_descriptor,negative_descriptor,source_id,source_url,source_provider,source_external_id,review_status,sort_order,is_active,created_at,updated_at',
+        'order' => 'sort_order.asc,created_at.desc',
+        'fields' => ['garment_id', 'slug', 'name', 'description', 'silhouette', 'material', 'pattern_notes', 'color_palette', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'negative_descriptor', 'source_id', 'source_url', 'source_provider', 'source_external_id', 'review_status', 'sort_order', 'is_active'],
+    ],
     'accessories' => [
         'table' => 'studio_accessories',
         'select' => 'id,slug,name,category,description,image_url,thumbnail_url,prompt_descriptor,compatibility,sort_order,is_active,created_at,updated_at',
         'order' => 'sort_order.asc',
         'fields' => ['slug', 'name', 'category', 'description', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'compatibility', 'sort_order', 'is_active'],
+    ],
+    'accessory-variants' => [
+        'table' => 'studio_accessory_variants',
+        'select' => 'id,accessory_id,slug,name,description,material,color_palette,image_url,thumbnail_url,prompt_descriptor,source_id,source_url,source_provider,source_external_id,review_status,sort_order,is_active,created_at,updated_at',
+        'order' => 'sort_order.asc,created_at.desc',
+        'fields' => ['accessory_id', 'slug', 'name', 'description', 'material', 'color_palette', 'image_url', 'thumbnail_url', 'prompt_descriptor', 'source_id', 'source_url', 'source_provider', 'source_external_id', 'review_status', 'sort_order', 'is_active'],
     ],
     'marketplace' => [
         'table' => 'studio_marketplace_listings',
@@ -251,17 +263,41 @@ try {
             $value = $record[$field];
             if (is_string($value)) {
                 $value = trim($value);
-                if (in_array($field, ['image_url', 'thumbnail_url', 'source_url', 'license', 'reverse_media_url', 'source_id', 'studio_event_slug', 'garment_id', 'accessory_id', 'booking_url', 'verified_at'], true) && $value === '') {
+                if (in_array($field, ['image_url', 'thumbnail_url', 'source_url', 'license', 'reverse_media_url', 'source_id', 'studio_event_slug', 'garment_id', 'accessory_id', 'booking_url', 'verified_at', 'source_external_id'], true) && $value === '') {
                     $value = null;
                 }
                 if (mb_strlen($value ?? '') > 30000) {
                     $respond(['error' => 'Nội dung trường ' . $field . ' quá dài.'], 422);
                 }
             }
-            if (is_array($value) && !in_array($field, ['ui', 'frame_plan', 'preset', 'allowed_contexts', 'default_colors', 'compatibility', 'suitable_contexts'], true)) {
+            if (is_array($value) && !in_array($field, ['ui', 'frame_plan', 'preset', 'allowed_contexts', 'default_colors', 'color_palette', 'compatibility', 'suitable_contexts'], true)) {
                 $respond(['error' => 'Kiểu dữ liệu trường ' . $field . ' không hợp lệ.'], 422);
             }
             $payload[$field] = $value;
+        }
+        if (in_array($resourceKey, ['garment-variants', 'accessory-variants'], true)) {
+            foreach (['slug', 'name'] as $requiredField) {
+                if (trim((string) ($payload[$requiredField] ?? '')) === '') {
+                    $respond(['error' => 'Mẫu catalog cần có slug và tên hiển thị.'], 422);
+                }
+            }
+            $parentField = $resourceKey === 'garment-variants' ? 'garment_id' : 'accessory_id';
+            if (!is_string($payload[$parentField] ?? null) || preg_match('/^[0-9a-f-]{36}$/i', $payload[$parentField]) !== 1) {
+                $respond(['error' => 'Mẫu catalog cần liên kết đúng một loại cha hợp lệ.'], 422);
+            }
+            if (!in_array($payload['review_status'] ?? '', ['draft', 'reviewed', 'published'], true)) {
+                $respond(['error' => 'Trạng thái duyệt mẫu không hợp lệ.'], 422);
+            }
+            if (!in_array($payload['source_provider'] ?? 'curated', ['curated', 'wikimedia', 'partner'], true)) {
+                $respond(['error' => 'Nguồn mẫu không hợp lệ.'], 422);
+            }
+            foreach (['color_palette'] as $paletteField) {
+                if (!is_array($payload[$paletteField] ?? null)) {
+                    $respond(['error' => 'Bảng màu của mẫu phải là một JSON array.'], 422);
+                }
+            }
+            $payload['is_active'] = (bool) ($payload['is_active'] ?? false);
+            $payload['updated_at'] = gmdate(DATE_ATOM);
         }
         if ($resourceKey === 'ai-settings') {
             if (!in_array($payload['image_provider'] ?? '', ['env', 'gemini', 'vertex', 'webapi'], true)) {
