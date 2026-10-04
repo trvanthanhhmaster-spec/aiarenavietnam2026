@@ -374,7 +374,7 @@ final class SupabaseAuth
             $this->serviceRoleKey,
             $prefer
         );
-        return array_is_list($result) ? $result : [];
+        return self::isList($result) ? $result : [];
     }
 
     /**
@@ -454,6 +454,16 @@ final class SupabaseAuth
             $message !== '' => $message,
             default => 'Supabase Auth trả về HTTP ' . $status . '.',
         };
+    }
+
+    /**
+     * PHP 8.0-compatible equivalent of array_is_list(), which was added in 8.1.
+     *
+     * @param array<mixed> $value
+     */
+    private static function isList(array $value): bool
+    {
+        return $value === [] || array_keys($value) === range(0, count($value) - 1);
     }
 
     private function base64Url(string $value): string
