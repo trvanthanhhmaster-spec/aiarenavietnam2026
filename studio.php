@@ -63,6 +63,19 @@ foreach ($branches as $branch) {
 }
 $baseMedia = (string) (($baseBranch ?? reset($branches))['forwardUrl'] ?? '');
 $localWebGeneration = filter_var((string) getenv('GEMINI_WEB_LOCAL_ENABLED'), FILTER_VALIDATE_BOOL);
+$accountName = trim((string) (
+    $authUser['user_metadata']['display_name']
+    ?? $authUser['user_metadata']['full_name']
+    ?? ''
+));
+if ($accountName === '') {
+    $accountName = 'Tài khoản';
+}
+$accountInitial = $authUser !== null
+    ? mb_strtoupper(mb_substr($accountName !== 'Tài khoản'
+        ? $accountName
+        : (string) ($authUser['email'] ?? 'V'), 0, 1))
+    : 'V';
 $studioData = $catalog + [
     'generationEndpoint' => $localWebGeneration
         ? 'local-generate.php'
@@ -97,27 +110,31 @@ $studioData = $catalog + [
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
         <header class="studio-masthead">
-            <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>">
-                <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
-            </a>
-            <nav class="studio-header-middle" aria-label="Điều hướng chính">
-                <a class="is-active" href="studio.php" aria-current="page">Studio</a>
-                <a href="#studioVariants">Lookbook</a>
-            </nav>
-            <div class="studio-header-actions">
-                <button class="studio-header-command" id="headerSaveLook" type="button"><span aria-hidden="true">♡</span> Lưu look</button>
-                <button class="studio-header-command" id="headerDownloadLookbook" type="button"><span aria-hidden="true">⇩</span> Tải lookbook</button>
+            <div class="studio-brand-cluster">
+                <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>">
+                    <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
+                </a>
+                <span class="studio-section-marker"><small>Không gian phối</small><strong>Studio / 02</strong></span>
+            </div>
+            <nav class="studio-header-actions" aria-label="Điều hướng Studio">
+                <a class="studio-nav-action" href="index.php#stage">
+                    <span><small>Trở về</small><strong>Tầng 1</strong></span>
+                </a>
+                <a class="studio-nav-action" href="admin.php">
+                    <span><small>Quản lý</small><strong>Admin</strong></span>
+                </a>
                 <?php if ($authUser !== null): ?>
                     <a class="studio-account is-authenticated" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>" aria-label="Mở tài khoản <?= $escape((string) ($authUser['email'] ?? '')) ?>">
-                        <span aria-hidden="true"><?= $escape(mb_strtoupper(mb_substr((string) ($authUser['email'] ?? 'V'), 0, 1))) ?></span>
-                        <small>Tài khoản</small>
+                        <span class="studio-account__avatar" aria-hidden="true"><?= $escape($accountInitial) ?></span>
+                        <span class="studio-account__copy"><small>Đã đăng nhập</small><strong><?= $escape($accountName) ?></strong></span>
                     </a>
                 <?php else: ?>
-                    <a class="studio-account" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>">Đăng nhập</a>
+                    <a class="studio-account" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>">
+                        <span class="studio-account__avatar" aria-hidden="true"><?= $escape($accountInitial) ?></span>
+                        <span class="studio-account__copy"><small>Tài khoản</small><strong>Đăng nhập</strong></span>
+                    </a>
                 <?php endif; ?>
-                <a class="studio-admin" href="admin.php" aria-label="Mở trang quản trị"><span aria-hidden="true">♙</span></a>
-                <a class="studio-back" href="index.php#stage" aria-label="Về tầng khám phá"><span aria-hidden="true">☰</span></a>
-            </div>
+            </nav>
         </header>
 
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">

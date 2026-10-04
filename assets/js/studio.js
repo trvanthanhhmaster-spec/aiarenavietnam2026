@@ -61,8 +61,6 @@
   var canvasAspect = document.getElementById('canvasAspect');
   var targetResolution = document.getElementById('targetResolution');
   var generationMode = document.getElementById('generationMode');
-  var headerSaveLook = document.getElementById('headerSaveLook');
-  var headerDownloadLookbook = document.getElementById('headerDownloadLookbook');
   var catalogPanels = {
     garment: document.getElementById('catalogGarments'),
     color: document.getElementById('catalogColors'),
@@ -1376,20 +1374,6 @@
   if (addVariantButton) addVariantButton.addEventListener('click', function () {
     openMode('accessory');
     setStatus('Chọn một thay đổi nhỏ để tạo variant mới từ Base Look.');
-  });
-  if (headerSaveLook) headerSaveLook.addEventListener('click', function () {
-    if (saveLookButton && !saveLookButton.disabled) saveLookButton.click();
-    else {
-      document.getElementById('studioVariants')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setStatus('Hãy hoàn thành ba lựa chọn chính để AI tạo preview trước khi lưu Look.');
-    }
-  });
-  if (headerDownloadLookbook) headerDownloadLookbook.addEventListener('click', function () {
-    if (resultDownload && !resultDownload.hidden) resultDownload.click();
-    else {
-      document.getElementById('studioVariants')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setStatus('Hãy hoàn thành ba lựa chọn chính để AI tạo preview trước khi tải lookbook.');
-    }
   });
 
   dockClose.addEventListener('click', function () {
