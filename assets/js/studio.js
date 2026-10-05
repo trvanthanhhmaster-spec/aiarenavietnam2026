@@ -69,6 +69,7 @@
   var accessoryVariantGrid = document.getElementById('catalogAccessoryVariants');
   var accessoryVariantCount = document.getElementById('accessoryVariantCount');
   var catalogPanels = {
+    event: document.getElementById('catalogEvents'),
     garment: document.getElementById('catalogGarments'),
     color: document.getElementById('catalogColors'),
     pattern: document.getElementById('catalogPatterns'),
@@ -88,13 +89,13 @@
   var pendingAutoFingerprint = '';
 
   var modes = [
-    { id: 'garment', index: '01 / 07', title: 'Trang phục', description: 'Chọn dáng áo làm cấu trúc gốc. Những chi tiết nhận diện cần được giữ nguyên trong bản phối.', anchor: { x: 58, y: 28 } },
-    { id: 'color', index: '02 / 07', title: 'Màu sắc', description: 'Chọn bảng màu để AI giữ độ tương phản và chất liệu đúng với trang phục.', anchor: { x: 78, y: 61 } },
-    { id: 'pattern', index: '03 / 07', title: 'Họa tiết', description: 'Thêm họa tiết có chừng mực, ưu tiên chi tiết đã được biên tập văn hoá.', anchor: { x: 72, y: 31 } },
-    { id: 'accessory', index: '04 / 07', title: 'Phụ kiện', description: 'Thêm điểm nhấn hiện đại có chọn lọc. Bạn có thể chọn nhiều phụ kiện hoặc để trống.', anchor: { x: 35, y: 75 } },
-    { id: 'style', index: '05 / 07', title: 'Phong cách', description: 'Định hướng nhịp thị giác mà không làm mất cấu trúc Việt phục.', anchor: { x: 78, y: 61 } },
-    { id: 'scene', index: '06 / 07', title: 'Bối cảnh', description: 'Chọn nơi bản phối xuất hiện để xác định phông nền, ánh sáng và góc chụp.', anchor: { x: 20, y: 39 } },
-    { id: 'event', index: '07 / 07', title: 'Dịp mặc', description: 'Chọn hoàn cảnh để hệ thống gợi ý dáng áo, màu và quy tắc văn hoá phù hợp.', anchor: { x: 20, y: 39 } }
+    { id: 'event', index: '01 / 07', title: 'Dịp mặc', description: 'Chọn hoàn cảnh để hệ thống gợi ý dáng áo, màu và cách phối phù hợp.', anchor: { x: 20, y: 39 } },
+    { id: 'garment', index: '02 / 07', title: 'Trang phục', description: 'Chọn một dáng Việt phục làm điểm bắt đầu. Bạn chưa cần biết tên gọi lịch sử.', anchor: { x: 58, y: 28 } },
+    { id: 'color', index: '03 / 07', title: 'Màu sắc', description: 'Chọn màu bạn thích; hệ thống sẽ cân lại độ hài hòa với trang phục.', anchor: { x: 78, y: 61 } },
+    { id: 'pattern', index: '04 / 07', title: 'Họa tiết', description: 'Có thể bỏ qua bước này. Chỉ thêm họa tiết khi bạn muốn bản phối có điểm nhấn.', anchor: { x: 72, y: 31 } },
+    { id: 'accessory', index: '05 / 07', title: 'Phụ kiện', description: 'Thêm một hoặc hai món quen thuộc. Bạn có thể để trống để giữ nét truyền thống.', anchor: { x: 35, y: 75 } },
+    { id: 'style', index: '06 / 07', title: 'Phong cách', description: 'Nói cho hệ thống biết bạn muốn tổng thể nhẹ nhàng, thanh lịch hay năng động.', anchor: { x: 78, y: 61 } },
+    { id: 'scene', index: '07 / 07', title: 'Bối cảnh', description: 'Chọn nơi bạn muốn xuất hiện để ảnh có ánh sáng và không khí phù hợp.', anchor: { x: 20, y: 39 } }
   ];
 
   var query = new URLSearchParams(window.location.search);
@@ -464,7 +465,7 @@
   function compactCatalogList(items, kind, selectedValue, multiple, limit) {
     var availableItems = (items || []).slice(0, limit);
     if (availableItems.length === 0) {
-      return '<p class="studio-catalog-empty">Catalog đang chờ Admin nhập và duyệt dữ liệu mới.</p>';
+      return '<p class="studio-catalog-empty">Mục này đang được cập nhật. Bạn có thể chọn một mục khác để tiếp tục.</p>';
     }
     return availableItems.map(function (item, index) {
       var slug = String(item.slug || '');
@@ -489,6 +490,7 @@
 
   function renderCatalogPanels() {
     var definitions = [
+      { kind: 'event', items: catalog.events, selected: state.event, multiple: false, limit: 4 },
       { kind: 'garment', items: catalog.garments, selected: state.garment, multiple: false, limit: 4 },
       { kind: 'color', items: catalog.colors, selected: state.color, multiple: false, limit: 7 },
       { kind: 'pattern', items: catalog.patterns, selected: state.pattern, multiple: false, limit: 4 },
@@ -601,7 +603,7 @@
       return lookup(catalog.accessories, slug).name;
     }).filter(Boolean);
 
-    summary.textContent = [
+    var selectedSummary = [
       event.label,
       garment.name,
       garmentVariant.name,
@@ -609,8 +611,12 @@
       pattern.label,
       style.label,
       scene.label,
-      accessoryNames.length ? accessoryNames.length + ' phụ kiện' : 'không phụ kiện'
+      accessoryNames.length ? accessoryNames.length + ' phụ kiện' : ''
     ].filter(Boolean).join(' · ');
+    var nextStep = !state.event ? 'Bắt đầu bằng việc chọn dịp bạn sẽ mặc.'
+      : !state.garment ? 'Tiếp theo: chọn dáng Việt phục bạn thích.'
+      : !state.style ? 'Cuối cùng: chọn phong cách để xem bản phối.' : '';
+    summary.textContent = [selectedSummary, nextStep].filter(Boolean).join(' — ');
 
     document.getElementById('footerEvent').textContent = event.label || 'Chưa chọn';
     document.getElementById('footerGarment').textContent = garmentVariant.name || garment.name || 'Chưa chọn';
@@ -619,24 +625,24 @@
     document.getElementById('footerStyle').textContent = style.label || 'Chưa chọn';
     document.getElementById('footerScene').textContent = scene.label || 'Chưa chọn';
     document.getElementById('footerAccessory').textContent = accessoryNames.length ? accessoryNames.join(', ') : 'Không phụ kiện';
-    document.getElementById('frameBSummary').textContent = scene.label ? 'Nền: ' + scene.label : event.label ? 'Nền: ' + event.label : 'Chỉ thay phông nền';
-    document.getElementById('frameCSummary').textContent = style.label ? 'Ánh sáng: ' + style.label : 'Chỉ thay thời điểm trong ngày';
+    document.getElementById('frameBSummary').textContent = scene.label ? 'Đổi nền: ' + scene.label : event.label ? 'Đổi nền: ' + event.label : 'Đổi phông nền';
+    document.getElementById('frameCSummary').textContent = style.label ? 'Đổi sáng: ' + style.label : 'Đổi thời điểm trong ngày';
     document.getElementById('frameDSummary').textContent = garment.name
       ? 'Quần áo: ' + (garmentVariant.name || garment.name)
       : 'Chỉ thay quần áo';
-    document.getElementById('frameESummary').textContent = accessoryNames.length ? 'Điểm nhấn: ' + accessoryNames.join(', ') : 'Giữ vị trí và kích thước tương đương';
+    document.getElementById('frameESummary').textContent = 'Giữ vị trí và khung hình';
     var hasBaseLook = Boolean(state.event && state.garment && state.style);
     if (previewEmpty) previewEmpty.classList.toggle('is-ready', hasBaseLook);
     if (frame) frame.classList.toggle('has-look', hasBaseLook);
-    if (projectKicker) projectKicker.textContent = state.event ? (event.label + ' / Tầng 02') : 'Dự án mới / Tầng 02';
+    if (projectKicker) projectKicker.textContent = state.event ? ('Bản phối · ' + event.label) : 'Bản phối mới';
     if (projectTitle) projectTitle.innerHTML = state.event
       ? 'Bản phối cho<br><em>' + escapeHtml(event.label.toLowerCase()) + '.</em>'
-      : 'Dự án mới';
+      : 'Bắt đầu từ một dịp mặc.';
     if (projectContext) {
       var preset = event.preset || {};
       projectContext.textContent = state.event
         ? [preset.location, preset.season, preset.weather, garment.name].filter(Boolean).join(' · ')
-        : 'Bắt đầu bằng cách chọn Việt phục, tải ảnh của bạn hoặc dùng gợi ý nhanh.';
+        : 'Chọn dịp, trang phục và phong cách. Bạn có thể thêm ảnh của mình nếu muốn.';
     }
     updatePassport();
     updateRecommendations();
@@ -658,7 +664,7 @@
     ].filter(Boolean).join(' · ') || '—';
     if (passportMeaning) passportMeaning.textContent = garment.significance_note || '—';
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
-    if (passportSource) passportSource.textContent = source ? source.title : 'Nguồn Approved sẽ hiển thị tại đây.';
+    if (passportSource) passportSource.textContent = source ? source.title : 'Nguồn đã được duyệt sẽ hiển thị tại đây.';
     if (passportVisual) {
       var passportImage = String(garmentVariant.thumbnail_url || garmentVariant.image_url || garment.thumbnail_url || garment.image_url || '');
       passportVisual.style.backgroundImage = /^https?:\/\//i.test(passportImage)
@@ -668,7 +674,7 @@
       var mark = passportVisual.querySelector('span');
       if (mark) mark.textContent = (garmentVariant.name || garment.name || 'V').charAt(0).toUpperCase();
     }
-    if (tipLocation) tipLocation.textContent = [scene.label, event.label].filter(Boolean).join(' · ') || 'Campus · Phố cổ · Văn Miếu';
+    if (tipLocation) tipLocation.textContent = [scene.label, event.label].filter(Boolean).join(' · ') || 'Khuôn viên · Phố cổ · Văn Miếu';
     if (tipStyling) tipStyling.textContent = [color.label, style.label].filter(Boolean).join(' + ') || 'Chọn một điểm nhấn hiện đại vừa đủ.';
     var colorCheck = document.querySelector('[data-check="color"]');
     var eventCheck = document.querySelector('[data-check="event"]');
@@ -766,8 +772,8 @@
     if (target) openMode(target);
     else if (state.openMode) closeDock(false);
     setStatus(state.activeFrame === 'A'
-      ? 'Ảnh A đã khoá: nhân vật, dáng, góc máy và bố cục.'
-      : 'Đang chỉnh frame ' + state.activeFrame + '. Chỉ lớp được chọn sẽ thay đổi.');
+      ? 'Bản gốc đã được giữ nguyên: người mẫu, dáng và khung hình.'
+      : 'Đang xem thay đổi ' + state.activeFrame + '. Chỉ phần bạn chọn sẽ thay đổi.');
   }
 
   // Delegation keeps the cinematic controller interactive even when the
@@ -889,10 +895,10 @@
     if (autoGenerateTimer) window.clearTimeout(autoGenerateTimer);
     if (generationPending) {
       queuedAutoGeneration = true;
-      setStatus('Đã nhận thay đổi. AI sẽ cập nhật preview sau khi job hiện tại hoàn tất.');
+      setStatus('Đã nhận thay đổi. Bản xem trước sẽ cập nhật sau khi hoàn tất.');
       return;
     }
-    setStatus('Đã đủ lựa chọn chính. AI đang chuẩn bị preview…');
+    setStatus('Đã đủ lựa chọn chính. Đang chuẩn bị ảnh xem trước…');
     autoGenerateTimer = window.setTimeout(function () {
       autoGenerateTimer = null;
       queuedAutoGeneration = false;
@@ -910,7 +916,7 @@
       return;
     }
     if (state.mode === 'image-to-image' && !(imageInput.files && imageInput.files[0])) {
-      setStatus('Chế độ image to image cần một ảnh nguồn cho frame A.');
+      setStatus('Bạn đã chọn dùng ảnh của mình, hãy tải ảnh nguồn lên trước.');
       imageInput.focus();
       return;
     }
@@ -987,10 +993,10 @@
 
       if (!catalog.generationEndpoint) {
         terminalFailure = true;
-        throw new Error('Edge Function chưa được cấu hình. Bản preview đang dùng nội dung từ catalog.');
+        throw new Error('Dịch vụ tạo ảnh chưa sẵn sàng.');
       }
 
-      setResultState('processing', 'Gemini đang kiểm tra bối cảnh, câu chuyện và giới hạn văn hoá.');
+      setResultState('processing', 'Đang tạo bản phối và kiểm tra độ phù hợp văn hóa…');
       var response = await fetch(catalog.generationEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1026,8 +1032,8 @@
       syncSubmitButton();
       var message = humanizeGenerationError(error && error.message
         ? error.message
-        : 'Không thể hoàn tất generation job.');
-      setResultState('failed', message + ' Preview hiện tại vẫn được giữ; hãy thay đổi một lựa chọn để hệ thống thử lại.');
+        : 'Không thể hoàn thành bản phối.');
+      setResultState('failed', message + ' Bản xem trước hiện tại vẫn được giữ; hãy đổi một lựa chọn để thử lại.');
       if (pendingAutoFingerprint && pendingAutoFingerprint !== requestFingerprint) {
         queuedAutoGeneration = false;
         scheduleAutoGeneration();
@@ -1043,7 +1049,7 @@
     restoreSelection(activeJob.selection);
     showResult();
     prepareResultCopy();
-    setResultState('processing', 'Đang nối lại generation job sau khi tải lại trang.');
+    setResultState('processing', 'Đang tiếp tục bản phối trước đó…');
     generationPending = true;
     syncSubmitButton();
     try {
@@ -1060,8 +1066,8 @@
     } catch (error) {
       var message = humanizeGenerationError(error && error.message
         ? error.message
-        : 'Không thể nối lại generation job.');
-      setResultState('failed', message + ' Preview hiện tại vẫn được giữ; hãy thay đổi một lựa chọn để hệ thống thử lại.');
+        : 'Không thể tiếp tục bản phối.');
+      setResultState('failed', message + ' Bản xem trước hiện tại vẫn được giữ; hãy đổi một lựa chọn để thử lại.');
     } finally {
       generationPending = false;
       syncSubmitButton();
@@ -1071,13 +1077,14 @@
   function humanizeGenerationError(message) {
     var text = String(message || '');
     if (/no available quota|resource_exhausted|enable billing/i.test(text)) {
-      var provider = /veo|video/i.test(text) ? 'video Veo' : 'ảnh Gemini';
-      return 'Nhà cung cấp AI chưa cấp quota cho ' + provider +
-        '. Hãy bật billing cho Google AI/API project hoặc đổi sang API key có quota rồi thử lại.';
+      var provider = /veo|video/i.test(text) ? 'video' : 'ảnh';
+      return 'Dịch vụ tạo ' + provider + ' đang tạm hết lượt. Bạn có thể thử lại sau hoặc chọn một bản phối khác.';
     }
     if (/no prepaid gemini api balance|prepayment credits are depleted/i.test(text)) {
-      return 'Gemini API chưa có số dư trả trước. Credits Google Cloud không tự chuyển sang AI Studio; ' +
-        'hãy nạp billing trong AI Studio hoặc chuyển backend sang Vertex AI.';
+      return 'Dịch vụ tạo ảnh chưa sẵn sàng. Bạn có thể thử lại sau hoặc báo đội ngũ quản trị.';
+    }
+    if (/generation|edge function|unable to read|job did not|job vẫn|not configured/i.test(text)) {
+      return 'Dịch vụ tạo bản phối đang bận. Bạn có thể thử lại sau ít phút.';
     }
     return text;
   }
@@ -1114,25 +1121,25 @@
       }
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
       setResultState('processing', body.output && body.output.lookbook && body.output.lookbook.items && body.output.lookbook.items.length
-        ? 'Lookbook đã sẵn sàng; video đang được hoàn thiện.'
-        : 'Job ' + (attempt + 1) + '/' + maxAttempts + ': Gemini/Veo đang dựng tài sản đầu ra.');
+        ? 'Ảnh đã sẵn sàng; video đang được hoàn thiện.'
+        : 'Đang dựng các phương án ảnh cho bạn…');
     }
-    throw new Error('Generation job vẫn đang được xử lý. Hãy mở lại kết quả sau ít phút để xem video.');
+    throw new Error('Bản phối vẫn đang được xử lý. Hãy mở lại sau ít phút để xem kết quả.');
   }
 
   function resultMessage(output) {
-    if (output.video && output.video.url) return 'Video Veo và tài sản bản phối đã sẵn sàng.';
-    if (output.videoError) return 'Lookbook đã sẵn sàng; video chưa hoàn tất nên bạn vẫn có thể dùng ảnh.';
+    if (output.video && output.video.url) return 'Video chuyển cảnh và các bản phối đã sẵn sàng.';
+    if (output.videoError) return 'Ảnh đã sẵn sàng; video chưa hoàn tất nhưng bạn vẫn có thể dùng các bản phối.';
     if (output.imageSource === 'catalog-fallback') {
-      return 'Đang dùng ảnh catalog đã duyệt làm fallback; bạn có thể thử lại để tạo ảnh AI mới.';
+      return 'Đang dùng ảnh mẫu đã duyệt để bạn xem trước; bạn có thể thử lại để tạo ảnh mới.';
     }
     if (output.imageSource === 'gemini-webapi-partial-fallback') {
-      return 'Lookbook đã sẵn sàng; một số frame đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.';
+      return 'Các bản phối đã sẵn sàng; một số ảnh đang dùng bản gốc làm dự phòng.';
     }
     if (output.copySource === 'catalog-fallback') {
-      return 'Lookbook đã sẵn sàng; Story Card đang dùng dữ liệu catalog đã duyệt vì Gemini tạm thời không phản hồi.';
+      return 'Các bản phối đã sẵn sàng; phần giới thiệu dùng dữ liệu đã được duyệt.';
     }
-    return 'Bộ frame A–E và lookbook ' + state.aspectRatio + ' đã sẵn sàng.';
+    return 'Bản phối và các phương án so sánh đã sẵn sàng.';
   }
 
   function applyOutput(output) {
@@ -1209,8 +1216,10 @@
     }
     resultVideoBranches.hidden = videos.length === 0;
     resultVideoBranches.innerHTML = videos.map(function (item, index) {
+      var branchNames = { B: 'Đổi nền', C: 'Đổi ánh sáng', D: 'Đổi trang phục', E: 'Đổi người mẫu' };
+      var branch = String(item.key || ['B', 'C', 'D', 'E'][index] || String(index + 1));
       return '<button type="button" data-video-index="' + index + '"' + (index === 0 ? ' class="is-active"' : '') +
-        '>A → ' + escapeHtml(item.key || ['B', 'C', 'D', 'E'][index] || String(index + 1)) + '</button>';
+        '>' + escapeHtml(branchNames[branch] || 'Phương án ' + (index + 1)) + '</button>';
     }).join('');
     Array.prototype.forEach.call(resultVideoBranches.querySelectorAll('[data-video-index]'), function (button) {
       button.addEventListener('click', function () {
@@ -1221,7 +1230,7 @@
         resultVideo.hidden = false;
         resultVideo.load();
         resultDownload.href = selected.url;
-        resultDownload.textContent = 'Tải video A → ' + (selected.key || '') + ' ' + String.fromCharCode(8595);
+        resultDownload.textContent = 'Tải video chuyển cảnh ' + String.fromCharCode(8595);
         Array.prototype.forEach.call(resultVideoBranches.querySelectorAll('button'), function (item) {
           item.classList.toggle('is-active', item === button);
         });
@@ -1269,7 +1278,7 @@
     Array.prototype.forEach.call(variantStrip ? variantStrip.querySelectorAll('[data-variant]') : [], function (button, buttonIndex) {
       button.classList.toggle('is-active', buttonIndex === Number(index));
     });
-    setStatus('Đang xem ' + (Number(index) === 0 ? 'frame A' : 'phương án ' + Number(index)) + '.');
+    setStatus('Đang xem ' + (Number(index) === 0 ? 'bản gốc' : 'phương án ' + Number(index)) + '.');
   }
 
   function loadCanvasImage(url) {
@@ -1393,7 +1402,8 @@
   }
 
   function setResultState(value, message) {
-    resultState.textContent = value;
+    var visibleStates = { queued: 'Chuẩn bị', processing: 'Đang tạo', completed: 'Đã xong', failed: 'Có lỗi' };
+    resultState.textContent = visibleStates[value] || value;
     resultProgress.textContent = message;
     experience.setAttribute('aria-busy', String(value === 'queued' || value === 'processing'));
     srStatus.textContent = message;
@@ -1507,7 +1517,7 @@
   if (compareLooksButton) compareLooksButton.addEventListener('click', compareCurrentLooks);
   if (addVariantButton) addVariantButton.addEventListener('click', function () {
     openMode('accessory');
-    setStatus('Chọn một thay đổi nhỏ để tạo variant mới từ Base Look.');
+    setStatus('Chọn một thay đổi nhỏ để tạo thêm một bản phối.');
   });
 
   dockClose.addEventListener('click', function () {

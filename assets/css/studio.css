@@ -92,7 +92,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     linear-gradient(180deg, rgb(243 239 231 / .08), transparent 54%, rgb(28 37 40 / .2));
 }
 .studio-frame::after {
-  content: "FRAME A / LIVE CANVAS";
+  content: "BẢN GỐC / XEM TRƯỚC";
   position: absolute;
   z-index: 4;
   right: 20px;
