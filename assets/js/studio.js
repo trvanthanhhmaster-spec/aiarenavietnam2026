@@ -49,6 +49,7 @@
   var resultProgress = document.getElementById('resultProgress');
   var resultStory = document.getElementById('resultStory');
   var resultGuardrail = document.getElementById('resultGuardrail');
+  var resultCulturalScore = document.getElementById('resultCulturalScore');
   var resultGenZTip = document.getElementById('resultGenZTip');
   var resultVisual = document.querySelector('.studio-result__visual');
   var resultPlaceholderVisual = document.getElementById('resultPlaceholderVisual');
@@ -630,7 +631,7 @@
     if (projectContext) {
       var preset = event.preset || {};
       projectContext.textContent = state.event
-        ? [preset.location, preset.season, garment.name].filter(Boolean).join(' · ')
+        ? [preset.location, preset.season, preset.weather, garment.name].filter(Boolean).join(' · ')
         : 'Bắt đầu bằng cách chọn Việt phục, tải ảnh của bạn hoặc dùng gợi ý nhanh.';
     }
     updatePassport();
@@ -944,6 +945,8 @@
       eventSlug: state.event,
       location: (lookup(catalog.events, state.event).preset || {}).location || '',
       season: (lookup(catalog.events, state.event).preset || {}).season || '',
+      weather: (lookup(catalog.events, state.event).preset || {}).weather || '',
+      audience: (lookup(catalog.events, state.event).preset || {}).audience || '',
       garmentSlug: state.garment,
       garmentVariantSlug: state.garmentVariant,
       accessorySlugs: state.accessories.slice(),
@@ -1135,6 +1138,7 @@
     var fingerprint = JSON.stringify({
       story: output.story || '',
       guardrail: output.guardrail || '',
+      culturalScore: output.culturalScore || '',
       genZTip: output.genZTip || '',
       images: items.map(function (item) { return item.url; }),
       video: output.video && output.video.url || '',
@@ -1147,6 +1151,13 @@
 
     resultStory.textContent = output.story || resultStory.textContent;
     resultGuardrail.textContent = output.guardrail || resultGuardrail.textContent;
+    if (resultCulturalScore) {
+      var score = Number(output.culturalScore);
+      resultCulturalScore.textContent = Number.isFinite(score)
+        ? Math.round(score) + '/100 · ' + (score >= 85 ? 'Phù hợp' : score >= 70 ? 'Nên cân chỉnh' : 'Cần xem lại')
+        : 'Chưa có dữ liệu';
+      resultCulturalScore.classList.toggle('is-warning', Number.isFinite(score) && score < 85);
+    }
     resultGenZTip.textContent = output.genZTip || resultGenZTip.textContent;
 
     resultImages.innerHTML = '';

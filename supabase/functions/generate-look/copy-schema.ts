@@ -2,11 +2,12 @@ export type GeminiCopy = {
   story: string;
   guardrail: string;
   genZTip: string;
+  culturalScore: number;
   imagePrompt: string;
   confidence: number;
 };
 
-const limits: Record<keyof Omit<GeminiCopy, "confidence">, [number, number]> = {
+const limits: Record<"story" | "guardrail" | "genZTip" | "imagePrompt", [number, number]> = {
   story: [20, 1_200],
   guardrail: [20, 800],
   genZTip: [10, 500],
@@ -15,7 +16,7 @@ const limits: Record<keyof Omit<GeminiCopy, "confidence">, [number, number]> = {
 
 function requiredText(
   value: unknown,
-  field: keyof Omit<GeminiCopy, "confidence">,
+  field: "story" | "guardrail" | "genZTip" | "imagePrompt",
 ) {
   if (typeof value !== "string") {
     throw new Error(`Gemini output field "${field}" must be text.`);
@@ -48,11 +49,19 @@ export function parseGeminiCopy(text: string): GeminiCopy {
   if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
     throw new Error('Gemini output field "confidence" must be between 0 and 1.');
   }
+  const scoreValue = record.culturalScore ?? record.cultural_score;
+  const culturalScore = typeof scoreValue === "number" || (typeof scoreValue === "string" && scoreValue.trim() !== "")
+    ? Number(scoreValue)
+    : NaN;
+  if (!Number.isFinite(culturalScore) || culturalScore < 0 || culturalScore > 100) {
+    throw new Error('Gemini output field "culturalScore" must be between 0 and 100.');
+  }
 
   return {
     story: requiredText(record.story, "story"),
     guardrail: requiredText(record.guardrail ?? record.guardrails, "guardrail"),
     genZTip: requiredText(record.genZTip ?? record.gen_z_tip, "genZTip"),
+    culturalScore: Math.round(culturalScore * 100) / 100,
     imagePrompt: requiredText(record.imagePrompt ?? record.image_prompt, "imagePrompt"),
     confidence,
   };

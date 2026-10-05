@@ -70,6 +70,7 @@ Deno.test("catalog fallback covers the 4x4 Audition cultural matrix", () => {
       assert(result.imagePrompt.includes(garment.name), `${event.slug}/${garment.slug}: missing garment in image prompt.`);
       assert(result.imagePrompt.includes("no text, no logo, no watermark"), `${event.slug}/${garment.slug}: missing visual safety.`);
       assert(result.confidence < 1, `${event.slug}/${garment.slug}: fallback confidence must stay explicit.`);
+      assert(result.culturalScore === null, `${event.slug}/${garment.slug}: fallback must not fabricate a cultural score.`);
       caseCount += 1;
     }
   }

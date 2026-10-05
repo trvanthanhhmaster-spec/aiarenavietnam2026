@@ -364,6 +364,7 @@ $studioData = $catalog + [
                             <li data-check="color">○ Chưa chọn màu</li>
                             <li data-check="event">○ Chưa chọn dịp mặc</li>
                             <li data-check="accessory">○ Chưa chọn phụ kiện</li>
+                            <li data-check="score">○ Chưa có Cultural Score</li>
                         </ul>
                         <p id="culturalWarning">Hệ thống sẽ hiển thị quy tắc văn hoá đã được duyệt.</p>
                     </section>
@@ -411,6 +412,7 @@ $studioData = $catalog + [
                     <p id="resultProgress">Đang kiểm tra lựa chọn và chuẩn bị prompt có phiên bản.</p>
                     <div class="result-story"><span>Story Card</span><p id="resultStory">—</p></div>
                     <div class="result-story"><span>Cultural Guardrail</span><p id="resultGuardrail">—</p></div>
+                    <div class="result-story result-score"><span>Cultural Score</span><p id="resultCulturalScore">—</p></div>
                     <div class="result-story"><span>Mẹo Gen Z</span><p id="resultGenZTip">—</p></div>
                     <div class="result-video-branches" id="resultVideoBranches" hidden aria-label="Bốn video chuyển đổi"></div>
                     <a class="result-download" id="resultDownload" href="#" download hidden>Tải lookbook 9:16 <span aria-hidden="true">↓</span></a>

@@ -19,6 +19,8 @@ type LookRequest = {
   eventSlug?: string;
   location?: string;
   season?: string;
+  weather?: string;
+  audience?: string;
   garmentSlug?: string;
   garmentVariantSlug?: string;
   accessorySlugs?: string[];
@@ -415,10 +417,12 @@ async function askGemini(
   const endpoint = modelEndpoint(config, model, "generateContent");
   const prompt = [
     promptVersion.system_prompt,
-    "Return JSON with keys: story, guardrail, genZTip, imagePrompt, confidence.",
+    "Return JSON with keys: story, guardrail, genZTip, culturalScore, imagePrompt, confidence.",
     `Selected event: ${JSON.stringify(request.eventSlug)}`,
     `Location: ${JSON.stringify(request.location)}`,
     `Season: ${JSON.stringify(request.season)}`,
+    `Weather: ${JSON.stringify(request.weather)}`,
+    `Audience/use case: ${JSON.stringify(request.audience)}`,
     `Selected garment: ${JSON.stringify(request.garmentSlug)}`,
     `Selected concrete garment variant: ${JSON.stringify(request.garmentVariantSlug)}`,
     `Selected accessories: ${JSON.stringify(request.accessorySlugs || [])}`,
@@ -779,7 +783,7 @@ async function processLook(
     options,
     rules: rules.filter((rule: Record<string, unknown>) => !rule.garment_id || rule.garment_id === garment[0].id),
   };
-  let copy: Awaited<ReturnType<typeof askGemini>>;
+  let copy: Awaited<ReturnType<typeof askGemini>> | ReturnType<typeof fallbackCopy>;
   let copySource: "gemini" | "catalog-fallback" = "gemini";
   let copyWarning: string | undefined;
   try {
@@ -839,6 +843,7 @@ async function processLook(
     ...copy,
     generationType,
     copySource,
+    culturalScoreSource: copySource === "gemini" ? "gemini-selection-assessment" : "not-assessed",
     ...(copyWarning ? { copyWarning } : {}),
     imageSource,
     ...(imageWarning ? { imageWarning } : {}),

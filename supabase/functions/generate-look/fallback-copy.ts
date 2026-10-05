@@ -2,6 +2,8 @@ export type FallbackLookRequest = {
   eventSlug?: string;
   location?: string;
   season?: string;
+  weather?: string;
+  audience?: string;
   garmentSlug?: string;
   garmentVariantSlug?: string;
   accessorySlugs?: string[];
@@ -16,6 +18,7 @@ export type FallbackCopy = {
   story: string;
   guardrail: string;
   genZTip: string;
+  culturalScore: null;
   imagePrompt: string;
   confidence: number;
 };
@@ -36,7 +39,7 @@ export function fallbackImagePrompt(
     `Editorial full-body fashion portrait for ${event}.`,
     `${garment}, garment type: ${garmentType}; preserve its Vietnamese silhouette, collar, panels, buttons and sleeve construction.`,
     `Concrete item details: ${garmentVariant.silhouette || ""}; material: ${garmentVariant.material || ""}; pattern: ${garmentVariant.pattern_notes || ""}; visual reference prompt: ${garmentVariant.prompt_descriptor || ""}.`,
-    `Location: ${request.location || scene}. Season: ${request.season || "current season"}. Palette: ${color}. Pattern: ${pattern}. Styling direction: ${style}.`,
+    `Location: ${request.location || scene}. Season: ${request.season || "current season"}. Weather: ${request.weather || "not specified"}. Palette: ${color}. Pattern: ${pattern}. Styling direction: ${style}.`,
     "Contemporary accessories may be subtle, but the traditional garment remains the visual centre.",
     "Natural light, respectful cultural context, clean background, portrait composition, no text, no logo, no watermark.",
   ].join(" ");
@@ -68,6 +71,8 @@ export function fallbackCopy(
     story: `${garmentVariant.name || garment.name || "Việt phục"} xuất hiện trong bối cảnh ${event.label || request.eventSlug || "hiện đại"} với bảng màu ${colorLabel}, họa tiết ${patternLabel} và tinh thần ${styleLabel}. ${origin} Bản phối dùng ${accessoryText} để tạo nhịp mới nhưng vẫn đặt dáng áo làm trung tâm.`,
     guardrail: `Giữ nguyên phom dáng, cổ áo, hàng cúc, các thân áo và tay áo của ${garment.name || "trang phục đã chọn"}; bám theo chất liệu và chi tiết của mẫu ${garmentVariant.name || "đã duyệt"}. ${significance} Chỉ hiện đại hóa bằng phụ kiện và cách phối đã chọn; không thêm tuyên bố lịch sử ngoài dữ liệu catalog đã duyệt.`,
     genZTip: `Chọn một điểm nhấn vừa đủ — ${accessoryText} — rồi giữ phần còn lại gọn để ${garmentVariant.name || garment.name || "dáng Việt"} vẫn là nhân vật chính trong ảnh.`,
+    // Catalog copy is not an AI or expert assessment of the generated image.
+    culturalScore: null,
     imagePrompt: fallbackImagePrompt(request, catalog),
     confidence: 0.55,
   };

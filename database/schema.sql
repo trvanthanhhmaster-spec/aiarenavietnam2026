@@ -305,10 +305,10 @@ create policy "users can read own generation jobs" on public.generation_jobs for
 
 insert into public.studio_events (slug, label, description, cultural_context, sort_order)
 values
-    ('school', 'Đi học', 'Gọn gàng, linh hoạt và gần gũi cho nhịp sống học đường.', 'Ưu tiên sự thoải mái, kín đáo và dễ vận động.', 1),
-    ('street', 'Dạo phố', 'Cân bằng chất liệu truyền thống với nhịp sống đô thị.', 'Có thể phối cùng phụ kiện hiện đại nhưng giữ phom nhận diện.', 2),
-    ('ceremony', 'Dự lễ', 'Trang trọng, tiết chế và phù hợp không gian nghi lễ.', 'Tôn trọng quy tắc cài cúc, vạt áo và hoàn cảnh sử dụng.', 3),
-    ('portrait', 'Chụp ảnh', 'Tạo hình có điểm nhấn cho bộ ảnh và lookbook cá nhân.', 'Ưu tiên bố cục, ánh sáng và chi tiết thủ công.', 4)
+    ('school', 'Đi học', 'Gợi ý nhanh cho lớp học, campus và nhịp đi học hằng ngày.', 'Ưu tiên kín đáo, thoải mái, dễ vận động; phụ kiện hiện đại chỉ làm điểm nhấn.', 1),
+    ('street', 'Dạo phố', 'Bản phối Việt phục nhẹ nhõm cho phố cổ, cà phê và dạo phố.', 'Giữ phom và chi tiết nhận diện; không để phụ kiện đô thị che cấu trúc áo.', 2),
+    ('ceremony', 'Dự lễ', 'Bản phối trang trọng cho lễ tốt nghiệp, cưới hỏi và không gian di sản.', 'Tôn trọng quy cách cài cúc, vạt áo, độ kín đáo và quy định nơi tổ chức.', 3),
+    ('portrait', 'Chụp ảnh', 'Bản phối có chủ đích cho kỷ yếu, lookbook và bộ ảnh cá nhân.', 'Giữ bố cục và nhân vật ổn định để so sánh các phương án lookbook.', 4)
 on conflict (slug) do update set
     label = excluded.label, description = excluded.description,
     cultural_context = excluded.cultural_context, sort_order = excluded.sort_order,
@@ -353,8 +353,8 @@ values (
     'outfit-image',
     1,
     'gemini',
-    'Create a respectful Vietnamese traditional outfit styling concept. Preserve the garment silhouette, collar, buttons, panels, sleeves and cultural identity. Modernize only the requested accessories and styling. Do not invent historical claims. Return JSON with exactly these keys: story, guardrail, genZTip, imagePrompt and confidence. confidence must be a number between 0 and 1.',
-    'Validate story, guardrail, genZTip, imagePrompt and confidence against the Studio output schema before creating assets.',
+    'Create a respectful Vietnamese traditional outfit styling concept for Gen Z. Preserve the garment silhouette, collar, buttons, panels, sleeves and cultural identity. Modernize only the requested accessories and styling. Use the approved catalog facts as the source of truth; do not invent historical claims. Return JSON with exactly these keys: story, guardrail, genZTip, culturalScore, imagePrompt and confidence. culturalScore must be a number from 0 to 100 and reflect cultural fit, not image quality. confidence must be a number between 0 and 1.',
+    'Validate story, guardrail, genZTip, imagePrompt, culturalScore and confidence. Check context, weather and event fit; warnings must be actionable and respectful.',
     true
 )
 on conflict (slug, version) do update set
@@ -999,3 +999,96 @@ on conflict (slug) do update set
     image_url = excluded.image_url, thumbnail_url = excluded.thumbnail_url,
     prompt_descriptor = excluded.prompt_descriptor,
     review_status = 'published', is_active = true, updated_at = now();
+
+-- Audition context metadata. Keep this in the preset JSON so Admin can extend
+-- weather, audience and usage suggestions without a code deploy.
+update public.studio_events
+set preset = case slug
+    when 'school' then jsonb_build_object('location', 'Campus Hà Nội', 'season', 'Mùa thu', 'weather', 'Trời mát, có nắng nhẹ', 'audience', 'học sinh, sinh viên', 'garment', 'ao-ngu-than-tay-chen', 'color', 'indigo', 'style', 'school-polished', 'scene', 'campus', 'suggestion', 'Sneaker trắng + túi tote')
+    when 'street' then jsonb_build_object('location', 'Phố cổ Hà Nội', 'season', 'Mùa thu', 'weather', 'Khô ráo, ánh sáng dịu', 'audience', 'người trẻ khám phá thành phố', 'garment', 'ao-tu-than', 'color', 'moss', 'style', 'streetwear', 'scene', 'old-quarter', 'suggestion', 'Tote canvas + loafer')
+    when 'ceremony' then jsonb_build_object('location', 'Văn Miếu – Quốc Tử Giám', 'season', 'Mùa thu', 'weather', 'Trời mát, ánh sáng tự nhiên', 'audience', 'lễ tốt nghiệp, cưới hỏi, sự kiện văn hóa', 'garment', 'ao-tac', 'color', 'vermilion', 'style', 'elegant', 'scene', 'temple', 'suggestion', 'Loafer + phụ kiện tiết chế')
+    when 'portrait' then jsonb_build_object('location', 'Studio / Hoàng thành', 'season', 'Bốn mùa', 'weather', 'Ánh sáng được kiểm soát', 'audience', 'kỷ yếu, lookbook, ảnh cá nhân', 'garment', 'ao-nhat-binh', 'color', 'ivory', 'style', 'heritage-editorial', 'scene', 'studio', 'suggestion', 'Giữ nền sạch, ưu tiên chi tiết cổ áo')
+    else preset
+end,
+updated_at = now()
+where slug in ('school', 'street', 'ceremony', 'portrait');
+
+update public.studio_generation_settings
+set base_prompt = 'Ảnh gốc A: một nhân vật Việt mặc trang phục được chọn, đứng chính giữa, toàn thân, giữ cố định khuôn mặt, dáng đứng, góc máy và bố cục; ưu tiên 16:9 ở 1080p cho preview, sau đó có thể xuất lookbook 9:16.',
+    updated_at = now()
+where id = 1;
+
+insert into public.cultural_rules (garment_id, rule_text, severity, context, review_status)
+select g.id, v.rule_text, v.severity, v.context, 'approved'
+from public.studio_garments g
+join (values
+    ('ao-tac', 'Dự lễ nên giữ cổ áo, hàng cúc và tay áo đúng phom; phụ kiện chỉ nên làm điểm nhấn.', 'warning', 'ceremony'),
+    ('ao-nhat-binh', 'Không dùng phụ kiện hoặc họa tiết hiện đại để che mảng cổ đặc trưng của Nhật Bình.', 'warning', 'all'),
+    ('ao-tu-than', 'Khi phối hiện đại vẫn cần giữ mối liên hệ giữa áo, yếm và thắt lưng.', 'warning', 'all')
+) as v(slug, rule_text, severity, context) on v.slug = g.slug
+where not exists (
+    select 1 from public.cultural_rules r
+    where r.garment_id = g.id and r.rule_text = v.rule_text
+);
+
+-- Audition presets describe demo scenarios, not live weather/geolocation.
+update public.studio_events
+set preset = preset || jsonb_build_object(
+    'context_source', 'demo-preset',
+    'pattern', 'plain',
+    'accessories', case slug
+        when 'school' then '["sneaker-trang","tui-tote"]'::jsonb
+        when 'street' then '["giay-loafer","tui-tote"]'::jsonb
+        when 'ceremony' then '["giay-loafer"]'::jsonb
+        else '[]'::jsonb end
+), updated_at = now()
+where slug in ('school', 'street', 'ceremony', 'portrait');
+
+-- Fill generation descriptors without inventing fabric, dynasty or price.
+update public.studio_garments g
+set prompt_descriptor = v.prompt,
+    negative_descriptor = 'Do not crop or cut garment panels, erase collar or buttons, invent insignia, or substitute generic East Asian clothing.',
+    allowed_contexts = v.contexts::jsonb,
+    default_colors = v.colors::jsonb,
+    updated_at = now()
+from (values
+    ('ao-ngu-than-tay-chen', 'Vietnamese ao ngu than tay chen; preserve five-panel construction, fitted sleeves, collar and button line. Modern accessories must not conceal the garment.', '["school","street","ceremony","portrait"]', '["indigo","beige","ivory"]'),
+    ('ao-tac', 'Vietnamese ao tac; preserve its formal silhouette, wide sleeves, collar, buttons and full-length panels. Style respectfully for the selected event.', '["ceremony","portrait"]', '["vermilion","ivory","deep-red"]'),
+    ('ao-nhat-binh', 'Vietnamese ao Nhat Binh; preserve the distinctive collar panel and visible garment proportions in the approved reference. Do not invent court rank or royal insignia.', '["ceremony","portrait"]', '["ivory","deep-red","indigo"]'),
+    ('ao-tu-than', 'Vietnamese ao tu than; preserve the relationship of the outer garment, yem and waist sash shown by the approved reference. Use restrained contemporary accessories.', '["street","portrait"]', '["moss","brown","beige"]')
+) as v(slug, prompt, contexts, colors)
+where g.slug = v.slug and g.prompt_descriptor = '';
+
+update public.studio_accessories a
+set prompt_descriptor = v.prompt, compatibility = v.compatibility::jsonb, updated_at = now()
+from (values
+    ('sneaker-trang', 'Low-profile white sneakers, practical and unbranded; keep garment panels visible.', '{"suggested_contexts":["school","street","portrait"],"styling_note":"Kiểm tra quy định giày dép của nơi tổ chức khi dự lễ."}'),
+    ('giay-loafer', 'Simple loafers with a restrained silhouette and no visible brand logo.', '{"suggested_contexts":["school","street","ceremony","portrait"]}'),
+    ('tui-tote', 'Practical tote bag carried at the side, not across the collar or button line.', '{"suggested_contexts":["school","street"],"styling_note":"Không để túi che hàng khuy và vạt áo."}'),
+    ('kinh-ram', 'Minimal sunglasses as an optional outdoor fashion accent, not covering garment details.', '{"suggested_contexts":["street","portrait"],"styling_note":"Cân nhắc tháo kính trong không gian nghi lễ."}'),
+    ('dong-ho-thong-minh', 'Discreet smartwatch visible at the wrist without obscuring sleeve construction.', '{"suggested_contexts":["school","street","portrait"]}')
+) as v(slug, prompt, compatibility)
+where a.slug = v.slug and a.prompt_descriptor = '';
+
+update public.studio_garment_variants v
+set prompt_descriptor = g.prompt_descriptor, negative_descriptor = g.negative_descriptor,
+    updated_at = now()
+from public.studio_garments g
+where v.garment_id = g.id and v.source_provider = 'curated' and v.prompt_descriptor = '';
+
+update public.studio_accessory_variants v
+set prompt_descriptor = a.prompt_descriptor, updated_at = now()
+from public.studio_accessories a
+where v.accessory_id = a.id and v.source_provider = 'curated' and v.prompt_descriptor = '';
+
+-- Version the new contract rather than silently changing historical job prompts.
+update public.studio_prompt_versions set is_active = false where slug = 'outfit-image';
+insert into public.studio_prompt_versions (slug, version, model, system_prompt, eval_notes, is_active)
+values (
+    'outfit-image', 2, 'gemini',
+    'Act as a Gen Z stylist and cultural guide. Use only supplied approved catalog facts for historical statements. Preserve garment structure and explain in Vietnamese with 2-3 concise sentences for story. Respect user selections and locks. Context marked demo-preset is illustrative, not live weather. Return JSON with exactly story, guardrail, genZTip, culturalScore, imagePrompt, confidence. culturalScore is a tentative 0-100 assessment of the SELECTED styling against supplied rules, not expert certification and not an assessment of a generated image. Explain cautions and actionable corrections in guardrail. Never award cultural validity solely because a color or accessory is selected. confidence is 0-1; lower it when sources or rules are incomplete. imagePrompt must include concrete item descriptors, negative constraints, location, palette, accessories and locks; no invented historical claims, text, logo or watermark.',
+    'Schema tests and 4x4 garment/event fallback cases. Null score on fallback; no fabricated live context; approved sources only. Live provider/image fidelity requires separate QA.',
+    true
+)
+on conflict (slug, version) do update set
+    system_prompt = excluded.system_prompt, eval_notes = excluded.eval_notes, is_active = true;

@@ -56,6 +56,10 @@ try {
 
     $selection = [
         'event' => (string) ($input['eventSlug'] ?? ''),
+        'location' => (string) ($input['location'] ?? ''),
+        'season' => (string) ($input['season'] ?? ''),
+        'weather' => (string) ($input['weather'] ?? ''),
+        'audience' => (string) ($input['audience'] ?? ''),
         'garment' => (string) ($input['garmentSlug'] ?? ''),
         'garment_variant' => (string) ($input['garmentVariantSlug'] ?? ''),
         'color' => (string) ($input['colorSlug'] ?? ''),
@@ -64,8 +68,12 @@ try {
         'accessory_variants' => array_values(array_filter((array) ($input['accessoryVariantSlugs'] ?? []), 'is_string')),
     ];
     $basePrompt = sprintf(
-        'Generate a premium editorial Vietnamese fashion photograph. Event/context: %s. Garment type: %s. Concrete garment variant: %s. Color: %s. Style/lighting: %s. Accessory types: %s. Concrete accessory variants: %s. One centered subject, culturally accurate construction, stable full-body pose and camera composition.',
+        'Generate a premium editorial Vietnamese fashion photograph. Event/context: %s. Location: %s. Season/weather: %s / %s. Audience/use case: %s. Garment type: %s. Concrete garment variant: %s. Color: %s. Style/lighting: %s. Accessory types: %s. Concrete accessory variants: %s. One centered subject, culturally accurate construction, stable full-body pose and camera composition.',
         $selection['event'],
+        $selection['location'],
+        $selection['season'],
+        $selection['weather'],
+        $selection['audience'],
         $selection['garment'],
         $selection['garment_variant'],
         $selection['color'],
@@ -165,8 +173,11 @@ try {
             ? 'Bộ ảnh được tạo từ một frame A cố định và bốn phép biến đổi có kiểm soát.'
             : 'Frame A đã được khoá. ' . implode(', ', $fallbackFrames) . ' đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.',
         'guardrail' => 'Giữ cấu trúc nhận diện của Việt phục và chỉ thay đúng phạm vi của từng frame.',
+        'culturalScore' => 90,
         'genZTip' => 'Dùng một điểm nhấn hiện đại để trang phục truyền thống vẫn là trung tâm.',
         'imageSource' => $fallbackFrames === [] ? 'gemini-webapi' : 'gemini-webapi-partial-fallback',
+        'culturalScore' => null,
+        'culturalScoreSource' => 'not-assessed',
         'imageUrl' => $frames[0]['url'] ?? null,
         'lookbook' => ['aspectRatio' => $aspectRatio, 'items' => $frames],
     ];

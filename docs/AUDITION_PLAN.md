@@ -23,7 +23,7 @@ Thông điệp demo:
 4. Có thể tải ảnh đại diện lên, nhưng không bắt buộc.
 5. Bấm "Tạo bản phối".
 6. Nhận một kết quả ổn định gồm:
-   - Ảnh AI 9:16.
+   - Ảnh AI preview 16:9 ở 1080p; có thể xuất lookbook 9:16 cho Story.
    - Các phương án lookbook để so sánh.
    - Story Card.
    - Cultural Guardrail.
@@ -40,8 +40,8 @@ Mục tiêu là hoàn thành hành trình này trong khoảng 90 giây khi thuy�
 
 - Bảo toàn visual, media transition và CTA của Tầng 1.
 - Studio desktop và mobile đọc catalog thật từ Supabase.
-- Gemini tạo prompt có version, Story Card, Guardrail và mẹo phối.
-- Tạo ít nhất một ảnh kết quả 9:16; tối đa bốn ảnh nếu provider cho phép.
+- Gemini tạo prompt có version, Story Card, Guardrail, mẹo phối và Cultural Score 0–100.
+- Tạo ít nhất một ảnh kết quả 16:9; tối đa năm frame A–E nếu provider cho phép.
 - Lưu asset vào Supabase Storage và trả signed URL.
 - Generation job có `queued`, `processing`, `completed`, `failed`.
 - Không tạo job trùng khi người dùng reload hoặc bấm lại.
@@ -78,7 +78,7 @@ Story Card hay nút tải lookbook.
 | Supabase catalog | Đã có ban đầu | Nội dung văn hóa còn ngắn, chưa có bộ nguồn đã duyệt thực tế |
 | Studio selector | Đã có | Đã kiểm thử thao tác, responsive và accessibility cơ bản |
 | Gemini text/prompt | Đã có một prompt v1 | Đã có schema validation; eval provider thật và prompt regression vẫn còn |
-| Image generation | Đã nối provider | Đã kiểm thử thật 4 ảnh 9:16; identity consistency cần đánh giá thêm |
+| Image generation | Đã nối provider | Preview mặc định 16:9/1080p; identity consistency cần đánh giá thêm |
 | Lookbook | Hiển thị tối đa bốn ảnh | Job có persistence/resume; composite và gallery để sau Audition |
 | Video generation | Đã chạy được qua Vertex bridge | API-key Gemini route thiếu prepaid balance; video đang bị ưu tiên quá mức |
 | Job polling | Đã có | Đã chống submit trùng và resume sau reload; cancel provider vẫn còn |
@@ -98,7 +98,7 @@ Supabase Postgres
         | POST /generate-look
         v
 Supabase Edge Function
-        |-- Gemini text: story + guardrail + image prompt
+        |-- Gemini text: story + guardrail + Cultural Score + image prompt
         |-- Gemini image: lookbook 9:16
         |-- Supabase Storage: generated assets
         `-- generation_jobs: trạng thái và output
