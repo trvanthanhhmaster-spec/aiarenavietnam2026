@@ -1000,17 +1000,9 @@ on conflict (slug) do update set
     prompt_descriptor = excluded.prompt_descriptor,
     review_status = 'published', is_active = true, updated_at = now();
 
--- Current Audition catalog was intentionally cleared for a fresh Admin/API
--- import. Keep this block aligned with migration 20261005110000.
-delete from public.studio_marketplace_listings;
-delete from public.studio_locations;
-delete from public.cultural_rules;
-delete from public.studio_garment_variants;
-delete from public.studio_accessory_variants;
-delete from public.studio_garments;
-delete from public.studio_accessories;
-delete from public.studio_options;
-delete from public.cultural_sources;
+-- The Audition catalog is seeded above and remains available for a fresh
+-- database reset. Admin/API imports should update or archive rows instead of
+-- clearing the public catalog.
 
 -- Audition context metadata. Keep this in the preset JSON so Admin can extend
 -- weather, audience and usage suggestions without a code deploy.
