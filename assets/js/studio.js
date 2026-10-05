@@ -462,7 +462,11 @@
   }
 
   function compactCatalogList(items, kind, selectedValue, multiple, limit) {
-    return (items || []).slice(0, limit).map(function (item, index) {
+    var availableItems = (items || []).slice(0, limit);
+    if (availableItems.length === 0) {
+      return '<p class="studio-catalog-empty">Catalog đang chờ Admin nhập và duyệt dữ liệu mới.</p>';
+    }
+    return availableItems.map(function (item, index) {
       var slug = String(item.slug || '');
       var selected = multiple ? selectedValue.indexOf(slug) !== -1 : selectedValue === slug;
       var name = item.label || item.name || slug;

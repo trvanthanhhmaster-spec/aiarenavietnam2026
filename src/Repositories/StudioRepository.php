@@ -142,10 +142,6 @@ final class StudioRepository
                 }
             }
 
-            if ($catalog['events'] === [] || $catalog['garments'] === []) {
-                throw new RuntimeException('Studio catalog is incomplete.');
-            }
-
             return $catalog;
         } catch (Throwable $error) {
             error_log('[V-Remix] Studio catalog: ' . $error->getMessage());

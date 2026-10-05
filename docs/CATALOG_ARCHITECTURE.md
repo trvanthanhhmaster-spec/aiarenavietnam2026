@@ -10,6 +10,10 @@ Catalog dùng hai cấp:
    người dùng chọn. Mỗi mẫu có ảnh, chất liệu, họa tiết, bảng màu, mô tả prompt
    và metadata nguồn.
 
+Trạng thái hiện tại: catalog mẫu cũ đã được xoá theo yêu cầu để chuẩn bị nhập
+lại từ Admin/API. Studio vẫn giữ taxonomy, empty state và generation contract;
+chỉ các loại/mẫu đã được Admin tạo và duyệt mới xuất hiện trở lại.
+
 Studio chỉ đọc mẫu thỏa cả hai điều kiện:
 
 ```text

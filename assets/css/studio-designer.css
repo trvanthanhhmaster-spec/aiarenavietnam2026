@@ -267,6 +267,7 @@ body.studio-page {
   border-left: 2px solid var(--designer-accent);
   background: color-mix(in srgb, var(--designer-card) 88%, #ead9ca);
 }
+.studio-catalog-empty { margin: 0; padding: 22px 12px; color: var(--designer-muted); font-size: 11px; line-height: 1.5; }
 .studio-variant-grid {
   display: grid;
   grid-template-columns: 1fr;
