@@ -142,6 +142,20 @@ $studioData = $catalog + [
                         <strong>Bạn muốn mặc gì hôm nay?</strong>
                         <p class="studio-collection-heading__note">Chọn dịp trước. Sau đó chọn một dáng Việt phục và thêm điểm nhấn theo cách của bạn.</p>
                     </div>
+                    <div class="studio-progress" aria-label="Ba bước để bắt đầu">
+                        <button type="button" class="studio-progress__step is-current" data-progress-step="event" data-mode="event">
+                            <span>01</span><strong>Dịp mặc</strong>
+                        </button>
+                        <i aria-hidden="true"></i>
+                        <button type="button" class="studio-progress__step" data-progress-step="garment" data-mode="garment">
+                            <span>02</span><strong>Trang phục</strong>
+                        </button>
+                        <i aria-hidden="true"></i>
+                        <button type="button" class="studio-progress__step" data-progress-step="style" data-mode="style">
+                            <span>03</span><strong>Phong cách</strong>
+                        </button>
+                        <p id="studioNextHint">Bắt đầu bằng cách chọn dịp bạn sẽ mặc.</p>
+                    </div>
 
                     <section class="studio-catalog-card studio-catalog-card--event" aria-labelledby="catalogEventTitle">
                         <div class="studio-catalog-card__head">

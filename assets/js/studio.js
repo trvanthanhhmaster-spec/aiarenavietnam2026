@@ -68,6 +68,8 @@
   var accessoryVariantSection = document.getElementById('accessoryVariantSection');
   var accessoryVariantGrid = document.getElementById('catalogAccessoryVariants');
   var accessoryVariantCount = document.getElementById('accessoryVariantCount');
+  var progressSteps = document.querySelectorAll('[data-progress-step]');
+  var nextHint = document.getElementById('studioNextHint');
   var catalogPanels = {
     event: document.getElementById('catalogEvents'),
     garment: document.getElementById('catalogGarments'),
@@ -646,6 +648,23 @@
     }
     updatePassport();
     updateRecommendations();
+    updateProgress();
+  }
+
+  function updateProgress() {
+    var required = ['event', 'garment', 'style'];
+    var labels = { event: 'dịp bạn sẽ mặc', garment: 'dáng Việt phục bạn thích', style: 'phong cách bạn muốn' };
+    var firstMissing = required.find(function (key) { return !state[key]; });
+    Array.prototype.forEach.call(progressSteps, function (step) {
+      var key = step.dataset.progressStep;
+      step.classList.toggle('is-done', Boolean(state[key]));
+      step.classList.toggle('is-current', key === firstMissing || (!firstMissing && key === 'style'));
+      step.setAttribute('aria-current', key === firstMissing ? 'step' : 'false');
+    });
+    if (!nextHint) return;
+    nextHint.textContent = firstMissing
+      ? 'Tiếp theo: chọn ' + labels[firstMissing] + '.'
+      : 'Bạn đã sẵn sàng. Các tuỳ chỉnh thêm có thể bỏ qua.';
   }
 
   function updatePassport() {
@@ -788,6 +807,8 @@
       if (state.openMode === modeButton.dataset.mode) closeDock(true);
       else openMode(modeButton.dataset.mode);
     }
+    var progressButton = event.target.closest('[data-progress-step][data-mode]');
+    if (progressButton) openMode(progressButton.dataset.mode);
     var catalogModeButton = event.target.closest('.studio-catalog-card__head [data-mode]');
     if (catalogModeButton) openMode(catalogModeButton.dataset.mode);
     var catalogOption = event.target.closest('[data-catalog-kind]');
