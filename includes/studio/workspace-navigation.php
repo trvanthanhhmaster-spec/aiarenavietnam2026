@@ -19,8 +19,12 @@
     </nav>
     <div class="workspace-utilities">
         <button type="button" id="workspaceFullscreen" aria-label="Mở toàn màn hình" title="Mở toàn màn hình"><?= $studioIcon('maximize') ?></button>
-        <a class="workspace-profile" href="<?= $escape($studioData['auth']['loginUrl']) ?>" aria-label="<?= $escape($authUser !== null ? 'Tài khoản ' . $accountName : 'Đăng nhập') ?>" title="<?= $escape($authUser !== null ? $accountName : 'Đăng nhập') ?>">
-            <span aria-hidden="true"><?= $escape($accountInitial) ?></span><small><?= $escape($authUser !== null ? $accountName : 'Đăng nhập') ?></small>
+        <a class="workspace-profile<?= $authUser === null ? ' workspace-profile--guest' : '' ?>" href="<?= $escape($studioData['auth']['loginUrl']) ?>" aria-label="<?= $escape($authUser !== null ? 'Tài khoản ' . $accountName : 'Đăng nhập') ?>" title="<?= $escape($authUser !== null ? $accountName : 'Đăng nhập') ?>">
+            <?php if ($authUser !== null): ?>
+                <span aria-hidden="true"><?= $escape($accountInitial) ?></span><small><?= $escape($accountName) ?></small>
+            <?php else: ?>
+                <strong>Đăng nhập</strong>
+            <?php endif; ?>
         </a>
     </div>
 </header>

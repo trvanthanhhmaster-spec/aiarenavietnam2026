@@ -8,6 +8,8 @@ assert.equal((navigation.match(/class="workspace-logo"/g) || []).length, 1, 'Stu
 assert.ok(navigation.includes('assets/images/v-remix-leaf-logo.png'), 'Studio uses the supplied leaf logo');
 assert.ok(!navigation.includes('workspace-wordmark'), 'header must not duplicate the brand');
 assert.ok(navigation.includes('workspace-sidebar__home'), 'home navigation remains available');
+assert.ok(navigation.includes('if ($authUser !== null)'), 'avatar is only rendered for authenticated users');
+assert.ok(navigation.includes('<strong>Đăng nhập</strong>'), 'guests see a clear login label at every breakpoint');
 
 function element(classes = []) {
   const set = new Set(classes);

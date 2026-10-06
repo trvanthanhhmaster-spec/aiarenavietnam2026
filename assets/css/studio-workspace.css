@@ -66,6 +66,10 @@ body.studio-page {
 .workspace-profile { display: flex; align-items: center; gap: 8px; padding-right: 10px; text-decoration: none; color: #17171b; }
 .workspace-profile > span { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; background: #17171b; color: white; font-size: 16px; }
 .workspace-profile small { font-size: 11px; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-profile--guest { min-height: 46px; padding: 0 16px; border-radius: 15px; background: #17171b; color: #fff; transition: background 180ms; }
+.workspace-profile--guest strong { font-size: 12px; font-weight: 500; white-space: nowrap; }
+.workspace-profile--guest:hover { background: #34343b; }
+.workspace-profile:focus-visible { outline: 2px solid var(--designer-accent); outline-offset: 3px; }
 .workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 8px 0 22px; }
 .studio-intro { padding: 0; min-height: 0; overflow: visible; background: none; border: 0; border-radius: 0; box-shadow: none; }
 .studio-intro::before, .studio-intro::after { display: none; }
@@ -255,6 +259,7 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
   .workspace-utilities { padding: 3px; border-radius: 15px; }
   .workspace-utilities > button { display: none; }
   .workspace-profile { padding-right: 0; }
+  .workspace-profile--guest { min-height: 38px; padding: 0 10px; border-radius: 12px; }
   .workspace-profile > span { width: 38px; height: 38px; border-radius: 12px; }
   .workspace-heading { padding: 8px 2px 18px; gap: 16px; }
   .studio-intro h1 { font-size: 26px; }
