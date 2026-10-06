@@ -51,9 +51,9 @@ $resources = [
     ],
     'studio-generation' => [
         'table' => 'studio_generation_settings',
-        'select' => 'id,canvas_aspect_ratio,target_resolution,default_generation_mode,default_output_type,base_prompt,frame_plan,updated_at',
+        'select' => 'id,canvas_aspect_ratio,target_resolution,default_generation_mode,default_output_type,preview_media_url,preview_poster_url,base_prompt,frame_plan,updated_at',
         'order' => 'id.asc',
-        'fields' => ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'default_output_type', 'base_prompt', 'frame_plan'],
+        'fields' => ['canvas_aspect_ratio', 'target_resolution', 'default_generation_mode', 'default_output_type', 'preview_media_url', 'preview_poster_url', 'base_prompt', 'frame_plan'],
         'no_create' => true,
         'no_delete' => true,
     ],

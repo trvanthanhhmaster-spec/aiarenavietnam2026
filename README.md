@@ -66,6 +66,10 @@ Các icon Lucide được lưu cục bộ kèm giấy phép; không cần React/
 Video mở đầu luôn được ghi rõ là minh họa, không được nhận là ảnh AI của người
 dùng. Dải ảnh chỉ xuất hiện khi có kết quả thật;
 So sánh ảnh hiển thị trực tiếp hai kết quả trong khung preview.
+Ảnh và video minh họa khởi đầu được cấu hình độc lập trong Admin → Studio
+generation (`preview_poster_url`, `preview_media_url`) qua Supabase. Ảnh hiện
+trước khi video tải; video lặp không tiếng. Nếu video lỗi hoặc người dùng
+giảm chuyển động, Studio giữ ảnh minh họa. Media tầng 1 không bị thay đổi.
 Kiểm thử tab, upload, responsive navigation và so sánh không gọi provider:
 `node tests/studio-workspace.cjs`.
 

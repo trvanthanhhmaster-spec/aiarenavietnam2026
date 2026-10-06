@@ -248,6 +248,8 @@ create table if not exists public.studio_generation_settings (
     target_resolution text not null default '1080' check (target_resolution in ('720', '1080', '2160')),
     default_generation_mode text not null default 'text-to-image' check (default_generation_mode in ('text-to-image', 'image-to-image')),
     default_output_type text not null default 'image' check (default_output_type in ('image', 'video', 'both')),
+    preview_media_url text not null default '',
+    preview_poster_url text not null default '',
     base_prompt text not null default 'Ảnh gốc A: một nhân vật Việt mặc trang phục được chọn, đứng chính giữa, toàn thân, góc máy và bố cục ổn định.',
     frame_plan jsonb not null default '[]'::jsonb,
     updated_at timestamptz not null default now()
@@ -1096,3 +1098,14 @@ values (
 )
 on conflict (slug, version) do update set
     system_prompt = excluded.system_prompt, eval_notes = excluded.eval_notes, is_active = true;
+
+-- Independent Studio illustration; never replaces Tier 1 experience media.
+alter table public.studio_generation_settings
+    add column if not exists preview_media_url text not null default '',
+    add column if not exists preview_poster_url text not null default '';
+
+update public.studio_generation_settings
+set preview_media_url = 'assets/media/studio-atelier-loop.mp4',
+    preview_poster_url = 'assets/media/studio-atelier-poster.png',
+    updated_at = now()
+where id = 1;

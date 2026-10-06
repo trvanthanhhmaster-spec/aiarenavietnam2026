@@ -60,7 +60,7 @@ final class StudioRepository
             ]);
             try {
                 $generationRows = $this->client->select('studio_generation_settings', [
-                    'select' => 'canvas_aspect_ratio,target_resolution,default_generation_mode,default_output_type,base_prompt,frame_plan',
+                    'select' => 'canvas_aspect_ratio,target_resolution,default_generation_mode,default_output_type,preview_media_url,preview_poster_url,base_prompt,frame_plan',
                     'id' => 'eq.1',
                     'limit' => '1',
                 ]);

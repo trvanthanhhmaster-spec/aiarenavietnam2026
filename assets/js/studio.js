@@ -897,25 +897,35 @@
   });
 
   function prepareMedia() {
+    var poster = document.getElementById('studioIdlePoster');
+    if (poster) {
+      var showPoster = function () { frame.classList.add('is-ready'); };
+      poster.addEventListener('load', showPoster, { once: true });
+      poster.addEventListener('error', function () {
+        poster.hidden = true;
+        frame.classList.remove('has-idle-poster');
+      }, { once: true });
+      if (poster.complete && poster.naturalWidth > 0) showPoster();
+    }
     if (!catalog.baseMedia) {
-      setStatus('Media nền chưa được cấu hình; Studio vẫn dùng nền dự phòng.');
       return;
     }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     var reveal = function () {
       frame.classList.add('is-ready');
+      frame.classList.add('is-video-ready');
       if (!generationPending && !state.event) setStatus('Chọn một dịp mặc để bắt đầu.');
     };
     media.addEventListener('loadeddata', reveal, { once: true });
     media.addEventListener('canplay', reveal, { once: true });
-    media.addEventListener('ended', function () {
-      media.currentTime = 0;
-      var replay = media.play();
-      if (replay && typeof replay.catch === 'function') replay.catch(function () {});
-    });
     media.addEventListener('error', function () {
-      setStatus('Không tải được media nền; Studio đang dùng nền dự phòng.');
+      frame.classList.remove('is-video-ready');
+      media.hidden = true;
     }, { once: true });
+    media.muted = true;
+    media.loop = true;
+    if (catalog.basePoster) media.poster = catalog.basePoster;
     media.src = catalog.baseMedia;
     var playback = media.play();
     if (playback && typeof playback.catch === 'function') playback.catch(function () {});

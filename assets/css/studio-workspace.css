@@ -125,6 +125,10 @@ body.studio-page {
 .studio-frame::before, .studio-frame::after, .studio-frame__veil { display: none; }
 .studio-frame .studio-media, .studio-frame:not(.has-look) .studio-media { width: 100%; height: 100%; object-fit: cover; border-radius: 0; opacity: 1; filter: none; }
 .studio-frame.has-ai-preview .studio-media { opacity: 0; }
+.studio-idle-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.studio-frame.has-idle-poster .studio-media { opacity: 0; }
+.studio-frame.has-idle-poster.is-video-ready:not(.has-ai-preview) .studio-media { opacity: 1; }
+.studio-frame.has-idle-poster .studio-media-placeholder { display: none; }
 .studio-preview-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #efedf3; border-radius: 0; }
 .studio-media-placeholder { background: #e8e5ef; }
 .studio-media-placeholder__orb, .studio-media-placeholder__line { display: none; }

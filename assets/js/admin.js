@@ -50,6 +50,8 @@
       ['target_resolution', 'Chất lượng mục tiêu', 'select', true, [['720', '720p'], ['1080', '1080p'], ['2160', '2160p']]],
       ['default_generation_mode', 'Chế độ mặc định', 'select', true, [['text-to-image', 'Text to image'], ['image-to-image', 'Image to image']]],
       ['default_output_type', 'Đầu ra mặc định', 'select', true, [['image', 'Ảnh'], ['video', 'Video'], ['both', 'Ảnh + video']]],
+      ['preview_media_url', 'Video minh họa khi Studio chưa có kết quả', 'text', false],
+      ['preview_poster_url', 'Ảnh hiển thị trước khi video tải xong', 'text', false],
       ['base_prompt', 'Prompt ảnh gốc A', 'textarea', true],
       ['frame_plan', 'Frame plan A → B/C/D/E', 'json', true]
     ],

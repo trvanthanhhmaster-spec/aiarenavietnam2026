@@ -54,14 +54,8 @@ if (!is_array($site) || !is_array($catalog) || !is_array($branches)) {
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $brandVisibleName = trim((string) ($site['brand_mark'] ?? '') . ' ' . (string) ($site['brand_name'] ?? ''));
 $brandAccessibleName = trim($brandVisibleName . ' — ' . (string) ($site['ui']['brand_aria_label'] ?? 'Trang chủ V-Remix'));
-$baseBranch = null;
-foreach ($branches as $branch) {
-    if (!empty($branch['isBase'])) {
-        $baseBranch = $branch;
-        break;
-    }
-}
-$baseMedia = (string) (($baseBranch ?? reset($branches))['forwardUrl'] ?? '');
+$baseMedia = trim((string) ($catalog['generation']['preview_media_url'] ?? ''));
+$basePoster = trim((string) ($catalog['generation']['preview_poster_url'] ?? ''));
 $localWebGeneration = filter_var((string) getenv('GEMINI_WEB_LOCAL_ENABLED'), FILTER_VALIDATE_BOOL);
 $accountName = trim((string) (
     $authUser['user_metadata']['display_name']
@@ -82,6 +76,7 @@ $studioData = $catalog + [
         : rtrim($database['url'], '/') . '/functions/v1/generate-look',
     'generationProvider' => $localWebGeneration ? 'gemini-webapi-local' : 'supabase-edge',
     'baseMedia' => $baseMedia,
+    'basePoster' => $basePoster,
     'lookEndpoint' => 'look-api.php',
     'lookCsrf' => $auth->csrfToken(),
     'auth' => [
@@ -293,10 +288,13 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     </div>
 
                     <div class="studio-plane" id="studioPlane">
-                        <div class="studio-frame">
-                            <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
+                        <div class="studio-frame<?= $basePoster !== '' ? ' has-idle-poster' : '' ?>">
+                            <?php if ($basePoster !== ''): ?>
+                                <img id="studioIdlePoster" class="studio-idle-poster" src="<?= $escape($basePoster) ?>" alt="Không gian phối Việt phục với áo xanh chàm và phụ kiện" fetchpriority="high">
+                            <?php endif; ?>
+                            <video id="studioMedia" class="studio-media" muted loop playsinline preload="metadata" aria-label="Không gian minh họa của Studio"<?= $basePoster !== '' ? ' poster="' . $escape($basePoster) . '"' : '' ?>></video>
                             <img id="studioPreviewImage" class="studio-preview-image" alt="Bản phối AI đang xem trước" hidden>
-                            <span class="workspace-preview-label"><span class="workspace-label-reference">Video minh họa · chưa phải ảnh AI</span><span class="workspace-label-ai">Ảnh AI của bạn</span><span class="workspace-label-catalog">Ảnh mẫu · chưa phải ảnh AI</span></span>
+                            <span class="workspace-preview-label"><span class="workspace-label-reference">Không gian minh họa</span><span class="workspace-label-ai">Ảnh AI của bạn</span><span class="workspace-label-catalog">Ảnh mẫu · chưa phải ảnh AI</span></span>
                             <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
                             <div class="studio-media-placeholder" aria-hidden="true">
                                 <span class="studio-media-placeholder__orb"></span>
