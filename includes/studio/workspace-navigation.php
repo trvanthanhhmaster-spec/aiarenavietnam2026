@@ -11,7 +11,7 @@
     <a class="workspace-sidebar__home" href="index.php#stage" aria-label="Trở về Khám phá" title="Trở về Khám phá"><?= $studioIcon('house') ?></a>
 </nav>
 <header class="studio-masthead">
-    <a class="workspace-wordmark" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>"><?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/../components/brand-wordmark.php'; unset($brandWordmarkClass); ?></a>
+    <a class="workspace-logo" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>"><img src="assets/images/v-remix-leaf-logo.png" alt="" width="1280" height="1280"></a>
     <nav class="workspace-topnav" aria-label="Điều hướng V-Remix">
         <a href="index.php#stage">Khám phá</a>
         <span aria-current="page">Studio</span>

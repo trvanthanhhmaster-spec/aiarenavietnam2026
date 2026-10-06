@@ -46,8 +46,9 @@ body.studio-page {
   height: 84px; min-height: 84px; padding: 12px 0; gap: 16px;
   border: 0; background: none; box-shadow: none; backdrop-filter: none;
 }
-.workspace-wordmark { color: #17171b; text-decoration: none; }
-.workspace-wordmark .studio-brand__mark { width: 124px; filter: none; }
+.workspace-logo { position: fixed; top: 18px; left: 12px; z-index: 46; display: block; width: 66px; height: 66px; border-radius: 12px; }
+.workspace-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.workspace-logo:focus-visible { outline: 2px solid var(--designer-accent); outline-offset: 4px; }
 .workspace-topnav, .workspace-utilities {
   display: flex; align-items: center; gap: 4px; padding: 5px;
   border-radius: 22px; background: rgb(255 255 255 / .64); box-shadow: inset 0 0 6px #fff;
@@ -229,6 +230,7 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 @media (max-width: 1023px) {
   .studio-experience { padding-left: 80px; padding-right: 16px; }
   .workspace-sidebar { width: 70px; padding-inline: 8px; }
+  .workspace-logo { left: 6px; width: 58px; height: 58px; }
   .workspace-sidebar__tools button { width: 46px; height: 46px; }
   .workspace-topnav > * { min-width: 76px; padding-inline: 10px; font-size: 12px; }
   .workspace-heading { flex-wrap: wrap; gap: 14px; }
@@ -244,7 +246,7 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
   .studio-experience { padding: 0 12px 20px; }
   .workspace-sidebar { position: static; display: none; }
   .studio-masthead { height: 72px; min-height: 72px; gap: 8px; }
-  .workspace-wordmark .studio-brand__mark { width: 95px; }
+  .workspace-logo { position: static; flex: 0 0 52px; width: 52px; height: 52px; }
   .workspace-topnav { padding: 3px; gap: 0; border-radius: 16px; }
   .workspace-topnav > * { min-width: 0; height: 38px; font-size: 10px; padding: 0 8px; border-radius: 13px; }
   .workspace-utilities { padding: 3px; border-radius: 15px; }

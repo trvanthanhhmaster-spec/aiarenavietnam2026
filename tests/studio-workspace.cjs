@@ -4,9 +4,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const navigation = fs.readFileSync(path.join(__dirname, '../includes/studio/workspace-navigation.php'), 'utf8');
-assert.equal((navigation.match(/class="workspace-wordmark"/g) || []).length, 1, 'Studio keeps one primary wordmark');
-assert.equal((navigation.match(/brand-wordmark\.php/g) || []).length, 1, 'wordmark uses the shared brand component');
-assert.ok(!navigation.includes('workspace-logo'), 'sidebar must not duplicate the brand');
+assert.equal((navigation.match(/class="workspace-logo"/g) || []).length, 1, 'Studio keeps one image logo');
+assert.ok(navigation.includes('assets/images/v-remix-leaf-logo.png'), 'Studio uses the supplied leaf logo');
+assert.ok(!navigation.includes('workspace-wordmark'), 'header must not duplicate the brand');
 assert.ok(navigation.includes('workspace-sidebar__home'), 'home navigation remains available');
 
 function element(classes = []) {
