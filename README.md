@@ -77,6 +77,10 @@ Studio hỏi một điều mỗi lần: **Dịp mặc → Số người → Th�
 sau đó tổng kết và **Tạo ảnh bản phối**. Dịp có tìm kiếm không dấu và gợi ý từ
 catalog; mô tả tự nhập là nhu cầu người dùng, không phải tri thức đã duyệt.
 Preset chỉ đánh dấu gợi ý, không tự chọn trang phục hoặc gọi AI.
+Khi tìm không có kết quả, bấm **Dùng dịp “…”** để dùng dịp tự nhập như Đi biển.
+Nhập mô tả khi chưa chọn dịp cũng cho phép tiếp tục; dịp tự nhập được ghi rõ
+là nhu cầu riêng, không tự thêm vào catalog hay coi là tri thức đã duyệt.
+Tên dịp đi theo metadata của job/Look, không cần migration hay seed riêng.
 Demo hỗ trợ 1–12 người: phối đồng điệu lấy Người 1 làm gợi ý cho những người
 chưa tùy chỉnh, hoặc chọn riêng mỗi người. Tùy chỉnh riêng không bị ghi đè.
 Thời gian gồm tuần này/tuần sau/tháng sau/chưa xác định/khoảng ngày cụ thể;

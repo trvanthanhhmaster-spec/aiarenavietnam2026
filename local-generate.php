@@ -107,7 +107,9 @@ try {
             $database = require __DIR__ . '/config/database.php';
             $catalog = (new StudioRepository(new SupabaseClient($database['url'], $database['anon_key'])))->getCatalog();
             if (!$catalog) throw new RuntimeException('Catalog chưa sẵn sàng.');
-            $event = array_values(array_filter($catalog['events'], static fn (array $e): bool => $e['slug'] === ($input['eventSlug'] ?? '')))[0] ?? null;
+            $event = ($input['eventSlug'] ?? '') === 'custom' && $plan['customOccasion'] !== ''
+                ? ['label' => $plan['customOccasion'], 'description' => 'User preference only; not reviewed cultural knowledge. Do not claim culturally verified occasion or suitability.']
+                : (array_values(array_filter($catalog['events'], static fn (array $e): bool => $e['slug'] === ($input['eventSlug'] ?? '')))[0] ?? null);
             if (!$event) throw new InvalidArgumentException('Chọn một dịp đã được duyệt.');
             $basePrompt = StudioPlan::prompt($plan, $catalog) . "\nEvent: " . $event['label'] . '. ' . ($event['description'] ?? '');
             $scopes = ['A' => 'Create one complete photo of the specified people and their chosen outfits.'];

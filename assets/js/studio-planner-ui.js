@@ -21,6 +21,9 @@
       id('plannerReviewPeople').appendChild(row);
     });
     id('plannerPeriodSummary').textContent = guide.labels.time;
+    id('customOccasionStatus').hidden = !plan.customOccasion;
+    id('customOccasionStatus').textContent = plan.customOccasion ? 'Đã chọn: ' + plan.customOccasion + ' · dịp tự nhập' : '';
+    id('useNoteOccasion').disabled = id('occasionNote').value.trim().length < 2;
     id('groupCount').value = plan.count || '';
     document.querySelectorAll('[data-person-count]').forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.personCount) === plan.count)); });
     document.querySelectorAll('[data-period]').forEach(function (b) { b.setAttribute('aria-pressed', String(plan.period && b.dataset.period === plan.period.kind)); });
@@ -47,7 +50,9 @@
   id('chooseGroup').addEventListener('click', function () { id('groupCountFields').hidden = false; id('groupCount').focus(); });
   id('applyGroupCount').addEventListener('click', function () { action(function () { api.count(Number(id('groupCount').value)); }); });
   id('applyCustomPeriod').addEventListener('click', function () { action(function () { api.period('custom', id('periodStart').value, id('periodEnd').value); }); });
-  id('occasionNote').addEventListener('change', function () { api.occasionNote(this.value); });
+  id('occasionNote').addEventListener('input', function () { api.occasionNote(this.value); });
+  id('useSearchOccasion').addEventListener('click', function () { action(function () { api.customOccasion(id('occasionSearch').value); }); });
+  id('useNoteOccasion').addEventListener('click', function () { action(function () { api.customOccasion(id('occasionNote').value); }); });
   ['personName', 'personHeight', 'personWeight'].forEach(function (name) { id(name).addEventListener('change', function () { action(function () { api.profile(id('personName').value, id('personHeight').value, id('personWeight').value); }); }); });
   id('personFaceConsent').addEventListener('change', function () {
     id('personFace').disabled = !this.checked; if (!this.checked) api.face(null, false);

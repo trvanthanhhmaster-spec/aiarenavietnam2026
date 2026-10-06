@@ -28,3 +28,11 @@ Deno.test('source face pixels and unknown fields are not retained in normalized 
   assert(request.contents[0].parts[0].text.includes('not the output composition'));
   assert(!request.contents[0].parts[0].text.includes('establish one stable subject'));
 });
+Deno.test('custom occasions survive validation as preferences without becoming catalog facts', () => {
+  const p = normalizePlan({ ...base(), customOccasion: 'Đi biển' });
+  assert(p.customOccasion === 'Đi biển');
+  const prompt = planPrompt(p, catalog);
+  assert(prompt.includes('Đi biển') && prompt.includes('not reviewed cultural knowledge'));
+  rejects({ ...base(), customOccasion: 'x' });
+  rejects({ ...base(), customOccasion: { label: 'Đi biển' } });
+});

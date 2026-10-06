@@ -33,6 +33,7 @@ const context = {
   CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } }
 };
 vm.createContext(context);
+vm.runInContext(realFunction('selectedEvent', 'function variantsForGarment'), context);
 vm.runInContext(realFunction('updateProgress', 'function updatePassport'), context);
 vm.runInContext('updateProgress();', context);
 assert.equal(experience.studioGuide.next, 'event');
@@ -50,6 +51,11 @@ assert.equal(events.at(-1).type, 'studio:selection');
 context.state.style = '';
 vm.runInContext('updateProgress();', context);
 assert.equal(experience.studioGuide.next, 'review', 'style is optional');
+context.state.event = 'custom'; context.planning.customOccasion = 'Đi biển';
+vm.runInContext('updateProgress();', context);
+assert.equal(experience.studioGuide.next, 'review', 'a custom occasion can reach confirmation');
+assert.equal(experience.studioGuide.labels.event, 'Đi biển · dịp tự nhập');
+assert.equal(catalog.events.length, 1, 'custom input does not insert an approved catalog entry');
 
 const retry = element();
 Object.assign(context, {

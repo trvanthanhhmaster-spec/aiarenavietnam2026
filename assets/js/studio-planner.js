@@ -11,7 +11,7 @@
     return result;
   }
   function person(id) { return { id: id, name: '', heightCm: null, weightKg: null, faceSupplied: false, customized: false, outfit: outfit({}) }; }
-  function create() { return { version: 1, count: null, shared: true, activePerson: 1, period: null, occasionNote: '', people: [] }; }
+  function create() { return { version: 1, count: null, shared: true, activePerson: 1, period: null, occasionNote: '', customOccasion: '', people: [] }; }
   function setCount(plan, count) {
     if (!Number.isInteger(count) || count < 1 || count > 12) throw new Error('Chọn từ 1 đến 12 người.');
     var base = plan.people[0];
@@ -72,7 +72,7 @@
     return { kind: kind, start: localDate(start), end: localDate(end) };
   }
   function missing(plan, event) {
-    if (!event) return 'event';
+    if (!event || (event === 'custom' && !(plan.customOccasion || '').trim())) return 'event';
     if (!plan.count) return 'people';
     if (!plan.period) return 'time';
     if (plan.people.length !== plan.count || plan.people.some(function (p) { return !p.outfit.garment; })) return 'garment';

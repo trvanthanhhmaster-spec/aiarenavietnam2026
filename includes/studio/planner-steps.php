@@ -11,12 +11,14 @@
     <div class="studio-catalog-card__head"><h2 id="catalogEventTitle">Bạn sẽ mặc đi đâu?</h2></div>
     <label class="planner-field">Tìm dịp mặc<input id="occasionSearch" type="search" placeholder="Đi học, dự lễ, chụp ảnh…" autocomplete="off"></label>
     <div class="studio-catalog-grid studio-catalog-grid--event" id="catalogEvents"></div>
-    <p id="occasionNoResults" class="guide-card-note" hidden>Chưa có dịp phù hợp. Bạn có thể chọn dịp gần nhất và thêm mô tả bên dưới.</p>
+    <p id="customOccasionStatus" class="guide-card-note" role="status" hidden></p>
+    <div id="occasionNoResults" hidden><p class="guide-card-note">Chưa có dịp này trong bộ sưu tập. Bạn vẫn có thể dùng dịp tự nhập để tiếp tục.</p><button type="button" class="planner-secondary" id="useSearchOccasion"></button></div>
     <details class="planner-details"><summary>Cần gợi ý hoặc có dịp khác?</summary>
         <p class="guide-card-note">Gợi ý từ bộ sưu tập đã duyệt, không gọi AI hay tạo ảnh ở bước này.</p>
         <div id="occasionSuggestions" class="planner-suggestions"></div>
         <label class="planner-field">Mô tả thêm dịp của bạn<textarea id="occasionNote" maxlength="400" placeholder="Ví dụ: chụp kỷ yếu cùng bạn thân ở sân trường"></textarea></label>
-        <small>Chọn một dịp gần nhất ở trên. Mô tả này là nhu cầu của bạn, không phải thông tin văn hóa đã xác minh.</small>
+        <button type="button" class="planner-secondary" id="useNoteOccasion" disabled>Dùng mô tả này làm dịp mặc</button>
+        <small>Không cần chọn một dịp có sẵn. Dịp tự nhập là nhu cầu của bạn, không phải thông tin văn hóa đã xác minh.</small>
     </details>
 </section>
 

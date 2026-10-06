@@ -179,8 +179,10 @@ Khung ảnh, độ phân giải, chế độ và đầu ra được Admin quản
 là `16:9`, `1080p`. Luồng Studio đã chuyển thành **Dịp mặc → Số người →
 Thời gian → Trang phục → Xác nhận & tạo ảnh**. Màn cuối là tổng kết, không phải
 bước khai thông tin thứ năm. Không gọi AI khi thay lựa chọn; chỉ tạo một ảnh
-khi người dùng xác nhận và hiển thị ngay trên canvas. Phong cách, phụ kiện,
-số đo và ảnh mặt có đồng ý là tùy chọn từng người. Dữ liệu job/Look dùng bản
+khi người dùng xác nhận và hiển thị ngay trên canvas.
+Khi dịp chưa có trong catalog, người dùng vẫn có thể dùng tên/mô tả tự nhập
+để đi tiếp; metadata đánh dấu nhu cầu riêng, không tự xuất bản thành tri thức văn hóa.
+Phong cách, phụ kiện, số đo và ảnh mặt có đồng ý là tùy chọn từng người. Dữ liệu job/Look dùng bản
 chụp lựa chọn đã xác nhận, không lấy từ controls đang thay đổi. Catalog mua/thuê và địa điểm chụp thật được quản lý bằng
 `studio_marketplace_listings` và `studio_locations`.
 

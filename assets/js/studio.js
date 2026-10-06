@@ -220,7 +220,7 @@
       planning.people.forEach(function (person) { person.faceSupplied = false; });
       Planner.load(planning, state);
     }
-    if (lookup(catalog.events, selection.event).slug) state.event = selection.event;
+    if (selectedEvent(selection.event, selection.planning).slug) state.event = selection.event;
     if (lookup(catalog.garments, selection.garment).slug) state.garment = selection.garment;
     if (lookup(catalog.garmentVariants, selection.garmentVariant).slug) {
       state.garmentVariant = selection.garmentVariant;
@@ -263,7 +263,7 @@
 
   function prepareResultCopy() {
     var garment = lookup(catalog.garments, state.garment);
-    var occasion = lookup(catalog.events, state.event);
+    var occasion = selectedEvent(state.event);
     resultTitle.textContent = planning.count ? 'Bản phối cho ' + planning.count + ' người' : garment.name
       ? garment.name + ', trong một nhịp hiện đại.'
       : 'Đang chuẩn bị một dáng Việt mới.';
@@ -281,6 +281,12 @@
     return (items || []).find(function (item) {
       return item.slug === slug;
     }) || {};
+  }
+
+  function selectedEvent(slug, plan) {
+    var custom = (plan || planning).customOccasion;
+    if (slug === 'custom' && custom) return { slug: 'custom', label: custom, description: 'Dịp tự nhập của người dùng; chưa được biên tập duyệt.', cultural_context: 'Dịp tự nhập, không phải kiến thức văn hóa đã xác minh.', preset: {} };
+    return lookup(catalog.events, slug);
   }
 
   function variantsForGarment() {
@@ -539,7 +545,7 @@
     definitions.forEach(function (definition) {
       var panel = catalogPanels[definition.kind];
       if (!panel) return;
-      panel.innerHTML = compactCatalogList(
+      panel.innerHTML = definition.kind === 'event' && definition.items.length === 0 ? '' : compactCatalogList(
         definition.items,
         definition.kind,
         definition.selected,
@@ -547,7 +553,11 @@
         definition.limit
       );
       bindCatalogImageFallback(panel);
-      if (definition.kind === 'event') document.getElementById('occasionNoResults').hidden = definition.items.length > 0;
+      if (definition.kind === 'event') {
+        var term = document.getElementById('occasionSearch').value.trim();
+        document.getElementById('occasionNoResults').hidden = definition.items.length > 0 || term.length < 2;
+        document.getElementById('useSearchOccasion').textContent = 'Dùng dịp “' + term.slice(0, 120) + '”';
+      }
       if (definition.kind === 'garment') {
         var preset = lookup(catalog.events, state.event).preset || {};
         panel.querySelectorAll('[data-catalog-kind]').forEach(function (button) {
@@ -612,6 +622,7 @@
     } else {
       state[kind] = value;
       if (kind === 'event') {
+        planning.customOccasion = '';
         applyEventPreset(value, false);
         renderQuickStart();
       } else if (kind === 'scene' && !state.event) {
@@ -649,7 +660,7 @@
   }
 
   function updateSummary(changedKind) {
-    var event = lookup(catalog.events, state.event);
+    var event = selectedEvent(state.event);
     var garment = lookup(catalog.garments, state.garment);
     var garmentVariant = lookup(catalog.garmentVariants, state.garmentVariant);
     var color = lookup(catalog.colors, state.color);
@@ -725,7 +736,7 @@
       changed: changedKind || '',
       choices: choices,
       labels: {
-        event: lookup(catalog.events, state.event).label || '',
+        event: (selectedEvent(state.event).label || '') + (state.event === 'custom' ? ' · dịp tự nhập' : ''),
         people: planning.count ? planning.count + ' người' : '',
         time: Planner.periodLabel(planning.period),
         garment: lookup(catalog.garmentVariants, state.garmentVariant).name || lookup(catalog.garments, state.garment).name || '',
@@ -742,7 +753,7 @@
   function updatePassport() {
     var garment = lookup(catalog.garments, state.garment);
     var garmentVariant = lookup(catalog.garmentVariants, state.garmentVariant);
-    var event = lookup(catalog.events, state.event);
+    var event = selectedEvent(state.event);
     var color = lookup(catalog.colors, state.color);
     var style = lookup(catalog.styles, state.style);
     var scene = lookup(catalog.scenes, state.scene);
@@ -776,8 +787,8 @@
       colorCheck.classList.toggle('is-ok', Boolean(color.label));
     }
     if (eventCheck) {
-      eventCheck.textContent = event.label ? '✓ Phù hợp dịp ' + event.label.toLowerCase() : '○ Chưa chọn dịp mặc';
-      eventCheck.classList.toggle('is-ok', Boolean(event.label));
+      eventCheck.textContent = state.event === 'custom' ? '○ Dịp tự nhập: cần kiểm tra độ phù hợp trang phục.' : event.label ? '✓ Phù hợp dịp ' + event.label.toLowerCase() : '○ Chưa chọn dịp mặc';
+      eventCheck.classList.toggle('is-ok', Boolean(event.label) && state.event !== 'custom');
     }
     if (accessoryCheck) {
       accessoryCheck.textContent = state.accessories.length ? '✓ Phụ kiện không che cấu trúc áo' : '○ Chưa thêm phụ kiện';
@@ -1631,7 +1642,7 @@
         },
         body: JSON.stringify({
           action: 'save',
-          name: (lookup(catalog.events, currentResultSelection.event).label || 'Bản phối') + ' / ' + currentResultSelection.planning.count + ' người',
+          name: (selectedEvent(currentResultSelection.event, currentResultSelection.planning).label || 'Bản phối') + ' / ' + currentResultSelection.planning.count + ' người',
           selection: currentResultSelection,
           locks: Object.assign({}, currentResultSelection.locks),
           images: currentLookbookItems.map(function (item) { return item.url; }),
@@ -1740,7 +1751,22 @@
       if (generationPending) return;
       planning.period = Planner.period(kind, start, end); updateSummary('time'); selectionChanged();
     },
-    occasionNote: function (note) { if (generationPending) return; planning.occasionNote = String(note).trim().slice(0, 400); updateSummary('occasionNote'); selectionChanged(); },
+    occasionNote: function (note) {
+      if (generationPending) return;
+      planning.occasionNote = String(note).trim().slice(0, 400);
+      if (!state.event || state.event === 'custom') {
+        planning.customOccasion = planning.occasionNote.length >= 2 ? planning.occasionNote.slice(0, 120) : '';
+        state.event = planning.customOccasion ? 'custom' : '';
+      }
+      updateSummary('occasionNote'); selectionChanged();
+    },
+    customOccasion: function (value) {
+      if (generationPending) return;
+      var label = String(value).trim().slice(0, 120);
+      if (label.length < 2) throw new Error('Nhập tên dịp từ 2 ký tự, ví dụ: Đi biển.');
+      planning.customOccasion = label; state.event = 'custom';
+      renderCatalogPanels(); updateSummary('event'); selectionChanged();
+    },
     shared: function (shared) {
       if (generationPending) return;
       Planner.setShared(planning, shared, state); updateSummary('groupMode'); selectionChanged();

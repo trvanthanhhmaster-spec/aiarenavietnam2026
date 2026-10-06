@@ -763,7 +763,9 @@ async function processLook(
 ) {
   await updateJob(job.id, "processing", {});
   const [event, garment, garmentVariant, accessories, accessoryVariants, options, rules] = await Promise.all([
-    selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context,preset`),
+    input.eventSlug === 'custom' && input.planning?.customOccasion
+      ? Promise.resolve([{ slug: 'custom', label: input.planning.customOccasion, description: 'User preference only; not reviewed cultural knowledge. Do not claim this occasion or outfit suitability is culturally verified.', cultural_context: 'Dịp tự nhập; cần kiểm tra độ phù hợp.', review_status: 'user-input', preset: {} }])
+      : selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context,preset`),
     selectCatalog("studio_garments", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&`}is_active=eq.true&select=id,slug,name,category,description,origin_note,significance_note,image_url,prompt_descriptor,negative_descriptor`),
     selectCatalog("studio_garment_variants", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentVariantSlug || "")}&`}is_active=eq.true&review_status=eq.published&select=id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,prompt_descriptor,negative_descriptor,source_url,source_provider`),
     selectCatalog("studio_accessories", `${input.planning ? '' : input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&select=id,slug,name,description,prompt_descriptor`),
@@ -1059,6 +1061,7 @@ Deno.serve(async (request) => {
   if (!input.eventSlug || !input.garmentSlug || !isSafeImage(input.inputImage)) {
     return json({ error: "A valid event, garment and optional image are required." }, 400);
   }
+  if (input.eventSlug === 'custom' && !input.planning?.customOccasion) return json({ error: 'Nhập tên dịp của bạn để tiếp tục.' }, 400);
 
   let job: { id: string; existing: boolean } | null = null;
   try {

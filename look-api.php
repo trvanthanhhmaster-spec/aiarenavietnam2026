@@ -89,6 +89,7 @@ try {
         catch (InvalidArgumentException $error) { $respond(['error' => $error->getMessage()], 422); }
     }
     $garment = $slug($selection['garment'] ?? null);
+    if ($occasion === 'custom' && empty($selection['planning']['customOccasion'])) $respond(['error' => 'Look cần có tên dịp tự nhập.'], 422);
     if ($occasion === null || $garment === null) {
         $respond(['error' => 'Look cần có dịp mặc và Việt phục hợp lệ.'], 422);
     }
