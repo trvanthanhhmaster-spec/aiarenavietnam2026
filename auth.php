@@ -16,6 +16,8 @@ $auth = new SupabaseAuth(
 $auth->boot();
 $escape = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $next = SupabaseAuth::safeNext((string) ($_REQUEST['next'] ?? 'studio.php'));
+$embedded = (string) ($_REQUEST['embed'] ?? '') === '1';
+$embedQuery = $embedded ? '&amp;embed=1' : '';
 $mode = ($_GET['mode'] ?? '') === 'signup' ? 'signup' : 'login';
 $message = '';
 $error = '';
@@ -103,7 +105,7 @@ if ($user !== null) {
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/auth.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/auth.css') ?>">
 </head>
-<body class="auth-page">
+<body class="auth-page<?= $embedded ? ' auth-page--embedded' : '' ?>">
     <main class="auth-shell">
         <section class="auth-visual" aria-label="Giới thiệu V-Remix">
             <a class="auth-brand" href="index.php#stage">V<span>–</span>Remix</a>
@@ -134,8 +136,8 @@ if ($user !== null) {
                 </div>
             <?php else: ?>
                 <div class="auth-tabs" role="tablist" aria-label="Chọn hình thức tài khoản">
-                    <a class="<?= $mode === 'login' ? 'is-active' : '' ?>" href="auth.php?mode=login&amp;next=<?= rawurlencode($next) ?>">Đăng nhập</a>
-                    <a class="<?= $mode === 'signup' ? 'is-active' : '' ?>" href="auth.php?mode=signup&amp;next=<?= rawurlencode($next) ?>">Tạo tài khoản</a>
+                    <a class="<?= $mode === 'login' ? 'is-active' : '' ?>" href="auth.php?mode=login&amp;next=<?= rawurlencode($next) ?><?= $embedQuery ?>">Đăng nhập</a>
+                    <a class="<?= $mode === 'signup' ? 'is-active' : '' ?>" href="auth.php?mode=signup&amp;next=<?= rawurlencode($next) ?><?= $embedQuery ?>">Tạo tài khoản</a>
                 </div>
 
                 <?php if ($error !== ''): ?><p class="auth-alert auth-alert--error" role="alert"><?= $escape($error) ?></p><?php endif; ?>
@@ -147,7 +149,7 @@ if ($user !== null) {
                 </div>
 
                 <?php if ($googleEnabled): ?>
-                    <a class="auth-button auth-button--google" href="auth-google.php?next=<?= rawurlencode($next) ?>">
+                    <a class="auth-button auth-button--google" <?= $embedded ? 'target="_top"' : '' ?> href="auth-google.php?next=<?= rawurlencode($next) ?>">
                         <span class="auth-google-mark" aria-hidden="true">G</span>
                         Tiếp tục với Google
                     </a>
@@ -164,6 +166,7 @@ if ($user !== null) {
                 <div class="auth-divider"><span>hoặc bằng email</span></div>
 
                 <form method="post" class="auth-form" data-auth-form>
+                    <?php if ($embedded): ?><input type="hidden" name="embed" value="1"><?php endif; ?>
                     <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
                     <input type="hidden" name="action" value="<?= $mode === 'signup' ? 'signup' : 'login' ?>">
                     <input type="hidden" name="next" value="<?= $escape($next) ?>">

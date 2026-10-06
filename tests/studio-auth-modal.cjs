@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+function node() {
+  return { events: {}, attributes: {}, addEventListener(name, callback) { this.events[name] = callback; }, setAttribute(name, value) { this.attributes[name] = value; }, getAttribute(name) { return this.attributes[name]; } };
+}
+const trigger = node();
+trigger.focus = () => { trigger.focused = true; };
+const dialog = node();
+dialog.showModal = () => { dialog.open = true; };
+dialog.close = () => { dialog.open = false; dialog.events.close(); };
+dialog.getBoundingClientRect = () => ({ left: 20, top: 20, right: 400, bottom: 600 });
+const frame = node();
+frame.dataset = { src: 'auth.php?next=studio.php&embed=1' };
+const close = node();
+const document = { querySelector: () => trigger, getElementById: id => ({ studioAuthDialog: dialog, studioAuthFrame: frame, studioAuthClose: close })[id] };
+vm.runInNewContext(fs.readFileSync('assets/js/studio-auth-modal.js', 'utf8'), { document, window: {}, URL });
+let prevented = false;
+trigger.events.click({ preventDefault() { prevented = true; } });
+assert.equal(prevented, true);
+assert.equal(dialog.open, true);
+assert.equal(frame.src, frame.dataset.src);
+close.events.click();
+assert.equal(dialog.open, false);
+assert.equal(trigger.focused, true);
+trigger.events.click({ preventDefault() {} });
+dialog.events.click({ target: dialog, clientX: 0, clientY: 0 });
+assert.equal(dialog.open, false);
+assert.equal(trigger.attributes['aria-haspopup'], 'dialog');
+const auth = fs.readFileSync('auth.php', 'utf8');
+assert.ok(auth.includes('name="embed" value="1"'));
+assert.ok(auth.includes('verifyCsrf'));
+assert.ok(auth.includes('target="_top"'));
+console.log('Studio auth modal: lazy form, open/close, backdrop, focus return, CSRF and OAuth target passed.');

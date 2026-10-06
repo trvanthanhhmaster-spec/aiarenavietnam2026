@@ -15,6 +15,13 @@ body.studio-page {
   background: #f2f0f8;
   color: var(--designer-ink);
 }
+.studio-auth-dialog { width: min(480px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 40px 28px 16px; border: 0; border-radius: 24px; background: #fff; color: #17171b; box-shadow: 0 24px 80px rgb(23 23 27 / .2); overflow-y: auto; }
+.studio-auth-dialog::backdrop { background: rgb(23 23 27 / .48); }
+.studio-auth-dialog h2 { margin: 0 20px 16px; font-size: 24px; font-weight: 500; text-align: center; letter-spacing: -.03em; }
+.studio-auth-dialog > p { margin: 0 0 22px; color: #64646f; font-size: 13px; line-height: 1.6; text-align: center; }
+.studio-auth-close { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; font-size: 26px; color: #17171b; }
+.studio-auth-close:hover { background: #f2f2f4; }
+.studio-auth-dialog iframe { display: block; width: 100%; height: 560px; border: 0; }
 .workspace-icon { width: 22px; height: 22px; flex: 0 0 auto; stroke-width: 1.7; }
 .studio-experience {
   padding: 0 22px 22px 104px;
