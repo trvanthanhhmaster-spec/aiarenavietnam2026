@@ -138,7 +138,8 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
         # The upstream uploader assigns raw bytes a .txt filename. Gemini may
         # then treat the attachment as a document instead of an image, so
         # provide a real image suffix for image-to-image requests.
-        source_file = tempfile.NamedTemporaryFile(prefix="vremix-source-", suffix=".png")
+        suffix = {"image/jpeg": ".jpg", "image/webp": ".webp"}.get(source.get("mimeType"), ".png")
+        source_file = tempfile.NamedTemporaryFile(prefix="vremix-source-", suffix=suffix)
         source_file.write(base64.b64decode(str(source["data"])))
         source_file.flush()
         files = [Path(source_file.name)]
@@ -146,10 +147,17 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     aspect = str(payload.get("aspectRatio") or "16:9")
     resolution = str(payload.get("targetResolution") or "1080")
     scope = str(payload.get("changeScope") or "preserve the source subject and composition")
+    instruction = (
+        "Create ONE new group photograph as specified in the plan. "
+        "The attached image, if any, is a numbered face reference sheet, NOT the output composition. "
+        "Map each Person label to that person's face; never reproduce the sheet, its layout or labels. "
+        if payload.get("operation") == "group"
+        else f"Approved edit scope: {scope}. Preserve all other visual details. "
+    )
     full_prompt = (
         "Generate an image, do not search for reference images. "
         f"Use a {aspect} canvas at a {resolution} delivery target. "
-        f"Approved edit scope: {scope}. Preserve all other visual details. "
+        + instruction +
         "No text, logo or watermark.\n\n" + prompt
     )
     try:
@@ -160,7 +168,9 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
             )
         except asyncio.TimeoutError as error:
             raise RuntimeError(
-                "Gemini Web image generation timed out. The branch can safely fall back to frame A."
+                "Gemini Web image generation timed out. Retry explicitly when ready."
+                if payload.get("operation") == "group"
+                else "Gemini Web image generation timed out. The branch can safely fall back to frame A."
             ) from error
         generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
         if not generated:

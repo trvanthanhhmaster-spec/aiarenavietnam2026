@@ -2,6 +2,7 @@ import { parseGeminiCopy } from "./copy-schema.ts";
 import { fallbackCopy, fallbackImagePrompt } from "./fallback-copy.ts";
 import { buildImageRequest } from "./image-request.ts";
 import { buildVideoRequest, type VideoFirstFrame } from "./video-request.ts";
+import { normalizePlan, planPrompt, type StudioPlan } from "./studio-plan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,7 @@ let runtimeSettingsCacheExpiresAt = 0;
 const runtimeSettingsCacheTtlMs = 15_000;
 
 type LookRequest = {
+  planning?: StudioPlan;
   clientRequestId?: string;
   eventSlug?: string;
   location?: string;
@@ -103,6 +105,7 @@ function isSafeImage(image: LookRequest["inputImage"]) {
   const maxBase64Chars = Math.ceil(8_000_000 / 3) * 4 + 8;
   return !image
     || (["image/jpeg", "image/png", "image/webp"].includes(image.mimeType)
+      && typeof image.data === 'string' && image.data.length > 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(image.data)
       && image.data.length <= maxBase64Chars);
 }
 
@@ -296,7 +299,7 @@ async function activePrompt(): Promise<PromptVersion> {
 
 function costEstimate(input: LookRequest, settings: RuntimeSettings): CostEstimate {
   const generationType = input.generationType || "image";
-  const imageCount = 5;
+  const imageCount = input.planning ? 1 : 5;
   const videoCount = generationType === "video" || generationType === "both" ? 4 : 0;
   return {
     imageCount,
@@ -433,6 +436,7 @@ async function askGemini(
     `Selected scene: ${JSON.stringify(request.sceneSlug)}`,
     `Base look locks: ${JSON.stringify(request.locks || {})}`,
     `Catalog facts: ${JSON.stringify(catalog)}`,
+    ...(request.planning ? [`Group wear plan: ${JSON.stringify(request.planning)}. Explain all selected garment types without inventing weather or historical facts.`] : []),
   ].join("\n");
   const parts: Record<string, unknown>[] = [{ text: prompt }];
   if (request.inputImage) {
@@ -467,7 +471,7 @@ async function generateImages(
   request?: LookRequest,
 ): Promise<{ bytes: string; mimeType: string }[]> {
   const model = settings.imageModel;
-  const variants = [
+  const variants = request?.planning ? [{ key: 'Look', label: 'complete group composition', scope: 'all specified people and their assigned outfits in one photo' }] : [
     { key: "A", label: "locked source frame", scope: "fixed subject identity, face, pose, camera angle and composition" },
     { key: "B", label: "background and scene", scope: request?.framePlan?.B?.changeScope || "background and scene only" },
     { key: "C", label: "lighting and time of day", scope: request?.framePlan?.C?.changeScope || "lighting and time of day only" },
@@ -498,7 +502,8 @@ async function generateImages(
           prompt,
           aspectRatio,
           targetResolution,
-          changeScope: variant.scope,
+          changeScope: request?.planning ? 'Create ONE complete photo of the specified people and their chosen outfits. The supplied image is a face reference sheet, not a frame to preserve.' : variant.scope,
+          operation: request?.planning ? 'group' : 'edit',
           sourceImage: source ? { mimeType: source.mimeType, data: source.data } : null,
         }),
       });
@@ -523,7 +528,7 @@ async function generateImages(
           {
             aspectRatio,
             targetResolution,
-            operation: index === 0 && mode === "text-to-image" ? "base" : "edit",
+            operation: request?.planning ? 'group' : index === 0 && mode === "text-to-image" ? "base" : "edit",
             changeScope: variant.scope,
           },
         )),
@@ -759,30 +764,36 @@ async function processLook(
   await updateJob(job.id, "processing", {});
   const [event, garment, garmentVariant, accessories, accessoryVariants, options, rules] = await Promise.all([
     selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context,preset`),
-    selectCatalog("studio_garments", `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&is_active=eq.true&select=id,slug,name,category,description,origin_note,significance_note,image_url,prompt_descriptor,negative_descriptor`),
-    selectCatalog("studio_garment_variants", `slug=eq.${encodeURIComponent(input.garmentVariantSlug || "")}&is_active=eq.true&review_status=eq.published&select=id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,prompt_descriptor,negative_descriptor,source_url,source_provider`),
-    selectCatalog("studio_accessories", `${input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : ""}is_active=eq.true&select=slug,name,description`),
-    selectCatalog("studio_accessory_variants", `${input.accessoryVariantSlugs?.length ? `slug=in.(${input.accessoryVariantSlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&review_status=eq.published&select=id,accessory_id,slug,name,description,material,color_palette,image_url,prompt_descriptor,source_url,source_provider`),
+    selectCatalog("studio_garments", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&`}is_active=eq.true&select=id,slug,name,category,description,origin_note,significance_note,image_url,prompt_descriptor,negative_descriptor`),
+    selectCatalog("studio_garment_variants", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentVariantSlug || "")}&`}is_active=eq.true&review_status=eq.published&select=id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,prompt_descriptor,negative_descriptor,source_url,source_provider`),
+    selectCatalog("studio_accessories", `${input.planning ? '' : input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&select=id,slug,name,description,prompt_descriptor`),
+    selectCatalog("studio_accessory_variants", `${input.planning ? '' : input.accessoryVariantSlugs?.length ? `slug=in.(${input.accessoryVariantSlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&review_status=eq.published&select=id,accessory_id,slug,name,description,material,color_palette,image_url,prompt_descriptor,source_url,source_provider`),
     selectCatalog("studio_options", "is_active=eq.true&select=option_type,slug,label,value,prompt_hint"),
     selectCatalog("cultural_rules", `is_active=eq.true&review_status=eq.approved&select=garment_id,rule_text,severity,context`),
   ]);
   if (!event.length || !garment.length) throw new Error("Selection is not in the approved catalog.");
-  if (input.garmentVariantSlug && (!garmentVariant.length || garmentVariant[0].garment_id !== garment[0].id)) {
+  if (!input.planning && input.garmentVariantSlug && (!garmentVariant.length || garmentVariant[0].garment_id !== garment[0].id)) {
     throw new Error("Selected garment variant does not belong to the approved garment type.");
   }
-  if ((input.accessoryVariantSlugs?.length || 0) !== accessoryVariants.length) {
+  if (!input.planning && (input.accessoryVariantSlugs?.length || 0) !== accessoryVariants.length) {
     throw new Error("One or more accessory variants are not in the approved catalog.");
   }
 
   const catalog = {
     event: event[0],
-    garment: garment[0],
-    garmentVariant: garmentVariant[0] || null,
+    garment: garment.find((g: any) => g.slug === input.garmentSlug) || garment[0],
+    garmentVariant: garmentVariant.find((v: any) => v.slug === input.garmentVariantSlug) || null,
+    garments: garment,
+    garmentVariants: garmentVariant,
     accessories,
     accessoryVariants,
     options,
-    rules: rules.filter((rule: Record<string, unknown>) => !rule.garment_id || rule.garment_id === garment[0].id),
+    rules: rules.filter((rule: Record<string, unknown>) => !rule.garment_id || (input.planning
+      ? input.planning.people.some((person) => garment.some((g: any) => g.slug === person.outfit.garment && g.id === rule.garment_id))
+      : rule.garment_id === garment[0].id)),
   };
+  // Resolve every person's approved selection before calling any AI provider.
+  const groupPrompt = input.planning ? planPrompt(input.planning, catalog) : '';
   let copy: Awaited<ReturnType<typeof askGemini>> | ReturnType<typeof fallbackCopy>;
   let copySource: "gemini" | "catalog-fallback" = "gemini";
   let copyWarning: string | undefined;
@@ -797,7 +808,7 @@ async function processLook(
       ? `Gemini copy fallback: ${error.message}`
       : "Gemini copy fallback was used.";
   }
-  const imagePrompt = copy.imagePrompt || fallbackImagePrompt(input, catalog);
+  const imagePrompt = input.planning ? groupPrompt + `\nEvent: ${JSON.stringify(event[0])}` : copy.imagePrompt || fallbackImagePrompt(input, catalog);
   const generationType = input.generationType || "image";
   let assets: GeneratedAsset[] = [];
   let imageSource: "gemini" | "catalog-fallback" = "gemini";
@@ -810,7 +821,7 @@ async function processLook(
         imagePrompt,
         input.inputImage,
         settings,
-        5,
+        input.planning ? 1 : 5,
         input,
       );
       assets = await storeLookbook(job.id, generated);
@@ -822,6 +833,7 @@ async function processLook(
         };
       }
     } catch (error) {
+      if (input.planning) throw error; // A catalog photo is not a generated group photo.
       const url = typeof catalog.garment.image_url === "string"
         ? catalog.garment.image_url.trim()
         : "";
@@ -849,6 +861,7 @@ async function processLook(
     ...(imageWarning ? { imageWarning } : {}),
     promptVersion: { id: promptVersion.id, version: promptVersion.version, model: promptVersion.model },
     imagePrompt,
+    ...(input.planning ? { planning: input.planning, workflowVersion: 'studio-group-v1' } : {}),
     costEstimate: costEstimate(input, settings),
     imageUrl: assets[0]?.url || null,
     lookbook: {
@@ -1012,8 +1025,18 @@ Deno.serve(async (request) => {
   } catch {
     return json({ error: "Invalid JSON request." }, 400);
   }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return json({ error: 'Invalid request object.' }, 400);
 
   const generationType = input.generationType || "image";
+  if (input.planning !== undefined) {
+    try {
+      input.planning = normalizePlan(input.planning);
+      if (generationType !== 'image') throw new Error('Luồng bản phối chỉ tạo một ảnh; video được quản lý riêng.');
+      if (input.planning.people.some((p) => p.faceSupplied) && !input.inputImage) throw new Error('Ảnh tham khảo chưa được gửi.');
+      const outfit = input.planning.people[0].outfit;
+      Object.assign(input, { garmentSlug: outfit.garment, garmentVariantSlug: outfit.garmentVariant, accessorySlugs: outfit.accessories, accessoryVariantSlugs: outfit.accessoryVariants, colorSlug: outfit.color, patternSlug: outfit.pattern, styleSlug: outfit.style, sceneSlug: outfit.scene });
+    } catch (error) { return json({ error: error instanceof Error ? error.message : 'Bản phối không hợp lệ.' }, 400); }
+  }
   if (!["image", "video", "both"].includes(generationType)) {
     return json({ error: "generationType must be image, video or both." }, 400);
   }

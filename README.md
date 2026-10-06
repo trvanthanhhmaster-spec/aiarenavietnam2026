@@ -73,21 +73,34 @@ giảm chuyển động, Studio giữ ảnh minh họa. Media tầng 1 không b�
 Kiểm thử tab, upload, responsive navigation và so sánh không gọi provider:
 `node tests/studio-workspace.cjs`.
 
-Studio hướng dẫn người mới bằng một câu hỏi mỗi lần: dịp mặc → trang phục →
-phong cách. Nếu preset của dịp mặc đã đủ lựa chọn, Studio chuyển thẳng sang
-tóm tắt có các dòng “Đổi”; không bắt người dùng chọn lại. Snapshot từ trạng
-thái catalog thật điều khiển hướng dẫn, không có preset sao chép trong UI.
-Khi đổi trang phục, người dùng có thể xem/chọn mẫu con trước khi bấm “Xong”.
-Màu, phụ kiện và bối cảnh nằm trong phần tuỳ chọn; lưu/tải/so sánh chỉ hiện
-khi có kết quả. Trên mobile, câu hỏi xuất hiện trước preview. Lỗi có nút thử
-lại, ảnh upload có nút bỏ ảnh, và generation tự động không chuyển focus.
+Studio hỏi một điều mỗi lần: **Dịp mặc → Số người → Thời gian → Trang phục**,
+sau đó tổng kết và **Tạo ảnh bản phối**. Dịp có tìm kiếm không dấu và gợi ý từ
+catalog; mô tả tự nhập là nhu cầu người dùng, không phải tri thức đã duyệt.
+Preset chỉ đánh dấu gợi ý, không tự chọn trang phục hoặc gọi AI.
+Demo hỗ trợ 1–12 người: phối đồng điệu lấy Người 1 làm gợi ý cho những người
+chưa tùy chỉnh, hoặc chọn riêng mỗi người. Tùy chỉnh riêng không bị ghi đè.
+Thời gian gồm tuần này/tuần sau/tháng sau/chưa xác định/khoảng ngày cụ thể;
+không phải thời điểm trong ảnh hay dự báo thời tiết trực tiếp.
+Phong cách, phụ kiện, màu, họa tiết, bối cảnh và số đo là tùy chọn của từng người.
+Ảnh mặt yêu cầu đồng ý, có nút xóa và chỉ giữ trong tab; khi tạo, trình duyệt
+ghép thành một bảng ảnh đánh số gửi provider. Không lưu byte ảnh mặt vào
+job, localStorage hay Look. Provider có chính sách xử lý riêng; không đảm bảo
+giữ mặt chính xác. Số đo không thay thế tư vấn kích cỡ mua/thuê.
+Mỗi xác nhận tạo **một ảnh nhóm**, không tự tạo A–E hoặc phương án so sánh.
+Trong lúc tạo, bảng lựa chọn tạm khóa. Lưu Look dùng snapshot đã xác nhận,
+không dùng trạng thái controls sau đó. Sửa lựa chọn không tự gọi lại AI.
+Thư viện/so sánh chỉ hiện khi có các kết quả thật; không nhận ảnh catalog là
+ảnh AI nhóm nếu provider lỗi. Trên mobile câu hỏi vẫn đứng trước preview.
 Kiểm thử hướng dẫn, preset, trạng thái job và lời báo lỗi không gọi AI:
-`node tests/studio-beginner.cjs`.
+`node tests/studio-beginner.cjs`, `node tests/studio-planner.cjs`,
+`php tests/studio-plan.php`, `deno test supabase/functions/generate-look/*_test.ts`.
+Kiểm tra bridge với client giả, không đăng nhập hay gọi Gemini:
+`services/gemini-webapi-bridge/.venv/bin/python3 tests/studio-bridge-group.py`.
+Luồng nhóm lưu metadata vào JSONB sẵn có (`generation_jobs.input`,
+`looks.selection`); không cần thay schema hay xóa dữ liệu hiện tại.
 
-Mở `http://localhost/aiarenavietnam2026/studio.php` để chọn sự kiện, cổ phục, màu,
-phong cách, phụ kiện và bối cảnh. Khi đã đủ sự kiện, trang phục và phong cách,
-Studio tự tạo/cập nhật AI preview sau một khoảng debounce ngắn; người dùng không
-phải chọn thông số kỹ thuật hoặc bấm Generate. Catalog được đọc từ
+Mở `http://localhost/aiarenavietnam2026/studio.php` để chuẩn bị qua bốn bước
+và xác nhận tạo ảnh. Người dùng không chọn thông số kỹ thuật. Catalog đọc từ
 `studio_events`, `studio_garments`, `studio_accessories` và `studio_options`;
 không cần sửa PHP khi thêm lựa chọn mới.
 

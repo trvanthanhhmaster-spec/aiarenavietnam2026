@@ -35,12 +35,12 @@ const ids = {};
   'workspacePanelHint', 'workspaceFullscreen', 'workspaceUpload', 'inputImage',
   'studioDock', 'dockClose', 'studioSrStatus', 'variantStrip', 'guideReview',
   'guideNavigation', 'guideContinue', 'guideBack', 'guideEventValue', 'guideGarmentValue',
-  'guideStyleValue', 'guideCustomize', 'garmentVariantSection', 'guideReviewTitle',
+  'guidePeopleValue', 'guideTimeValue', 'guideCustomize', 'garmentVariantSection', 'guideReviewTitle',
   'workspaceRemoveUpload'].forEach(id => { ids[id] = element(); });
-const guideCards = ['event', 'garment', 'style'].map(step => {
+const guideCards = ['event', 'people', 'time', 'garment'].map(step => {
   const card = element(); card.dataset.guideCard = step; return card;
 });
-const guideSteps = ['event', 'garment', 'style'].map(step => {
+const guideSteps = ['event', 'people', 'time', 'garment'].map(step => {
   const button = element(); button.dataset.progressStep = step; return button;
 });
 const sections = [element(['studio-passport']), element(['studio-check']), element(['studio-tips']),
@@ -95,8 +95,9 @@ ids.inputImage.value = ''; ids.inputImage.emit('change');
 assert.equal(uploadNote.textContent, 'Không bắt buộc · tối đa 8 MB');
 
 function selection(choices, changed = '', variantCount = 0) {
-  const next = ['event', 'garment', 'style'].find(step => !choices[step]) || 'review';
+  const next = ['event', 'people', 'time', 'garment'].find(step => !choices[step]) || 'review';
   const guide = { next, ready: next === 'review', choices, changed, variantCount,
+    planning: { activePerson: 1, people: [{ outfit: { garment: choices.garment || '' } }] },
     labels: { event: 'Dịp từ database', garment: 'Mẫu đã duyệt', style: 'Phong cách đã chọn' } };
   ids.studioExperience.emit('studio:selection', { detail: guide });
 }
@@ -104,37 +105,46 @@ function visit(step) {
   const button = element(); button.dataset.guideStep = step;
   ids.studioExperience.emit('click', { target: { closest: selector => selector === '[data-guide-step]' ? button : null } });
 }
-assert.deepEqual(guideCards.map(card => card.hidden), [false, true, true], 'initial view asks only one question');
+assert.deepEqual(guideCards.map(card => card.hidden), [false, true, true, true], 'initial view asks only one question');
 assert.equal(ids.guideCustomize.hidden, true);
 assert.equal(guideSteps[1].disabled, true, 'a beginner cannot accidentally skip the first choice');
-visit('style');
+visit('garment');
 assert.equal(ids.studioExperience.dataset.guideStep, 'event');
-selection({ event: 'db-event', garment: 'db-garment', style: 'db-style' }, 'event', 1);
-assert.equal(ids.guideReview.hidden, false, 'a complete DB preset goes directly to editable summary');
-assert.deepEqual(guideCards.map(card => card.hidden), [true, true, true]);
+selection({ event: 'db-event', garment: '' }, 'event', 1);
+assert.equal(ids.studioExperience.dataset.guideStep, 'event', 'a choice never implicitly advances or creates');
+ids.guideContinue.click();
+assert.equal(ids.studioExperience.dataset.guideStep, 'people');
+selection({ event: 'db-event', people: 1 }, 'people');
+ids.guideContinue.click();
+assert.equal(ids.studioExperience.dataset.guideStep, 'time');
+selection({ event: 'db-event', people: 1, time: true }, 'time');
+ids.guideContinue.click();
+assert.equal(ids.studioExperience.dataset.guideStep, 'garment');
+selection({ event: 'db-event', people: 1, time: true, garment: 'db-garment' }, 'garment', 1);
 assert.equal(ids.guideGarmentValue.textContent, 'Mẫu đã duyệt');
 assert.equal(ids.guideCustomize.hidden, false);
 visit('garment');
-assert.equal(guideCards[1].hidden, false);
+assert.equal(guideCards[3].hidden, false);
 assert.equal(ids.garmentVariantSection.hidden, true, 'one default child does not require a redundant decision');
-selection({ event: 'db-event', garment: 'another-garment', style: 'db-style' }, 'garment', 3);
+selection({ event: 'db-event', people: 1, time: true, garment: 'another-garment' }, 'garment', 3);
 assert.equal(ids.studioExperience.dataset.guideStep, 'garment');
 assert.equal(ids.garmentVariantSection.hidden, false, 'multiple concrete samples stay visible until user is done');
-selection({ event: 'db-event', garment: 'another-garment', style: 'db-style' }, 'garmentVariant', 3);
+selection({ event: 'db-event', people: 1, time: true, garment: 'another-garment' }, 'garmentVariant', 3);
 assert.equal(ids.studioExperience.dataset.guideStep, 'garment');
 ids.guideContinue.click();
 assert.equal(ids.studioExperience.dataset.guideStep, 'review');
-selection({ event: 'no-preset-event', garment: '', style: '' }, 'event');
-assert.equal(ids.studioExperience.dataset.guideStep, 'garment', 'incomplete presets ask for the next missing choice');
+selection({ event: 'no-preset-event', garment: '' }, 'event');
+assert.equal(ids.studioExperience.dataset.guideStep, 'people', 'missing people returns to the appropriate step');
 assert.equal(ids.guideContinue.disabled, true);
-selection({ event: 'no-preset-event', garment: 'db-garment', style: '' }, 'garment', 2);
+selection({ event: 'no-preset-event', people: 2 }, 'people');
 ids.guideContinue.click();
-assert.equal(ids.studioExperience.dataset.guideStep, 'style');
+assert.equal(ids.studioExperience.dataset.guideStep, 'time');
 assert.equal(ids.guideContinue.disabled, true);
 ids.guideBack.click();
-assert.equal(ids.studioExperience.dataset.guideStep, 'garment');
-selection({ event: 'restored-event', garment: 'restored-garment', style: 'restored-style' });
-assert.equal(ids.studioExperience.dataset.guideStep, 'review', 'restored jobs also use the real snapshot');
+assert.equal(ids.studioExperience.dataset.guideStep, 'people');
+selection({ event: 'restored-event', people: 2, time: true, garment: 'restored-garment' });
+visit('review');
+assert.equal(ids.studioExperience.dataset.guideStep, 'review', 'review requires all four completed choices');
 ids.inputImage.files = [{ name: 'portrait.png' }]; ids.inputImage.value = 'portrait.png';
 ids.inputImage.emit('change');
 assert.equal(ids.workspaceRemoveUpload.hidden, false);

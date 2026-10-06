@@ -194,7 +194,7 @@ body.studio-page {
   background: linear-gradient(180deg, rgb(255 235 230 / .52), rgb(255 225 220 / .58));
 }
 .studio-collection-heading { display: none; }
-.studio-progress { margin: 0 0 12px; border: 0; border-radius: 13px; padding: 12px; background: rgb(255 255 255 / .72); box-shadow: none; }
+.studio-progress { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 12px; border: 0; border-radius: 13px; padding: 12px; background: rgb(255 255 255 / .72); box-shadow: none; }
 .studio-progress__step span { color: #64646f; }
 .studio-progress__step strong { font-size: 10px; }
 .studio-progress__step.is-current strong { color: #a53737; }
@@ -357,11 +357,38 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .guide-review > button:hover strong { color: #a53737; }
 .guide-review .guide-review__hint { margin-bottom: 0; font-size: 12px; }
 .guide-review > .guide-view-preview { margin-top: 18px; padding: 12px 14px; min-height: 46px; border: 0; border-radius: 12px; background: #17171b; color: #fff; font-size: 13px; }
+@media (min-width: 1024px) {
+  .guide-review > .guide-view-preview { position: sticky; bottom: 0; z-index: 3; box-shadow: 0 -10px 0 #fcf9f9; }
+}
 .guide-navigation { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0; }
 .guide-navigation button { min-height: 46px; border: 0; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #17171b; background: rgb(255 255 255 / .8); }
 .guide-navigation #guideContinue { display: inline-flex; align-items: center; gap: 5px; background: #17171b; color: white; }
 .guide-navigation #guideContinue:disabled { opacity: .4; cursor: default; }
 .guide-navigation .workspace-icon { width: 16px; height: 16px; }
+.planner-field { display: grid; gap: 7px; margin: 14px 0; color: #40404a; font-size: 13px; }
+.planner-field input, .planner-field textarea { min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dedbe3; border-radius: 10px; background: #fff; color: #17171b; font: inherit; }
+.planner-field textarea { min-height: 90px; resize: vertical; }
+.planner-field input:focus-visible, .planner-field textarea:focus-visible { outline: 2px solid #a53737; outline-offset: 2px; }
+.planner-details { margin: 15px 0 0; padding-top: 12px; border-top: 1px solid #e3dee5; font-size: 13px; }
+.planner-details summary { cursor: pointer; line-height: 1.6; }
+.planner-details small { display: block; color: #64646f; font-size: 12px; line-height: 1.6; }
+.planner-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 14px; }
+.planner-choices button, .planner-person-tabs button, .planner-secondary, .planner-suggestions button { min-height: 48px; padding: 12px; border: 1px solid #dedbe3; border-radius: 12px; background: #f8f6fa; color: #17171b; text-align: left; font: inherit; font-size: 13px; }
+.planner-choices small { display: block; margin-top: 6px; color: #64646f; font-size: 11px; line-height: 1.5; }
+.planner-choices button[aria-pressed="true"], .planner-person-tabs button[aria-pressed="true"] { border-color: #17171b; background: #eeebf3; box-shadow: inset 0 0 0 1px #17171b; }
+.planner-choices button:hover, .planner-person-tabs button:hover, .planner-secondary:hover { background: #eeebf3; }
+.planner-person-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 15px; }
+.planner-person-tabs button { flex: 1 1 100px; font-size: 12px; }
+.planner-measurements { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.planner-consent { display: flex; align-items: flex-start; gap: 9px; line-height: 1.6; margin: 14px 0; }
+.planner-consent input { margin-top: 4px; flex-shrink: 0; }
+.planner-face-preview { display: block; width: 100px; max-height: 130px; object-fit: contain; margin: 10px 0; border-radius: 10px; }
+.planner-error { color: #9c3030; background: #fff0ed; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.6; }
+.planner-recommended { display: block; color: #a53737; font-size: 11px; }
+.planner-suggestions { display: grid; gap: 8px; }
+#plannerReviewPeople { padding: 8px 0; }
+.studio-toolbox[inert] { opacity: .7; }
+#plannerGenerate:disabled { opacity: .5; cursor: wait; }
 .studio-customize { margin-top: 14px; }
 .studio-customize > summary { min-height: 54px; }
 .studio-customize > summary strong { font-size: 13px; }

@@ -141,36 +141,15 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <strong>Bạn muốn mặc gì hôm nay?</strong>
                         <p class="studio-collection-heading__note">Chọn dịp trước. Sau đó chọn một dáng Việt phục và thêm điểm nhấn theo cách của bạn.</p>
                     </div>
-                    <div class="studio-progress" aria-label="Ba bước để bắt đầu">
-                        <button type="button" class="studio-progress__step is-current" data-progress-step="event" data-guide-step="event">
-                            <span>01</span><strong>Dịp mặc</strong>
-                        </button>
-                        <i aria-hidden="true"></i>
-                        <button type="button" class="studio-progress__step" data-progress-step="garment" data-guide-step="garment">
-                            <span>02</span><strong>Trang phục</strong>
-                        </button>
-                        <i aria-hidden="true"></i>
-                        <button type="button" class="studio-progress__step" data-progress-step="style" data-guide-step="style">
-                            <span>03</span><strong>Phong cách</strong>
-                        </button>
-                        <p id="studioNextHint">Bắt đầu bằng cách chọn dịp bạn sẽ mặc.</p>
-                    </div>
-
-                    <section class="studio-catalog-card studio-catalog-card--event" data-guide-card="event" aria-labelledby="catalogEventTitle">
-                        <div class="studio-catalog-card__head">
-                            <h2 id="catalogEventTitle"><span aria-hidden="true">01</span> Chọn dịp của bạn</h2>
-                            <button type="button" data-mode="event">Xem tất cả <span aria-hidden="true">›</span></button>
-                        </div>
-                        <p class="guide-card-note">Ảnh sẽ tự tạo theo gợi ý cho dịp bạn chọn. Bạn có thể đổi từng món sau.</p>
-                        <div class="studio-catalog-grid studio-catalog-grid--event" id="catalogEvents"></div>
-                    </section>
+                    <?php require __DIR__ . '/includes/studio/planner-steps.php'; ?>
 
                     <section class="studio-catalog-card studio-catalog-card--garment" data-guide-card="garment" aria-labelledby="catalogGarmentTitle" hidden>
                         <div class="studio-catalog-card__head">
-                            <h2 id="catalogGarmentTitle"><span aria-hidden="true">02</span> Bạn thích bộ nào?</h2>
+                            <h2 id="catalogGarmentTitle">Chọn trang phục</h2>
                             <button type="button" data-mode="garment">Xem tất cả <span aria-hidden="true">›</span></button>
                         </div>
-                        <p class="guide-card-note">Chọn theo ảnh bạn thích. Không cần biết tên trang phục.</p>
+                        <?php require __DIR__ . '/includes/studio/planner-person.php'; ?>
+                        <p class="guide-card-note">Chọn theo ảnh bạn thích. Nhãn “Gợi ý” không thay cho lựa chọn của bạn.</p>
                         <div class="studio-catalog-grid studio-catalog-grid--garment" id="catalogGarments"></div>
                     </section>
                     <section class="studio-catalog-card studio-catalog-card--variant" id="garmentVariantSection" aria-labelledby="catalogGarmentVariantTitle" hidden>
@@ -184,24 +163,17 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <p class="studio-catalog-card__note">Mỗi mẫu có ảnh, chất liệu và họa tiết riêng để bạn xem trước rõ hơn.</p>
                         <div class="studio-variant-grid" id="catalogGarmentVariants"></div>
                     </section>
-                    <section class="studio-catalog-card studio-catalog-card--style" data-guide-card="style" aria-labelledby="catalogStyleTitle" hidden>
-                        <div class="studio-catalog-card__head">
-                            <h2 id="catalogStyleTitle"><span aria-hidden="true">03</span> Bạn muốn trông thế nào?</h2>
-                            <button type="button" data-mode="style">Xem tất cả <span aria-hidden="true">›</span></button>
-                        </div>
-                        <p class="guide-card-note">Chọn cảm giác bạn muốn. Ảnh sẽ tự tạo khi đủ lựa chọn.</p>
-                        <div class="studio-catalog-grid studio-catalog-grid--style" id="catalogStyles"></div>
-                    </section>
-
                     <section class="guide-review" id="guideReview" aria-labelledby="guideReviewTitle" hidden>
                         <span class="guide-eyebrow">Lựa chọn của bạn</span>
-                        <h3 id="guideReviewTitle">Một bộ đồ dành cho bạn.</h3>
-                        <p>Đã đủ để tạo ảnh. Muốn đổi gì? Chạm vào dòng đó.</p>
+                        <h3 id="guideReviewTitle">Kiểm tra trước khi tạo ảnh.</h3>
+                        <p>Đây là thông tin sẽ dùng cho một ảnh bản phối. Bạn có thể đổi trước khi xác nhận.</p>
                         <button type="button" data-guide-step="event"><span><small>Dịp mặc</small><strong id="guideEventValue"></strong></span><span>Đổi ›</span></button>
+                        <button type="button" data-guide-step="people"><span><small>Số người</small><strong id="guidePeopleValue"></strong></span><span>Đổi ›</span></button>
+                        <button type="button" data-guide-step="time"><span><small>Thời gian</small><strong id="guideTimeValue"></strong></span><span>Đổi ›</span></button>
                         <button type="button" data-guide-step="garment"><span><small>Trang phục</small><strong id="guideGarmentValue"></strong></span><span>Đổi ›</span></button>
-                        <button type="button" data-guide-step="style"><span><small>Phong cách</small><strong id="guideStyleValue"></strong></span><span>Đổi ›</span></button>
-                        <p class="guide-review__hint">Không cần bấm tạo. Ảnh tự cập nhật sau mỗi thay đổi.</p>
-                        <button type="button" class="guide-view-preview" data-workspace-preview>Xem ảnh của tôi <?= $studioIcon('chevron-right') ?></button>
+                        <div id="plannerReviewPeople"></div>
+                        <p class="guide-review__hint">Chỉ tạo khi bạn xác nhận. Đổi lựa chọn không tiêu lượt tạo ảnh.</p>
+                        <button type="button" class="guide-view-preview" id="plannerGenerate">Tạo ảnh bản phối <?= $studioIcon('chevron-right') ?></button>
                     </section>
                     <div class="guide-navigation" id="guideNavigation" hidden>
                         <button type="button" id="guideBack">‹ Quay lại</button>
@@ -209,7 +181,11 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     </div>
 
                     <details class="studio-customize" id="guideCustomize" hidden>
-                        <summary><strong>Thêm nét riêng của bạn</strong><small>Màu sắc, họa tiết, phụ kiện và nơi chụp · tuỳ chọn</small></summary>
+                        <summary><strong>Thêm nét riêng cho người đang chọn</strong><small>Phụ kiện, màu sắc, phong cách và nơi chụp · tuỳ chọn</small></summary>
+                    <section class="studio-catalog-card studio-catalog-card--style" aria-labelledby="catalogStyleTitle">
+                        <div class="studio-catalog-card__head"><h2 id="catalogStyleTitle">Phong cách bạn thích</h2><button type="button" data-mode="style">Xem tất cả ›</button></div>
+                        <div class="studio-catalog-grid studio-catalog-grid--style" id="catalogStyles"></div>
+                    </section>
                     <section class="studio-catalog-card studio-catalog-card--color" aria-labelledby="catalogColorTitle">
                         <div class="studio-catalog-card__head">
                             <h2 id="catalogColorTitle">Màu bạn thích</h2>
@@ -302,9 +278,9 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             </div>
                             <div class="studio-frame__veil" aria-hidden="true"></div>
                             <div class="studio-preview__empty" id="previewEmpty">
-                                <strong>Bạn chọn dịp. Mình lo bản phối.</strong>
-                                <small>Chưa biết Việt phục? Cứ chọn nơi bạn muốn mặc đến.</small>
-                                <button type="button" class="workspace-start" data-workspace-start>Chọn dịp mặc <?= $studioIcon('chevron-right') ?></button>
+                                <strong id="plannerPreviewTitle">Bắt đầu từ dịp bạn sẽ mặc.</strong>
+                                <small id="plannerPreviewHint">Chuẩn bị qua bốn bước. Chỉ tạo ảnh khi bạn xác nhận.</small>
+                                <button type="button" class="workspace-start" data-workspace-start><span id="plannerPreviewAction">Chọn dịp mặc</span> <?= $studioIcon('chevron-right') ?></button>
                             </div>
                             <div class="studio-preview-progress" id="previewGenerationStatus" hidden>
                                 <i aria-hidden="true"></i>
@@ -348,7 +324,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                         </label>
                         <input id="outputType" type="hidden" value="<?= $escape((string) ($catalog['generation']['default_output_type'] ?? 'image')) ?>">
-                        <span class="studio-auto-create__hint">Ảnh AI tự cập nhật theo lựa chọn.</span>
+                        <span class="studio-auto-create__hint">Ảnh chỉ tạo sau khi bạn kiểm tra và xác nhận.</span>
                         <div class="studio-variants__actions">
                             <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
                             <button type="button" id="saveLook" disabled>Lưu bản phối</button>
@@ -459,8 +435,10 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script>
         window.VREMIX_STUDIO = <?= json_encode($studioData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
+    <script src="assets/js/studio-planner.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
+    <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>
 </body>
 </html>

@@ -16,9 +16,10 @@
   var guideBack = document.getElementById('guideBack');
   var guideCopy = {
     event: ['Bạn sẽ mặc đi đâu?', 'Chọn một dịp bên dưới. Chưa biết mặc gì cũng không sao.'],
+    people: ['Bạn phối cho bao nhiêu người?', 'Một mình, cùng một người hay cả nhóm?'],
+    time: ['Bạn dự định mặc khi nào?', 'Chọn thời gian hoặc để chưa xác định.'],
     garment: ['Chọn bộ bạn thích', 'Nhìn ảnh và chọn. Bạn không cần biết tên trang phục.'],
-    style: ['Bạn muốn trông thế nào?', 'Chọn một phong cách. V-Remix sẽ tự tạo ảnh cho bạn.'],
-    review: ['Bộ đồ này là của bạn', 'Ảnh tự tạo theo lựa chọn. Bạn vẫn có thể đổi từng món.']
+    review: ['Sẵn sàng cho bản phối của bạn', 'Kiểm tra rồi xác nhận để tạo một ảnh.']
   };
   var panelCopy = {
     catalog: guideCopy.event,
@@ -53,8 +54,10 @@
   function reducedMotion() { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
 
   function canVisit(step) {
-    return step === 'event' || (step === 'garment' && Boolean(guide.choices.event))
-      || (step === 'style' && Boolean(guide.choices.event && guide.choices.garment));
+    if (step === 'review') return guide.ready;
+    var steps = ['event', 'people', 'time', 'garment'];
+    var index = steps.indexOf(step);
+    return index >= 0 && steps.slice(0, index).every(function (key) { return Boolean(guide.choices[key]); });
   }
 
   function renderGuide(focus) {
@@ -69,18 +72,25 @@
     guideReview.hidden = guideStep !== 'review';
     document.getElementById('guideEventValue').textContent = guide.labels.event || 'Chưa chọn';
     document.getElementById('guideGarmentValue').textContent = guide.labels.garment || 'Chưa chọn';
-    document.getElementById('guideStyleValue').textContent = guide.labels.style || 'Chưa chọn';
-    document.getElementById('guideCustomize').hidden = !guide.ready;
+    document.getElementById('guidePeopleValue').textContent = guide.labels.people || 'Chưa chọn';
+    document.getElementById('guideTimeValue').textContent = guide.labels.time || 'Chưa chọn';
+    var activeOutfit = guide.planning && guide.planning.people[guide.planning.activePerson - 1];
+    document.getElementById('guideCustomize').hidden = guideStep !== 'garment' || !activeOutfit || !activeOutfit.outfit.garment;
     document.getElementById('garmentVariantSection').hidden = guideStep !== 'garment' || guide.variantCount < 2;
-    guideNavigation.hidden = guideStep === 'event' || guideStep === 'review';
-    guideContinue.disabled = !guide.choices[guideStep];
-    guideContinue.firstChild.textContent = guide.ready ? 'Xong, xem bản phối ' : 'Tiếp tục ';
+    guideNavigation.hidden = guideStep === 'review';
+    guideBack.hidden = guideStep === 'event';
+    var active = guide.planning && guide.planning.people[guide.planning.activePerson - 1];
+    guideContinue.disabled = guideStep === 'garment' ? !active || !active.outfit.garment : !guide.choices[guideStep];
+    guideContinue.textContent = guideStep === 'garment' ? (guide.ready ? 'Kiểm tra bản phối' : 'Chọn người tiếp theo') : 'Tiếp tục';
     if (activePanel === 'catalog') {
       title.textContent = guideCopy[guideStep][0];
       hint.textContent = guideCopy[guideStep][1];
     }
     if (focus && activePanel === 'catalog') {
       catalog.scrollTop = 0;
+      if (window.matchMedia('(max-width: 1023px)').matches) {
+        document.querySelector('.workspace-panel-header').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      }
       var heading = guideStep === 'review' ? document.getElementById('guideReviewTitle')
         : catalog.querySelector('[data-guide-card="' + guideStep + '"] h2');
       if (heading) {
@@ -100,23 +110,28 @@
   }
 
   experience.addEventListener('studio:selection', function (event) {
-    var oldStep = guideStep;
     guide = event.detail;
-    // Stay on garment choices so a user can pick a concrete child variant.
-    // Event presets may already satisfy all three choices; don't force repeats.
-    if (!(oldStep === 'garment' && /^(garment|garmentVariant)$/.test(guide.changed))) guideStep = guide.next;
-    renderGuide(Boolean(guide.changed && oldStep !== guideStep));
+    if (!canVisit(guideStep)) guideStep = guide.next;
+    renderGuide(false);
   });
   guideContinue.addEventListener('click', function () {
     if (guideContinue.disabled) return;
-    guideStep = guide.ready ? 'review' : guide.next;
+    if (guideStep === 'garment' && !guide.ready) {
+      var missing = guide.planning.people.find(function (p) { return !p.outfit.garment; });
+      if (missing) experience.plannerApi.person(missing.id);
+      return;
+    }
+    var steps = ['event', 'people', 'time', 'garment', 'review'];
+    guideStep = steps[steps.indexOf(guideStep) + 1];
     renderGuide(true);
   });
-  guideBack.addEventListener('click', function () { visitGuide(guideStep === 'style' ? 'garment' : 'event'); });
+  guideBack.addEventListener('click', function () {
+    var steps = ['event', 'people', 'time', 'garment']; visitGuide(steps[Math.max(0, steps.indexOf(guideStep) - 1)]);
+  });
   experience.addEventListener('click', function (event) {
     var start = event.target.closest('[data-workspace-start]');
     if (start) {
-      visitGuide(guide.next === 'review' ? 'event' : guide.next);
+      visitGuide(guide.next);
       catalog.scrollTop = 0;
       var firstChoice = catalog.querySelector('#catalogEvents button');
       if (firstChoice) firstChoice.focus({ preventScroll: true });
@@ -177,6 +192,7 @@
   document.addEventListener('fullscreenchange', function () {
     fullscreen.setAttribute('aria-label', document.fullscreenElement ? 'Thoát toàn màn hình' : 'Mở toàn màn hình');
   });
+  experience.addEventListener('studio:visit', function (event) { visitGuide(event.detail); });
   showPanel('catalog', false);
   renderGuide(false);
 })();

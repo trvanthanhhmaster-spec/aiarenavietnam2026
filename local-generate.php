@@ -2,8 +2,14 @@
 declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
+require __DIR__ . '/src/Support/StudioPlan.php';
+require __DIR__ . '/src/Infrastructure/SupabaseClient.php';
+require __DIR__ . '/src/Repositories/StudioRepository.php';
 
 use App\Support\Env;
+use App\Support\StudioPlan;
+use App\Infrastructure\SupabaseClient;
+use App\Repositories\StudioRepository;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -50,6 +56,10 @@ try {
     }
     $mode = (string) ($input['generationMode'] ?? 'text-to-image');
     $inputImage = is_array($input['inputImage'] ?? null) ? $input['inputImage'] : null;
+    if ($inputImage !== null && (!in_array($inputImage['mimeType'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)
+        || !is_string($inputImage['data'] ?? null) || strlen($inputImage['data']) > 11_200_000 || base64_decode($inputImage['data'], true) === false)) {
+        $respond(['error' => 'Ảnh tham khảo không hợp lệ.'], 422);
+    }
     if ($mode === 'image-to-image' && $inputImage === null) {
         $respond(['error' => 'Image-to-image mode requires a source image.'], 422);
     }
@@ -88,6 +98,23 @@ try {
         'D' => 'Change only the clothing and garment styling. Preserve frame A identity, face, pose, camera and composition.',
         'E' => 'Replace only the adult model identity with another adult model. Preserve frame A position, scale, pose, background, camera and garment composition.',
     ];
+    $plan = null;
+    if (isset($input['planning'])) {
+        try {
+            $plan = StudioPlan::normalize($input['planning']);
+            if (($input['generationType'] ?? 'image') !== 'image') throw new InvalidArgumentException('Luồng bản phối chỉ tạo một ảnh; video được quản lý riêng.');
+            if (array_filter($plan['people'], static fn (array $p): bool => $p['faceSupplied']) && $inputImage === null) throw new InvalidArgumentException('Ảnh tham khảo chưa được gửi. Hãy tải lại ảnh hoặc bỏ ảnh tham khảo.');
+            $database = require __DIR__ . '/config/database.php';
+            $catalog = (new StudioRepository(new SupabaseClient($database['url'], $database['anon_key'])))->getCatalog();
+            if (!$catalog) throw new RuntimeException('Catalog chưa sẵn sàng.');
+            $event = array_values(array_filter($catalog['events'], static fn (array $e): bool => $e['slug'] === ($input['eventSlug'] ?? '')))[0] ?? null;
+            if (!$event) throw new InvalidArgumentException('Chọn một dịp đã được duyệt.');
+            $basePrompt = StudioPlan::prompt($plan, $catalog) . "\nEvent: " . $event['label'] . '. ' . ($event['description'] ?? '');
+            $scopes = ['A' => 'Create one complete photo of the specified people and their chosen outfits.'];
+        } catch (InvalidArgumentException $error) {
+            $respond(['error' => $error->getMessage(), 'status' => 'failed'], 422);
+        }
+    }
 
     $callBridge = static function (array $payload) use ($bridgeUrl, $bridgeSecret): array {
         $handle = curl_init($bridgeUrl . '/v1/images/generate');
@@ -141,6 +168,7 @@ try {
                 'aspectRatio' => $aspectRatio,
                 'targetResolution' => $resolution,
                 'changeScope' => $scope,
+                'operation' => $plan !== null ? 'group' : 'edit',
             ]);
         } catch (Throwable $error) {
             if ($key === 'A' || !is_array($sourceImage) || empty($sourceImage['data'])) {
@@ -169,16 +197,17 @@ try {
     $output = [
         'generationType' => (string) ($input['generationType'] ?? 'image'),
         'provider' => 'gemini-webapi-local',
-        'story' => $fallbackFrames === []
+        'story' => $plan !== null ? 'Bản phối minh họa theo dịp mặc và trang phục của ' . $plan['count'] . ' người. Đây không phải chứng nhận độ chính xác văn hóa hay kích cỡ.' : ($fallbackFrames === []
             ? 'Bộ ảnh được tạo từ một frame A cố định và bốn phép biến đổi có kiểm soát.'
-            : 'Frame A đã được khoá. ' . implode(', ', $fallbackFrames) . ' đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.',
-        'guardrail' => 'Giữ cấu trúc nhận diện của Việt phục và chỉ thay đúng phạm vi của từng frame.',
-        'culturalScore' => 90,
+            : 'Frame A đã được khoá. ' . implode(', ', $fallbackFrames) . ' đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.'),
+        'guardrail' => 'Đối chiếu chi tiết áo với nguồn tham khảo đã duyệt. Ảnh AI và số đo chỉ mang tính minh họa.',
         'genZTip' => 'Dùng một điểm nhấn hiện đại để trang phục truyền thống vẫn là trung tâm.',
         'imageSource' => $fallbackFrames === [] ? 'gemini-webapi' : 'gemini-webapi-partial-fallback',
         'culturalScore' => null,
         'culturalScoreSource' => 'not-assessed',
         'imageUrl' => $frames[0]['url'] ?? null,
+        'planning' => $plan,
+        'workflowVersion' => $plan !== null ? 'studio-group-v1' : 'legacy-frame-plan',
         'lookbook' => ['aspectRatio' => $aspectRatio, 'items' => $frames],
     ];
     if (in_array($output['generationType'], ['video', 'both'], true)) {

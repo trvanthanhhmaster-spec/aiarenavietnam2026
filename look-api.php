@@ -4,6 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
+require __DIR__ . '/src/Support/StudioPlan.php';
 
 use App\Infrastructure\SupabaseAdminClient;
 use App\Support\Env;
@@ -82,6 +83,11 @@ try {
         return $value !== '' && preg_match('/^[a-z0-9-]{1,80}$/', $value) ? $value : null;
     };
     $occasion = $slug($selection['event'] ?? null);
+    if (isset($selection['planning'])) {
+        // Only normalized metadata, never source face pixels, is saved in the plan.
+        try { $selection['planning'] = \App\Support\StudioPlan::normalize($selection['planning']); }
+        catch (InvalidArgumentException $error) { $respond(['error' => $error->getMessage()], 422); }
+    }
     $garment = $slug($selection['garment'] ?? null);
     if ($occasion === null || $garment === null) {
         $respond(['error' => 'Look cần có dịp mặc và Việt phục hợp lệ.'], 422);

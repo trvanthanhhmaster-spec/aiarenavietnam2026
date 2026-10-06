@@ -1,6 +1,6 @@
 # V-Remix - Kế hoạch Audition đã định hình lại
 
-Cập nhật: 2026-09-27
+Cập nhật: 2026-10-07
 
 Tài liệu này là nguồn ưu tiên cho giai đoạn Audition. Kế hoạch nền tảng dài hạn
 vẫn được giữ lại, nhưng không được làm chậm hoặc làm mỏng luồng demo cốt lõi.
@@ -19,18 +19,19 @@ Thông điệp demo:
 
 1. Người xem vào Tầng 1 và thấy trải nghiệm cinematic V-Remix.
 2. Bấm "Khám phá ngay" để vào Studio.
-3. Chọn bối cảnh, cổ phục, phối sắc và phụ kiện.
-4. Có thể tải ảnh đại diện lên, nhưng không bắt buộc.
-5. Bấm "Tạo bản phối".
+3. Chọn dịp mặc, số người và thời gian (có thể chưa xác định).
+4. Chọn trang phục đồng điệu hoặc riêng từng người. Phụ kiện, phong cách,
+   số đo và ảnh mặt có đồng ý là tùy chọn, không chặn tạo ảnh.
+5. Kiểm tra tổng kết rồi bấm "Tạo ảnh bản phối".
 6. Nhận một kết quả ổn định gồm:
    - Ảnh AI preview 16:9 ở 1080p; có thể xuất lookbook 9:16 cho Story.
-   - Các phương án lookbook để so sánh.
+   - Một ảnh đầu tiên, đúng nhóm đã xác nhận. Tạo lại là hành động riêng.
    - Story Card.
    - Cultural Guardrail.
    - Mẹo Gen Z.
    - Nút tải kết quả.
-7. Nếu video sẵn sàng, hiển thị video như một lớp nâng cao. Nếu video chậm hoặc
-   lỗi, lookbook ảnh vẫn phải hoàn tất và demo vẫn tiếp tục.
+7. Video được quản lý riêng như lớp nâng cao, không tự gọi khi người dùng
+   tạo ảnh nhóm và không chặn kết quả ảnh.
 
 Mục tiêu là hoàn thành hành trình này trong khoảng 90 giây khi thuyết trình.
 
@@ -41,7 +42,7 @@ Mục tiêu là hoàn thành hành trình này trong khoảng 90 giây khi thuy�
 - Bảo toàn visual, media transition và CTA của Tầng 1.
 - Studio desktop và mobile đọc catalog thật từ Supabase.
 - Gemini tạo prompt có version, Story Card, Guardrail, mẹo phối và Cultural Score 0–100.
-- Tạo ít nhất một ảnh kết quả 16:9; tối đa năm frame A–E nếu provider cho phép.
+- Mỗi lần xác nhận tạo một ảnh bản phối đúng số người và trang phục đã chọn; không tự tạo bộ frame A–E trong Studio.
 - Lưu asset vào Supabase Storage và trả signed URL.
 - Generation job có `queued`, `processing`, `completed`, `failed`.
 - Không tạo job trùng khi người dùng reload hoặc bấm lại.
@@ -118,6 +119,11 @@ Quyết định provider:
 
 ## 6. Thứ tự phát triển mới
 
+Các trạng thái milestone dưới đây ghi nhận kiểm thử trước lần đổi luồng nhóm.
+Ngày 07/10, luồng mới đã qua unit/contract test, browser QA với provider giả
+và kiểm tra lỗi đầu vào ở endpoint thật. Chất lượng ảnh nhóm từ Gemini thật
+và độ giống khuôn mặt chưa được kiểm thử lại trong lần cập nhật này.
+
 ### Milestone A - Khóa luồng demo
 
 - Lưu `jobId` và input đang chạy trong browser storage.
@@ -170,9 +176,12 @@ browser có fallback về ảnh nếu video media không tải được.
 
 Thông số tạo ảnh không còn xuất hiện như lựa chọn của người dùng trong Studio.
 Khung ảnh, độ phân giải, chế độ và đầu ra được Admin quản lý; preset demo hiện
-là `16:9`, `1080p`. Khi người dùng chọn đủ dịp, trang phục và phong cách,
-Studio tự tạo preview, hiển thị ảnh ngay trên canvas và giữ chi tiết job ở một
-panel nội tuyến. Catalog mua/thuê và địa điểm chụp thật được quản lý bằng
+là `16:9`, `1080p`. Luồng Studio đã chuyển thành **Dịp mặc → Số người →
+Thời gian → Trang phục → Xác nhận & tạo ảnh**. Màn cuối là tổng kết, không phải
+bước khai thông tin thứ năm. Không gọi AI khi thay lựa chọn; chỉ tạo một ảnh
+khi người dùng xác nhận và hiển thị ngay trên canvas. Phong cách, phụ kiện,
+số đo và ảnh mặt có đồng ý là tùy chọn từng người. Dữ liệu job/Look dùng bản
+chụp lựa chọn đã xác nhận, không lấy từ controls đang thay đổi. Catalog mua/thuê và địa điểm chụp thật được quản lý bằng
 `studio_marketplace_listings` và `studio_locations`.
 
 Admin control room đã có tại `admin.php`: đăng nhập bằng tài khoản Supabase có

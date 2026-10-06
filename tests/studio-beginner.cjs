@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const Planner = require('../assets/js/studio-planner.js');
 
 const source = fs.readFileSync(path.join(__dirname, '../assets/js/studio.js'), 'utf8');
 function realFunction(name, nextName) {
@@ -24,6 +25,7 @@ const catalog = {
   styles: [{ slug: 'custom-style', label: 'Phong cách do admin thêm' }]
 };
 const context = {
+  Planner, planning: Planner.create(), media: { pause() {} },
   experience, catalog, nextHint: element(), progressSteps: [],
   state: { event: '', garment: '', style: '', garmentVariant: '' },
   lookup: (items, slug) => items.find(item => item.slug === slug) || {},
@@ -36,6 +38,9 @@ vm.runInContext('updateProgress();', context);
 assert.equal(experience.studioGuide.next, 'event');
 assert.equal(experience.studioGuide.ready, false);
 Object.assign(context.state, { event: 'custom-occasion', garment: 'custom-garment', style: 'custom-style', garmentVariant: 'custom-variant' });
+Planner.setCount(context.planning, 1);
+context.planning.period = Planner.period('unspecified');
+Planner.capture(context.planning, context.state);
 vm.runInContext("updateProgress('event');", context);
 assert.equal(experience.studioGuide.ready, true);
 assert.equal(experience.studioGuide.next, 'review');
@@ -44,13 +49,13 @@ assert.equal(events.at(-1).detail.changed, 'event');
 assert.equal(events.at(-1).type, 'studio:selection');
 context.state.style = '';
 vm.runInContext('updateProgress();', context);
-assert.equal(experience.studioGuide.next, 'style');
+assert.equal(experience.studioGuide.next, 'review', 'style is optional');
 
 const retry = element();
 Object.assign(context, {
   resultState: element(), resultProgress: element(), srStatus: element(), studioStatus: element(),
   previewGenerationStatus: element(), previewGenerationMessage: element(),
-  document: { getElementById: id => id === 'retryGeneration' ? retry : null }
+  document: { getElementById: id => id === 'retryGeneration' ? retry : element() }
 });
 vm.runInContext(realFunction('setResultState', 'function showResult'), context);
 vm.runInContext("setResultState('processing', 'Đang tạo ảnh');", context);
@@ -74,25 +79,22 @@ for (const error of ['Gemini Web bridge HTTP 502', 'Failed to fetch', 'Supabase 
 assert.equal(vm.runInContext("humanizeGenerationError('Ảnh vượt quá 8 MB. Hãy chọn ảnh nhỏ hơn 8 MB.');", context), 'Ảnh vượt quá 8 MB. Hãy chọn ảnh nhỏ hơn 8 MB.');
 
 const pendingTimers = [];
-let canceledTimers = 0;
 Object.assign(context, {
-  imageInput: { files: [] }, generationPending: false, autoGenerateTimer: null,
+  imageInput: { files: [] }, generationPending: false,
   saveLookButton: element(), compareLooksButton: element(), resultDownload: element(),
-  pendingAutoFingerprint: '', queuedAutoGeneration: false, selectionFingerprint: () => 'selection',
+  currentLookbookItems: [], syncSubmitButton() {},
   setStatus: message => { context.lastStatus = message; },
-  window: { clearTimeout() { canceledTimers++; }, setTimeout(fn, ms) { pendingTimers.push({ fn, ms }); return pendingTimers.length; } }
+  window: { setTimeout(fn, ms) { pendingTimers.push({ fn, ms }); return pendingTimers.length; } }
 });
-vm.runInContext(realFunction('scheduleAutoGeneration', 'async function generateLook'), context);
-vm.runInContext('scheduleAutoGeneration();', context);
-assert.equal(pendingTimers.length, 0, 'incomplete selections do not call AI');
+vm.runInContext(realFunction('selectionChanged', 'async function generateLook'), context);
+vm.runInContext('selectionChanged();', context);
+assert.equal(pendingTimers.length, 0, 'selections never schedule AI');
 context.state.style = 'custom-style';
-vm.runInContext('scheduleAutoGeneration(); scheduleAutoGeneration();', context);
-assert.equal(pendingTimers.length, 2);
-assert.equal(canceledTimers, 1, 'rapid choices replace the debounce timer');
+vm.runInContext('selectionChanged(); selectionChanged();', context);
+assert.equal(pendingTimers.length, 0);
 context.generationPending = true;
-vm.runInContext('scheduleAutoGeneration();', context);
-assert.equal(pendingTimers.length, 2, 'pending jobs do not create parallel provider calls');
-assert.equal(context.queuedAutoGeneration, true);
+vm.runInContext('selectionChanged();', context);
+assert.equal(pendingTimers.length, 0, 'pending jobs do not queue another provider call');
 
 assert.ok(!source.includes('updateSummary(kind);\n  }'), 'restoration must not reference an undefined changed kind');
-console.log('Studio beginner: real catalog snapshot, missing steps, job states, retry, friendly errors and auto-generation debounce passed without provider calls.');
+console.log('Studio beginner: real 4-step snapshot, optional style, job states, retry, friendly errors and no automatic generation passed without provider calls.');
