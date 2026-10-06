@@ -3,6 +3,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+const navigation = fs.readFileSync(path.join(__dirname, '../includes/studio/workspace-navigation.php'), 'utf8');
+assert.equal((navigation.match(/class="workspace-wordmark"/g) || []).length, 1, 'Studio keeps one primary wordmark');
+assert.equal((navigation.match(/brand-wordmark\.php/g) || []).length, 1, 'wordmark uses the shared brand component');
+assert.ok(!navigation.includes('workspace-logo'), 'sidebar must not duplicate the brand');
+assert.ok(navigation.includes('workspace-sidebar__home'), 'home navigation remains available');
+
 function element(classes = []) {
   const set = new Set(classes);
   const listeners = {};

@@ -1,7 +1,6 @@
 <?php declare(strict_types=1); ?>
 <a class="studio-skip" href="#studioStage">Đi tới không gian phối</a>
 <nav class="workspace-sidebar" aria-label="Công cụ Studio">
-    <a class="workspace-logo" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>"><?= $escape($site['brand_mark'] ?? '') ?><small><?= $escape($site['brand_name'] ?? '') ?></small></a>
     <div class="workspace-sidebar__tools">
         <button type="button" class="is-active" data-workspace-panel="catalog" aria-label="Phối đồ" title="Phối đồ" aria-pressed="true"><?= $studioIcon('sliders-horizontal') ?></button>
         <button type="button" data-workspace-mode="garment" aria-label="Chọn trang phục" title="Chọn trang phục"><?= $studioIcon('shirt') ?></button>
