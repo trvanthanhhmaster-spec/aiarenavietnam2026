@@ -147,7 +147,9 @@
       showPanel('catalog', true);
       visitGuide(guide.next);
     }
-    var guideButton = event.target.closest('[data-guide-step]');
+    // The workspace also has data-guide-step for layout/state. Only actual
+    // navigation buttons should change steps; form clicks must keep focus.
+    var guideButton = event.target.closest('button[data-guide-step]');
     if (guideButton) visitGuide(guideButton.dataset.guideStep);
     var viewPreview = event.target.closest('[data-workspace-preview]');
     if (viewPreview) {

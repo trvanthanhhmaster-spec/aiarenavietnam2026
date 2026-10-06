@@ -580,7 +580,7 @@
   function renderVariantPanels() {
     var garmentVariants = variantsForGarment();
     if (garmentVariantSection && garmentVariantGrid) {
-      garmentVariantSection.hidden = !state.garment || garmentVariants.length === 0;
+      garmentVariantSection.hidden = experience.dataset.guideStep !== 'garment' || !state.garment || garmentVariants.length < 2;
       garmentVariantGrid.innerHTML = variantCards(garmentVariants, 'garmentVariant', [state.garmentVariant]);
       if (garmentVariantCount) garmentVariantCount.textContent = garmentVariants.length + ' mẫu';
       bindCatalogImageFallback(garmentVariantGrid);

@@ -103,7 +103,16 @@ function selection(choices, changed = '', variantCount = 0) {
 }
 function visit(step) {
   const button = element(); button.dataset.guideStep = step;
-  ids.studioExperience.emit('click', { target: { closest: selector => selector === '[data-guide-step]' ? button : null } });
+  ids.studioExperience.emit('click', { target: { closest: selector => selector === 'button[data-guide-step]' ? button : null } });
+}
+// A real input's closest generic data-guide-step is the workspace itself.
+// Clicking it must not navigate or steal focus from typing/date/file controls.
+for (const field of ['occasionSearch', 'occasionNote', 'groupCount', 'periodStart', 'periodEnd', 'personName', 'personHeight', 'personWeight', 'personFaceConsent', 'personFace']) {
+  garmentTrigger.focused = false;
+  const step = ids.studioExperience.dataset.guideStep;
+  ids.studioExperience.emit('click', { target: { id: field, closest: selector => selector === '[data-guide-step]' ? ids.studioExperience : null } });
+  assert.equal(garmentTrigger.focused, false, field + ' must retain focus instead of focusing the step heading');
+  assert.equal(ids.studioExperience.dataset.guideStep, step);
 }
 assert.deepEqual(guideCards.map(card => card.hidden), [false, true, true, true], 'initial view asks only one question');
 assert.equal(ids.guideCustomize.hidden, true);
