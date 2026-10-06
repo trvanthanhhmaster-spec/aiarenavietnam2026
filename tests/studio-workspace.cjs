@@ -10,6 +10,7 @@ assert.ok(!navigation.includes('workspace-wordmark'), 'header must not duplicate
 assert.ok(navigation.includes('workspace-sidebar__home'), 'home navigation remains available');
 assert.ok(navigation.includes('if ($authUser !== null)'), 'avatar is only rendered for authenticated users');
 assert.ok(navigation.includes('<strong>Đăng nhập</strong>'), 'guests see a clear login label at every breakpoint');
+assert.equal((navigation.match(/data-workspace-tooltip/g) || []).length, 6, 'all sidebar icons have named hover/focus hints');
 
 function element(classes = []) {
   const set = new Set(classes);

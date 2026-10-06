@@ -22,6 +22,7 @@ $mode = ($_GET['mode'] ?? '') === 'signup' ? 'signup' : 'login';
 $message = '';
 $error = '';
 $retryAfterSeconds = 0;
+$action = '';
 $formValues = [
     'display_name' => '',
     'email' => '',
@@ -73,6 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . ($embedded ? $next : 'auth.php?next=' . rawurlencode($next)));
             exit;
         }
+        if ($action === 'update-profile') {
+            $auth->updateDisplayName($formValues['display_name']);
+            $message = 'Đã lưu tên hiển thị.';
+        }
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
         if (preg_match('/sau\s+(\d+)\s+giây/u', $error, $matches) === 1) {
@@ -85,7 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $user = $auth->user();
-$googleEnabled = $auth->googleEnabled();
+$googleEnabled = $user === null && $auth->googleEnabled();
+$isAdmin = false;
+if ($user !== null) {
+    try {
+        $isAdmin = $auth->isAdmin();
+    } catch (Throwable $exception) {
+        error_log('[V-Remix] Account role check failed.');
+    }
+}
 $displayName = '';
 if ($user !== null) {
     $displayName = trim((string) ($user['user_metadata']['display_name'] ?? $user['user_metadata']['full_name'] ?? ''));
@@ -122,11 +135,30 @@ if ($user !== null) {
                 <a href="<?= $escape($next) ?>">Đóng ×</a>
             </div>
             <?php if ($user !== null): ?>
-                <div class="auth-account">
+                <div class="auth-account" data-account-name="<?= $escape($displayName !== '' ? $displayName : 'Tài khoản') ?>">
                     <p class="auth-kicker">Đã đăng nhập</p>
-                    <h2><?= $escape($displayName !== '' ? $displayName : 'Tài khoản V-Remix') ?></h2>
-                    <p><?= $escape((string) ($user['email'] ?? '')) ?></p>
-                    <a class="auth-button auth-button--primary" href="<?= $escape($next) ?>">Tiếp tục <span>↗</span></a>
+                    <h2>Thông tin tài khoản</h2>
+                    <?php if ($error !== ''): ?><p class="auth-alert auth-alert--error" role="alert"><?= $escape($error) ?></p><?php endif; ?>
+                    <?php if ($message !== ''): ?><p class="auth-alert" role="status"><?= $escape($message) ?></p><?php endif; ?>
+                    <dl class="auth-account-details">
+                        <div><dt>Email</dt><dd><?= $escape((string) ($user['email'] ?? '')) ?></dd></div>
+                        <div><dt>Trạng thái email</dt><dd><?= !empty($user['email_confirmed_at']) ? 'Đã xác nhận' : 'Chưa xác nhận' ?></dd></div>
+                        <div><dt>Quyền truy cập</dt><dd><?= $isAdmin ? 'Quản trị viên' : 'Thành viên' ?></dd></div>
+                    </dl>
+                    <form method="post" class="auth-form" data-auth-form>
+                        <?php if ($embedded): ?><input type="hidden" name="embed" value="1"><?php endif; ?>
+                        <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
+                        <input type="hidden" name="action" value="update-profile">
+                        <input type="hidden" name="next" value="<?= $escape($next) ?>">
+                        <label>Tên hiển thị
+                            <input type="text" name="display_name" value="<?= $escape($error !== '' && $action === 'update-profile' ? $formValues['display_name'] : $displayName) ?>" minlength="2" maxlength="80" autocomplete="name" required>
+                        </label>
+                        <button class="auth-button auth-button--primary" type="submit" data-auth-submit>Lưu thông tin</button>
+                    </form>
+                    <?php if ($isAdmin): ?>
+                        <a class="auth-button auth-account-admin" href="admin.php" <?= $embedded ? 'target="_top"' : '' ?>>Mở trang quản trị <span aria-hidden="true">↗</span></a>
+                    <?php endif; ?>
+                    <?php if (!$embedded): ?><a class="auth-button auth-button--text" href="<?= $escape($next) ?>">Quay lại Studio</a><?php endif; ?>
                     <form method="post">
                         <?php if ($embedded): ?><input type="hidden" name="embed" value="1"><?php endif; ?>
                         <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">

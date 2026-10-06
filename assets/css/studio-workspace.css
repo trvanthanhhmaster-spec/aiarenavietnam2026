@@ -48,6 +48,21 @@ body.studio-page {
 }
 .workspace-sidebar__home { margin-top: auto; background: rgb(255 255 255 / .7); }
 .workspace-sidebar__home:hover { background: #17171b; color: white; }
+[data-workspace-tooltip] { position: relative; }
+[data-workspace-tooltip]::after {
+  content: attr(aria-label); position: absolute; z-index: 1; left: calc(100% + 12px); top: 50%;
+  transform: translateY(-50%); padding: 10px 14px; border-radius: 10px;
+  background: #17171b; color: #fff; font: 500 12px/1.4 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap; box-shadow: 0 4px 16px rgb(23 23 27 / .12);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms;
+}
+[data-workspace-tooltip]:focus-visible::after { opacity: 1; visibility: visible; }
+@media (hover: hover) {
+  [data-workspace-tooltip]:hover::after { opacity: 1; visibility: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-workspace-tooltip]::after { transition: none; }
+}
 .studio-masthead {
   position: relative; top: auto; z-index: 40; display: flex; justify-content: space-between;
   height: 84px; min-height: 84px; padding: 12px 0; gap: 16px;

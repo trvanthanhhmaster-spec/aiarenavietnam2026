@@ -22,6 +22,11 @@ body.auth-page.auth-page--embedded { min-height: 0; background: #fff; color: #17
 .auth-page--embedded .auth-button { font-size: 14px; }
 .auth-page--embedded .auth-form { gap: 14px; }
 .auth-page--embedded .auth-legal { font-size: 10px; line-height: 1.6; }
+.auth-page--embedded .auth-account h2 { font-family: inherit; font-size: 20px; font-weight: 500; line-height: 1.3; letter-spacing: -.02em; margin-bottom: 20px; }
+.auth-account-details { display: grid; gap: 14px; margin: 0 0 24px; padding: 18px; border-radius: 16px; background: #f6f6f8; }
+.auth-account-details dt { margin-bottom: 4px; font-size: 11px; color: #64646f; }
+.auth-account-details dd { margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.auth-account-admin { margin-top: 16px; font-weight: 500; }
 
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--auth-paper); color: var(--auth-ink); }

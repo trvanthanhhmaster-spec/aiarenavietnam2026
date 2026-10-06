@@ -119,6 +119,14 @@ Gợi ý mua/thuê và địa điểm chụp thật được đọc từ
 hai catalog này; mỗi bản ghi có nguồn, trạng thái hoạt động và thời điểm xác
 minh để Studio không phải hardcode brand hoặc địa điểm.
 
+Trong Studio, nút Đăng nhập/Tài khoản mở hộp thoại tại chỗ. Khách có thể
+chuyển giữa đăng nhập và đăng ký; thành viên xem email, trạng thái xác nhận,
+sửa tên hiển thị và đăng xuất. Chỉ tài khoản có role `admin` được thấy lối
+vào trang quản trị. Tên hiển thị cập nhật bằng access token của chính người
+dùng; không sửa role, email hoặc mật khẩu. Icon thanh bên có nhãn khi hover
+và focus bàn phím. Kiểm thử offline: `node tests/account-profile.cjs` và
+`node tests/studio-auth-modal.cjs` (không ghi vào Supabase thật).
+
 Mở `auth.php` để đăng ký/đăng nhập bằng email hoặc Google OAuth. Phiên đăng
 nhập dùng cookie HttpOnly và được dùng chung giữa Studio, thư viện Look và
 Admin. Google cần được bật trong Supabase Authentication > Providers, kèm

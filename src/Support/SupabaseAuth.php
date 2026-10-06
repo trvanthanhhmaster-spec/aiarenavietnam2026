@@ -139,6 +139,27 @@ final class SupabaseAuth
         session_destroy();
     }
 
+    /** Update only the caller's display name, never roles or credentials. */
+    public function updateDisplayName(string $displayName): array
+    {
+        $displayName = trim($displayName);
+        if (mb_strlen($displayName) < 2 || mb_strlen($displayName) > 80) {
+            throw new RuntimeException('Tên hiển thị cần từ 2 đến 80 ký tự.');
+        }
+        $token = $this->accessToken();
+        if ($token === '') {
+            throw new RuntimeException('Hãy đăng nhập trước khi cập nhật thông tin tài khoản.');
+        }
+        $user = $this->authRequest('PUT', '/auth/v1/user', [
+            'data' => ['display_name' => $displayName],
+        ], $token);
+        if (empty($user['id']) || $user['id'] !== ($_SESSION[self::SESSION_USER]['id'] ?? null)) {
+            throw new RuntimeException('Không thể cập nhật thông tin tài khoản.');
+        }
+        $_SESSION[self::SESSION_USER] = $user;
+        return $user;
+    }
+
     public function csrfToken(): string
     {
         $this->boot();

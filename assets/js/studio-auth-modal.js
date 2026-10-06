@@ -25,6 +25,16 @@
     try {
       const url = new URL(frame.contentWindow.location.href);
       if (url.pathname.endsWith('/studio.php')) { window.location.reload(); return; }
+      const account = frame.contentDocument.querySelector('[data-account-name]');
+      if (account) {
+        const name = account.dataset.accountName;
+        const avatar = trigger.querySelector('span');
+        const label = trigger.querySelector('small');
+        if (avatar) avatar.textContent = Array.from(name)[0].toLocaleUpperCase('vi');
+        if (label) label.textContent = name;
+        trigger.setAttribute('aria-label', 'Tài khoản ' + name);
+        trigger.setAttribute('title', name);
+      }
       const resize = () => { frame.style.height = Math.ceil(frame.contentDocument.body.getBoundingClientRect().height) + 'px'; };
       resize();
       if (frame.contentWindow.ResizeObserver) {
