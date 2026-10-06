@@ -54,6 +54,10 @@
   var lastAttempt = null;   // for Retry
   var cleanups = [];
   var loadingRevealTimer = null;
+  var transitionWarmupStarted = false;
+  var waitingLabelTimer = window.setTimeout(function () {
+    if (!stage.classList.contains('media-ready')) stage.classList.add('media-waiting');
+  }, 800);
 
   function updateStudioLink() {
     if (!exploreStudio) return;
@@ -374,6 +378,30 @@
   // The base scene is this clip's opening frame, held paused at 0 until the
   // first transition — no separate still asset is loaded.
   var BASE_CLIP = branchKeys.find(function (key) { return BRANCHES[key].isBase; }) || branchKeys[0];
+  function warmTransitionClips() {
+    if (transitionWarmupStarted) return;
+    transitionWarmupStarted = true;
+    var pending = [];
+    // Prepare the base branch's reverse first; remaining clips cannot delay
+    // the opening frame because they start only after it has been painted.
+    if (BASE_CLIP && video[BASE_CLIP]) pending.push(video[BASE_CLIP].reverse);
+    branchKeys.forEach(function (key) {
+      if (key !== BASE_CLIP) pending.push(video[key].forward, video[key].reverse);
+    });
+    pending.forEach(function (clip, index) {
+      window.setTimeout(function () {
+        if (clip.readyState >= 2 || clip.dataset.failed === '1') return;
+        clip.preload = 'auto';
+        clip.load();
+      }, index * 180);
+    });
+  }
+  function revealOpeningFrame() {
+    stage.classList.add('media-ready');
+    stage.classList.remove('media-waiting');
+    window.clearTimeout(waitingLabelTimer);
+    warmTransitionClips();
+  }
   function showBaseFrame() {
     if (visibleEl || !BASE_CLIP || !video[BASE_CLIP]) return;
     var v = video[BASE_CLIP].forward;
@@ -386,11 +414,13 @@
     if (LOADING_PREVIEW) {
       if (loadingRevealTimer !== null) return;
       loadingRevealTimer = window.setTimeout(function () {
-        stage.classList.add('media-ready');
+        revealOpeningFrame();
         loadingRevealTimer = null;
       }, LOADING_PREVIEW_DELAY);
     } else {
-      stage.classList.add('media-ready');
+      // Let the paused, decoded opening frame be composited before removing
+      // the white layer. No imposed loading duration for normal visits.
+      requestAnimationFrame(function () { requestAnimationFrame(revealOpeningFrame); });
     }
     playback = 'ready'; publish(); refreshEnabled();
   }
