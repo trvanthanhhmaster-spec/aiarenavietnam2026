@@ -46,6 +46,8 @@ body.studio-page {
   height: 84px; min-height: 84px; padding: 12px 0; gap: 16px;
   border: 0; background: none; box-shadow: none; backdrop-filter: none;
 }
+/* Keep the former wordmark's layout slot without rendering another logo. */
+.studio-masthead::before { content: ''; flex: 0 0 124px; }
 .workspace-logo { position: fixed; top: 18px; left: 12px; z-index: 46; display: block; width: 66px; height: 66px; border-radius: 12px; }
 .workspace-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .workspace-logo:focus-visible { outline: 2px solid var(--designer-accent); outline-offset: 4px; }
@@ -243,6 +245,7 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
   .studio-dock { top: auto; bottom: 16px; right: 16px; left: auto; width: min(480px,calc(100vw - 100px)); max-height: 70dvh; }
 }
 @media (max-width: 767px) {
+  .studio-masthead::before { display: none; }
   .studio-experience { padding: 0 12px 20px; }
   .workspace-sidebar { position: static; display: none; }
   .studio-masthead { height: 72px; min-height: 72px; gap: 8px; }
