@@ -315,9 +315,26 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 
 /* Beginner flow: one question at a time, with edits always within reach. */
 .studio-experience [hidden] { display: none !important; }
-.studio-experience:not(.has-generated-output) .studio-preview {
+.studio-experience:not(.has-preview-variants) .studio-preview {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'canvas' 'status' 'advanced';
+}
+/* Output follows the image, not the height of the adjacent editing panel. */
+.studio-experience.has-generated-output .studio-preview {
+  height: auto;
+  align-self: start;
+  grid-template-rows: auto auto auto;
+}
+.studio-experience.has-generated-output .studio-plane {
+  width: min(100%, calc(70dvh * var(--studio-preview-ratio, 1.7777778)));
+  aspect-ratio: var(--studio-preview-ratio, 1.7777778);
+  justify-self: center;
+  align-self: start;
+  margin-inline: auto;
+  border: 0;
+}
+.studio-experience.has-generated-output .studio-frame {
+  min-height: 0;
 }
 .workspace-panel-header p, .guide-card-note { font-size: 13px; line-height: 1.65; }
 .guide-card-note { color: #64646f; margin: -3px 0 18px; }

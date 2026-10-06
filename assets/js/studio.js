@@ -1285,6 +1285,7 @@
     currentLookbookItems = items.slice(0, 5);
     if (frame && items.length) frame.classList.toggle('has-catalog-preview', output.imageSource === 'catalog-fallback');
     experience.classList.toggle('has-generated-output', items.length > 0);
+    experience.classList.toggle('has-preview-variants', items.length > 1);
     var outputDetails = document.getElementById('outputDetails');
     if (outputDetails) outputDetails.hidden = items.length === 0;
     var advancedOptions = document.getElementById('guideAdvanced');
@@ -1297,10 +1298,13 @@
       button.title = items.length ? 'Xem các ảnh đã tạo' : 'Chưa có ảnh đã tạo';
     });
     var outputAspect = output.lookbook && output.lookbook.aspectRatio || state.aspectRatio || '16:9';
-    if (frame) frame.style.aspectRatio = outputAspect.replace(':', ' / ');
+    var aspectParts = outputAspect.split(':').map(Number);
+    setPreviewAspect(aspectParts[0], aspectParts[1]);
     if (previewImage && items[0]) {
       previewImage.alt = output.imageSource === 'catalog-fallback' ? 'Ảnh mẫu trang phục đã duyệt' : 'Ảnh bản phối của bạn';
       previewImage.onload = function () {
+        // Providers may return dimensions different from the requested preset.
+        setPreviewAspect(previewImage.naturalWidth, previewImage.naturalHeight);
         frame.classList.add('has-ai-preview', 'has-look');
         if (previewEmpty) previewEmpty.classList.add('is-ready');
       };
@@ -1428,6 +1432,12 @@
       button.classList.toggle('is-active', buttonIndex === Number(index));
     });
     setStatus('Đang xem ' + (Number(index) === 0 ? 'bản gốc' : 'phương án ' + Number(index)) + '.');
+  }
+
+  function setPreviewAspect(width, height) {
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
+    var plane = document.getElementById('studioPlane');
+    if (plane) plane.style.setProperty('--studio-preview-ratio', String(width / height));
   }
 
   function loadCanvasImage(url) {
