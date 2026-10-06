@@ -29,6 +29,9 @@ hình mở đầu đã được hiển thị. Giao diện cinematic được gi�
 sẵn sàng. Dùng `?loader=preview` để xem trạng thái chờ trong 2,6 giây khi sửa
 thiết kế; lượt truy cập bình thường không có thời gian chờ cố định.
 Kiểm tra hồi quy bằng `node tests/home-loading.cjs`.
+Trên mobile, bảng chọn dùng nền trong tối nhẹ, không có backdrop blur hay bóng
+đổ ra ngoài khung để tránh mảng nhòe khi ghép với video. Desktop vẫn giữ hiệu
+ứng kính. Kiểm tra contract CSS bằng `node tests/mobile-controller.cjs`.
 
 ## Kết nối Supabase
 
