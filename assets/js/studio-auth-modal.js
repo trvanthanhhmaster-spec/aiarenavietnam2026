@@ -1,15 +1,19 @@
 (() => {
   'use strict';
-  const trigger = document.querySelector('.workspace-profile--guest');
+  const trigger = document.querySelector('.workspace-profile');
   const dialog = document.getElementById('studioAuthDialog');
   const frame = document.getElementById('studioAuthFrame');
   if (!trigger || !dialog || typeof dialog.showModal !== 'function') return;
   trigger.setAttribute('aria-haspopup', 'dialog');
+  const open = () => {
+    if (!frame.getAttribute('src')) frame.src = frame.dataset.src;
+    if (!dialog.open) dialog.showModal();
+  };
   trigger.addEventListener('click', event => {
     event.preventDefault();
-    if (!frame.getAttribute('src')) frame.src = frame.dataset.src;
-    dialog.showModal();
+    open();
   });
+  document.addEventListener('vremix:open-auth', open);
   document.getElementById('studioAuthClose').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => {
     const bounds = dialog.getBoundingClientRect();

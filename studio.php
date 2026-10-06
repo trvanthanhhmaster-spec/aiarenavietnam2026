@@ -454,8 +454,8 @@ require __DIR__ . '/includes/components/studio-icon.php';
     </main>
     <dialog class="studio-auth-dialog" id="studioAuthDialog" aria-labelledby="studioAuthTitle">
         <button type="button" class="studio-auth-close" aria-label="Đóng đăng nhập" id="studioAuthClose">×</button>
-        <h2 id="studioAuthTitle">Đăng nhập hoặc đăng ký</h2>
-        <p>Lưu bản phối và giữ những dáng Việt của riêng bạn.</p>
+        <h2 id="studioAuthTitle"><?= $authUser !== null ? 'Tài khoản của bạn' : 'Đăng nhập hoặc đăng ký' ?></h2>
+        <p><?= $authUser !== null ? 'Quản lý phiên đăng nhập V-Remix.' : 'Lưu bản phối và giữ những dáng Việt của riêng bạn.' ?></p>
         <iframe id="studioAuthFrame" title="Đăng nhập V-Remix" data-src="<?= $escape($studioData['auth']['loginUrl'] . '&embed=1') ?>"></iframe>
     </dialog>
     <script>

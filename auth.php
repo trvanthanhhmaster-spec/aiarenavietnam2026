@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if ($action === 'logout') {
             $auth->logout();
-            header('Location: auth.php?next=' . rawurlencode($next));
+            header('Location: ' . ($embedded ? $next : 'auth.php?next=' . rawurlencode($next)));
             exit;
         }
     } catch (Throwable $exception) {
@@ -128,6 +128,7 @@ if ($user !== null) {
                     <p><?= $escape((string) ($user['email'] ?? '')) ?></p>
                     <a class="auth-button auth-button--primary" href="<?= $escape($next) ?>">Tiếp tục <span>↗</span></a>
                     <form method="post">
+                        <?php if ($embedded): ?><input type="hidden" name="embed" value="1"><?php endif; ?>
                         <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
                         <input type="hidden" name="action" value="logout">
                         <input type="hidden" name="next" value="<?= $escape($next) ?>">

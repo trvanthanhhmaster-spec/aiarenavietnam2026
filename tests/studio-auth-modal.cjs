@@ -13,7 +13,8 @@ dialog.getBoundingClientRect = () => ({ left: 20, top: 20, right: 400, bottom: 6
 const frame = node();
 frame.dataset = { src: 'auth.php?next=studio.php&embed=1' };
 const close = node();
-const document = { querySelector: () => trigger, getElementById: id => ({ studioAuthDialog: dialog, studioAuthFrame: frame, studioAuthClose: close })[id] };
+const documentEvents = {};
+const document = { querySelector: selector => { assert.equal(selector, '.workspace-profile'); return trigger; }, addEventListener: (name, callback) => { documentEvents[name] = callback; }, getElementById: id => ({ studioAuthDialog: dialog, studioAuthFrame: frame, studioAuthClose: close })[id] };
 vm.runInNewContext(fs.readFileSync('assets/js/studio-auth-modal.js', 'utf8'), { document, window: {}, URL });
 let prevented = false;
 trigger.events.click({ preventDefault() { prevented = true; } });
@@ -22,6 +23,8 @@ assert.equal(dialog.open, true);
 assert.equal(frame.src, frame.dataset.src);
 close.events.click();
 assert.equal(dialog.open, false);
+documentEvents['vremix:open-auth']();
+assert.equal(dialog.open, true, 'save-look login requirement opens the same modal');
 assert.equal(trigger.focused, true);
 trigger.events.click({ preventDefault() {} });
 dialog.events.click({ target: dialog, clientX: 0, clientY: 0 });

@@ -1593,6 +1593,11 @@
   async function saveCurrentLook() {
     if (!catalog.lookEndpoint || currentLookbookItems.length === 0) return;
     if (!catalog.auth || !catalog.auth.authenticated) {
+      var authDialog = document.getElementById('studioAuthDialog');
+      if (authDialog && typeof authDialog.showModal === 'function') {
+        document.dispatchEvent(new Event('vremix:open-auth'));
+        return;
+      }
       window.location.href = catalog.auth && catalog.auth.loginUrl
         ? catalog.auth.loginUrl
         : 'auth.php?next=studio.php';
