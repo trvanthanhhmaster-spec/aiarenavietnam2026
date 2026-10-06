@@ -120,7 +120,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <p class="studio-intro__note" id="projectContext">Chỉ cần chọn dịp mặc. V-Remix sẽ gợi ý và tạo ảnh cho bạn.</p>
                 </div>
             </div>
-            <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối">
+            <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối" hidden>
                 <button type="button" class="studio-start-card" id="workspaceUpload">
                     <span class="studio-start-card__icon"><?= $studioIcon('upload') ?></span>
                     <span><strong>Thêm ảnh của bạn</strong><small>Không bắt buộc · tối đa 8 MB</small></span>
