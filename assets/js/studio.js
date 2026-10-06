@@ -607,7 +607,13 @@
     syncVariantSelections();
     if (state.openMode) renderDockContent(state.openMode);
     renderCatalogPanels();
-    updateSummary();
+    updateSummary(kind);
+    // Catalog rendering replaces its buttons. Keep a keyboard user's place
+    // when the guide stays on the same question (e.g. choosing a child sample).
+    var visibleChoice = Array.from(experience.querySelectorAll('[data-catalog-kind]')).find(function (button) {
+      return button.dataset.catalogKind === kind && button.dataset.optionValue === value && button.offsetParent !== null;
+    });
+    if (visibleChoice) visibleChoice.focus({ preventScroll: true });
     var updatedLabel = kind === 'garmentVariant'
       ? 'mẫu trang phục'
       : kind === 'accessoryVariant' ? 'mẫu phụ kiện' : modeById(kind).title.toLowerCase();
@@ -615,7 +621,7 @@
     scheduleAutoGeneration();
   }
 
-  function updateSummary() {
+  function updateSummary(changedKind) {
     var event = lookup(catalog.events, state.event);
     var garment = lookup(catalog.garments, state.garment);
     var garmentVariant = lookup(catalog.garmentVariants, state.garmentVariant);
@@ -630,7 +636,7 @@
     var selectedSummary = [
       event.label,
       garment.name,
-      garmentVariant.name,
+      garmentVariant.name !== garment.name ? garmentVariant.name : '',
       color.label,
       pattern.label,
       style.label,
@@ -666,14 +672,14 @@
       var preset = event.preset || {};
       projectContext.textContent = state.event
         ? [preset.location, preset.season, preset.weather, garment.name].filter(Boolean).join(' · ')
-        : 'Chọn một dịp mặc. Cùng tìm bản phối dành cho bạn.';
+        : 'Chỉ cần chọn dịp mặc. V-Remix sẽ gợi ý và tạo ảnh cho bạn.';
     }
     updatePassport();
     updateRecommendations();
-    updateProgress();
+    updateProgress(changedKind);
   }
 
-  function updateProgress() {
+  function updateProgress(changedKind) {
     var required = ['event', 'garment', 'style'];
     var labels = { event: 'dịp bạn sẽ mặc', garment: 'dáng Việt phục bạn thích', style: 'phong cách bạn muốn' };
     var firstMissing = required.find(function (key) { return !state[key]; });
@@ -683,10 +689,25 @@
       step.classList.toggle('is-current', key === firstMissing || (!firstMissing && key === 'style'));
       step.setAttribute('aria-current', key === firstMissing ? 'step' : 'false');
     });
-    if (!nextHint) return;
-    nextHint.textContent = firstMissing
+    if (nextHint) nextHint.textContent = firstMissing
       ? 'Tiếp theo: chọn ' + labels[firstMissing] + '.'
-      : 'Bạn đã sẵn sàng. Các tuỳ chỉnh thêm có thể bỏ qua.';
+      : 'Đã đủ lựa chọn. Ảnh tự tạo, không cần bấm thêm.';
+    // One snapshot from the real selection state drives the beginner guide,
+    // including database presets and restored jobs. No duplicate catalog state.
+    var guide = {
+      next: firstMissing || 'review',
+      ready: !firstMissing,
+      changed: changedKind || '',
+      choices: { event: state.event, garment: state.garment, style: state.style },
+      labels: {
+        event: lookup(catalog.events, state.event).label || '',
+        garment: lookup(catalog.garmentVariants, state.garmentVariant).name || lookup(catalog.garments, state.garment).name || '',
+        style: lookup(catalog.styles, state.style).label || ''
+      },
+      variantCount: variantsForGarment().length
+    };
+    experience.studioGuide = guide;
+    experience.dispatchEvent(new CustomEvent('studio:selection', { detail: guide }));
   }
 
   function updatePassport() {
@@ -883,7 +904,7 @@
 
     var reveal = function () {
       frame.classList.add('is-ready');
-      if (!generationPending) setStatus('Studio đã sẵn sàng.');
+      if (!generationPending && !state.event) setStatus('Chọn một dịp mặc để bắt đầu.');
     };
     media.addEventListener('loadeddata', reveal, { once: true });
     media.addEventListener('canplay', reveal, { once: true });
@@ -904,6 +925,13 @@
     var file = imageInput.files && imageInput.files[0];
     if (!file) {
       uploadName.textContent = 'Tuỳ chọn';
+      setStatus('Đã bỏ ảnh của bạn. Bạn vẫn có thể phối đồ không cần ảnh.');
+      scheduleAutoGeneration();
+      return;
+    }
+    if (!/^(image\/jpeg|image\/png|image\/webp)$/.test(file.type)) {
+      imageInput.value = '';
+      setStatus('Hãy chọn ảnh JPG, PNG hoặc WebP.');
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -913,7 +941,7 @@
       return;
     }
     uploadName.textContent = file.name;
-    setStatus('Đã thêm ảnh đại diện.');
+    setStatus('Đã thêm ảnh của bạn để làm tham khảo cho bản phối.');
     scheduleAutoGeneration();
   });
 
@@ -935,6 +963,13 @@
 
   function scheduleAutoGeneration() {
     if (!state.event || !state.garment || !state.style) return;
+    // Do not save/download the preceding image with newly changed metadata
+    // during the debounce window before the next job actually starts.
+    if (saveLookButton) saveLookButton.disabled = true;
+    if (compareLooksButton) compareLooksButton.disabled = true;
+    resultDownload.hidden = true;
+    var retry = document.getElementById('retryGeneration');
+    if (retry) retry.hidden = true;
     pendingAutoFingerprint = selectionFingerprint();
     if (autoGenerateTimer) window.clearTimeout(autoGenerateTimer);
     if (generationPending) {
@@ -1079,7 +1114,7 @@
       var message = humanizeGenerationError(error && error.message
         ? error.message
         : 'Không thể hoàn thành bản phối.');
-      setResultState('failed', message + ' Bản xem trước hiện tại vẫn được giữ; hãy đổi một lựa chọn để thử lại.');
+      setResultState('failed', message + ' Lựa chọn của bạn vẫn được giữ. Bấm “Thử tạo lại” khi muốn tiếp tục.');
       if (pendingAutoFingerprint && pendingAutoFingerprint !== requestFingerprint) {
         queuedAutoGeneration = false;
         scheduleAutoGeneration();
@@ -1113,7 +1148,7 @@
       var message = humanizeGenerationError(error && error.message
         ? error.message
         : 'Không thể tiếp tục bản phối.');
-      setResultState('failed', message + ' Bản xem trước hiện tại vẫn được giữ; hãy đổi một lựa chọn để thử lại.');
+      setResultState('failed', message + ' Lựa chọn của bạn vẫn được giữ. Bấm “Thử tạo lại” khi muốn tiếp tục.');
     } finally {
       generationPending = false;
       syncSubmitButton();
@@ -1132,7 +1167,10 @@
     if (/generation|edge function|unable to read|job did not|job vẫn|not configured/i.test(text)) {
       return 'Dịch vụ tạo bản phối đang bận. Bạn có thể thử lại sau ít phút.';
     }
-    return text;
+    if (/HTTP|Gemini|bridge|unauthenticated|expired|failed to fetch|network|timeout|Supabase|Veo|method not allowed|unexpected token|JSON/i.test(text)) {
+      return 'Chưa tạo được ảnh lúc này. Hãy thử lại sau ít phút; nếu vẫn lỗi, báo người quản trị.';
+    }
+    return /[à-ỹđ]/i.test(text) ? text : 'Chưa tạo được ảnh. Hãy thử lại sau ít phút.';
   }
 
   async function pollJob(activeJob, immediate) {
@@ -1220,21 +1258,36 @@
     resultImages.innerHTML = '';
     resultImages.hidden = items.length === 0;
     currentLookbookItems = items.slice(0, 5);
+    if (frame && items.length) frame.classList.toggle('has-catalog-preview', output.imageSource === 'catalog-fallback');
+    experience.classList.toggle('has-generated-output', items.length > 0);
+    var outputDetails = document.getElementById('outputDetails');
+    if (outputDetails) outputDetails.hidden = items.length === 0;
+    var advancedOptions = document.getElementById('guideAdvanced');
+    if (advancedOptions) advancedOptions.hidden = items.length === 0;
+    var gallery = document.getElementById('studioVariants');
+    if (gallery) gallery.hidden = items.length === 0;
+    if (addVariantButton) addVariantButton.hidden = items.length === 0;
+    experience.querySelectorAll('[data-workspace-variants]').forEach(function (button) {
+      button.disabled = items.length === 0;
+      button.title = items.length ? 'Xem các ảnh đã tạo' : 'Chưa có ảnh đã tạo';
+    });
     var outputAspect = output.lookbook && output.lookbook.aspectRatio || state.aspectRatio || '16:9';
     if (frame) frame.style.aspectRatio = outputAspect.replace(':', ' / ');
     if (previewImage && items[0]) {
-      previewImage.src = items[0].url;
-      previewImage.hidden = false;
+      previewImage.alt = output.imageSource === 'catalog-fallback' ? 'Ảnh mẫu trang phục đã duyệt' : 'Ảnh bản phối của bạn';
       previewImage.onload = function () {
         frame.classList.add('has-ai-preview', 'has-look');
         if (previewEmpty) previewEmpty.classList.add('is-ready');
       };
+      previewImage.src = items[0].url;
+      previewImage.hidden = false;
     }
     resultVisual.style.aspectRatio = outputAspect.replace(':', ' / ');
     resultVisual.classList.toggle('is-landscape', outputAspect === '16:9');
     resultVisual.classList.toggle('has-images', items.length > 0);
     var videos = Array.isArray(output.videos) ? output.videos.filter(function (item) { return item && item.url; }) : [];
     var video = output.video && output.video.url ? output.video : (videos[0] || null);
+    if (outputDetails && video) outputDetails.hidden = false;
     currentVideo = video;
     resultVideo.hidden = !video;
     resultVisual.classList.toggle('has-video', Boolean(video));
@@ -1248,7 +1301,7 @@
         resultImages.hidden = items.length === 0;
         if (items[0]) {
           resultDownload.href = items[0].url;
-          resultDownload.textContent = 'Tải lookbook ' + outputAspect + ' ' + String.fromCharCode(8595);
+          resultDownload.textContent = 'Tải ảnh ' + String.fromCharCode(8595);
           resultDownload.hidden = false;
         }
         setResultState('completed', 'Lookbook đã sẵn sàng; trình duyệt không tải được video nên đang dùng ảnh.');
@@ -1298,7 +1351,7 @@
       resultDownload.textContent = 'Tải video MP4 ' + String.fromCharCode(8595);
     } else if (items[0]) {
       resultDownload.href = items[0].url;
-      resultDownload.textContent = 'Tải lookbook ' + outputAspect + ' ' + String.fromCharCode(8595);
+      resultDownload.textContent = 'Tải ảnh ' + String.fromCharCode(8595);
     }
     if (saveLookButton) saveLookButton.disabled = items.length === 0;
     if (compareLooksButton) compareLooksButton.disabled = items.length < 2;
@@ -1477,6 +1530,9 @@
     resultState.textContent = visibleStates[value] || value;
     resultProgress.textContent = message;
     experience.setAttribute('aria-busy', String(value === 'queued' || value === 'processing'));
+    experience.dataset.generationState = value;
+    var retry = document.getElementById('retryGeneration');
+    if (retry) retry.hidden = value !== 'failed';
     srStatus.textContent = message;
     studioStatus.textContent = message;
     if (previewGenerationStatus && previewGenerationMessage) {
@@ -1503,17 +1559,24 @@
     resultPlaceholderVisual.hidden = false;
     resultVisualLabel.hidden = false;
     resultDownload.hidden = true;
+    if (saveLookButton) saveLookButton.disabled = true;
+    if (compareLooksButton) compareLooksButton.disabled = true;
     syncSubmitButton();
-    if (resultClose && resultClose.offsetParent !== null) resultClose.focus();
+    // Automatic generation must not steal keyboard focus from a choice.
   }
 
   function hideResult() {
-    result.hidden = true;
+    var details = document.getElementById('outputDetails');
+    result.hidden = !details;
     document.body.style.overflow = '';
-    experience.setAttribute('aria-busy', 'false');
+    if (!generationPending) experience.setAttribute('aria-busy', 'false');
     syncSubmitButton();
-    if (previewGenerationStatus) previewGenerationStatus.hidden = true;
-    if (imageInput) imageInput.focus();
+    if (previewGenerationStatus && !generationPending) previewGenerationStatus.hidden = true;
+    if (details) {
+      details.open = false;
+      var detailsSummary = details.querySelector('summary');
+      if (detailsSummary) detailsSummary.focus();
+    }
   }
 
   function readImage(file) {
@@ -1611,20 +1674,30 @@
     openMode('accessory');
     setStatus('Chọn một thay đổi nhỏ để tạo thêm một bản phối.');
   });
+  var retryGenerationButton = document.getElementById('retryGeneration');
+  if (retryGenerationButton) retryGenerationButton.addEventListener('click', function () {
+    if (autoGenerateTimer) window.clearTimeout(autoGenerateTimer);
+    autoGenerateTimer = null;
+    generateLook();
+  });
 
   dockClose.addEventListener('click', function () {
     closeDock(true);
   });
   resultClose.addEventListener('click', hideResult);
   resultDownload.addEventListener('click', function (event) {
+    if (resultDownload.getAttribute('aria-disabled') === 'true') {
+      event.preventDefault();
+      return;
+    }
     if (currentVideo || currentLookbookItems.length === 0) return;
     event.preventDefault();
     var previousLabel = resultDownload.textContent;
     resultDownload.setAttribute('aria-disabled', 'true');
-    resultDownload.textContent = 'Đang dựng file 1080×1920…';
+    resultDownload.textContent = 'Đang chuẩn bị file ảnh…';
     downloadLookbookComposite(currentLookbookItems)
       .then(function () {
-        setStatus('Đã xuất lookbook ' + state.aspectRatio + '.');
+        setStatus('Đã tải ảnh về máy của bạn.');
       })
       .catch(function (error) {
         setStatus(error && error.message ? error.message : 'Không thể xuất lookbook.');
@@ -1637,8 +1710,11 @@
   });
   window.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
-    if (!result.hidden) hideResult();
-    else if (state.openMode) closeDock(true);
+    if (state.openMode) closeDock(true);
+    else {
+      var details = document.getElementById('outputDetails');
+      if (details && details.open) hideResult();
+    }
   });
 
   buildHotspots();

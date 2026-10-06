@@ -56,15 +56,26 @@ trạng thái tải và vị trí capsule sẽ tự sinh theo dữ liệu.
 ## Studio tầng 2
 
 Studio dùng workspace sáng theo mẫu media-first: thanh công cụ bên trái,
-khung preview và dải ảnh tham khảo/phương án, bảng bên phải có các tab Phối đồ,
-Văn hóa và Địa điểm. Navigation được tách trong `includes/studio`, lớp bố cục
+khung preview và dải ảnh đã tạo, bảng bên phải có các tab Phối đồ,
+Về trang phục và Mua & chụp. Navigation được tách trong `includes/studio`, lớp bố cục
 mới nằm trong `studio-workspace.css` và hành vi tab trong `studio-workspace.js`.
 Các icon Lucide được lưu cục bộ kèm giấy phép; không cần React/Vite để chạy PHP.
 Video mở đầu luôn được ghi rõ là minh họa, không được nhận là ảnh AI của người
-dùng. Dải ảnh chuyển từ dáng áo tham khảo sang kết quả thật khi job hoàn tất;
+dùng. Dải ảnh chỉ xuất hiện khi có kết quả thật;
 So sánh ảnh hiển thị trực tiếp hai kết quả trong khung preview.
 Kiểm thử tab, upload, responsive navigation và so sánh không gọi provider:
 `node tests/studio-workspace.cjs`.
+
+Studio hướng dẫn người mới bằng một câu hỏi mỗi lần: dịp mặc → trang phục →
+phong cách. Nếu preset của dịp mặc đã đủ lựa chọn, Studio chuyển thẳng sang
+tóm tắt có các dòng “Đổi”; không bắt người dùng chọn lại. Snapshot từ trạng
+thái catalog thật điều khiển hướng dẫn, không có preset sao chép trong UI.
+Khi đổi trang phục, người dùng có thể xem/chọn mẫu con trước khi bấm “Xong”.
+Màu, phụ kiện và bối cảnh nằm trong phần tuỳ chọn; lưu/tải/so sánh chỉ hiện
+khi có kết quả. Trên mobile, câu hỏi xuất hiện trước preview. Lỗi có nút thử
+lại, ảnh upload có nút bỏ ảnh, và generation tự động không chuyển focus.
+Kiểm thử hướng dẫn, preset, trạng thái job và lời báo lỗi không gọi AI:
+`node tests/studio-beginner.cjs`.
 
 Mở `http://localhost/aiarenavietnam2026/studio.php` để chọn sự kiện, cổ phục, màu,
 phong cách, phụ kiện và bối cảnh. Khi đã đủ sự kiện, trang phục và phong cách,

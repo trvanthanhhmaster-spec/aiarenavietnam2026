@@ -117,18 +117,15 @@ require __DIR__ . '/includes/components/studio-icon.php';
                 <div>
                     <p class="studio-kicker" id="projectKicker">Không gian của bạn</p>
                     <h1 id="projectTitle">Việt phục, theo cách bạn.</h1>
-                    <p class="studio-intro__note" id="projectContext">Chọn một dịp mặc. Cùng tìm bản phối dành cho bạn.</p>
+                    <p class="studio-intro__note" id="projectContext">Chỉ cần chọn dịp mặc. V-Remix sẽ gợi ý và tạo ảnh cho bạn.</p>
                 </div>
             </div>
             <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối">
                 <button type="button" class="studio-start-card" id="workspaceUpload">
                     <span class="studio-start-card__icon"><?= $studioIcon('upload') ?></span>
-                    <span><strong>Ảnh của bạn</strong><small>Tuỳ chọn · tối đa 8 MB</small></span>
+                    <span><strong>Thêm ảnh của bạn</strong><small>Không bắt buộc · tối đa 8 MB</small></span>
                 </button>
-                <button type="button" class="studio-start-card" data-start-mode="quick">
-                    <span class="studio-start-card__icon"><?= $studioIcon('sparkles') ?></span>
-                    <span><strong>Gợi ý nhanh</strong><small>Bắt đầu từ một dịp mặc</small></span>
-                </button>
+                <button type="button" id="workspaceRemoveUpload" class="workspace-remove-upload" hidden>Bỏ ảnh</button>
                 <div class="studio-quick-start__options" id="quickStartOptions" hidden></div>
             </section>
         </div>
@@ -136,11 +133,11 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">
             <div class="studio-workbench">
                 <header class="workspace-panel-header">
-                    <div><h2 id="workspacePanelTitle">Cùng phối một look</h2><p id="workspacePanelHint">Chọn theo gu của bạn, AI lo phần còn lại.</p></div>
+                    <div><h2 id="workspacePanelTitle">Bạn sẽ mặc đi đâu?</h2><p id="workspacePanelHint">Chọn một dịp bên dưới. Chưa biết mặc gì cũng không sao.</p></div>
                     <nav class="workspace-panel-tabs" aria-label="Thông tin bản phối">
                         <button type="button" class="is-active" data-workspace-panel="catalog" aria-pressed="true">Phối đồ</button>
-                        <button type="button" data-workspace-panel="heritage" aria-pressed="false">Văn hóa</button>
-                        <button type="button" data-workspace-panel="places" aria-pressed="false">Địa điểm</button>
+                        <button type="button" data-workspace-panel="heritage" aria-pressed="false">Về trang phục</button>
+                        <button type="button" data-workspace-panel="places" aria-pressed="false">Mua & chụp</button>
                     </nav>
                 </header>
                 <aside class="studio-toolbox" id="workspaceCatalog" aria-label="Bộ sưu tập phối đồ">
@@ -150,33 +147,35 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <p class="studio-collection-heading__note">Chọn dịp trước. Sau đó chọn một dáng Việt phục và thêm điểm nhấn theo cách của bạn.</p>
                     </div>
                     <div class="studio-progress" aria-label="Ba bước để bắt đầu">
-                        <button type="button" class="studio-progress__step is-current" data-progress-step="event" data-mode="event">
+                        <button type="button" class="studio-progress__step is-current" data-progress-step="event" data-guide-step="event">
                             <span>01</span><strong>Dịp mặc</strong>
                         </button>
                         <i aria-hidden="true"></i>
-                        <button type="button" class="studio-progress__step" data-progress-step="garment" data-mode="garment">
+                        <button type="button" class="studio-progress__step" data-progress-step="garment" data-guide-step="garment">
                             <span>02</span><strong>Trang phục</strong>
                         </button>
                         <i aria-hidden="true"></i>
-                        <button type="button" class="studio-progress__step" data-progress-step="style" data-mode="style">
+                        <button type="button" class="studio-progress__step" data-progress-step="style" data-guide-step="style">
                             <span>03</span><strong>Phong cách</strong>
                         </button>
                         <p id="studioNextHint">Bắt đầu bằng cách chọn dịp bạn sẽ mặc.</p>
                     </div>
 
-                    <section class="studio-catalog-card studio-catalog-card--event" aria-labelledby="catalogEventTitle">
+                    <section class="studio-catalog-card studio-catalog-card--event" data-guide-card="event" aria-labelledby="catalogEventTitle">
                         <div class="studio-catalog-card__head">
-                            <h2 id="catalogEventTitle"><span aria-hidden="true">01</span> Bạn sẽ mặc đi đâu?</h2>
+                            <h2 id="catalogEventTitle"><span aria-hidden="true">01</span> Chọn dịp của bạn</h2>
                             <button type="button" data-mode="event">Xem tất cả <span aria-hidden="true">›</span></button>
                         </div>
+                        <p class="guide-card-note">Ảnh sẽ tự tạo theo gợi ý cho dịp bạn chọn. Bạn có thể đổi từng món sau.</p>
                         <div class="studio-catalog-grid studio-catalog-grid--event" id="catalogEvents"></div>
                     </section>
 
-                    <section class="studio-catalog-card studio-catalog-card--garment" aria-labelledby="catalogGarmentTitle">
+                    <section class="studio-catalog-card studio-catalog-card--garment" data-guide-card="garment" aria-labelledby="catalogGarmentTitle" hidden>
                         <div class="studio-catalog-card__head">
-                            <h2 id="catalogGarmentTitle"><span aria-hidden="true">02</span> Chọn dáng Việt phục</h2>
+                            <h2 id="catalogGarmentTitle"><span aria-hidden="true">02</span> Bạn thích bộ nào?</h2>
                             <button type="button" data-mode="garment">Xem tất cả <span aria-hidden="true">›</span></button>
                         </div>
+                        <p class="guide-card-note">Chọn theo ảnh bạn thích. Không cần biết tên trang phục.</p>
                         <div class="studio-catalog-grid studio-catalog-grid--garment" id="catalogGarments"></div>
                     </section>
                     <section class="studio-catalog-card studio-catalog-card--variant" id="garmentVariantSection" aria-labelledby="catalogGarmentVariantTitle" hidden>
@@ -190,15 +189,31 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <p class="studio-catalog-card__note">Mỗi mẫu có ảnh, chất liệu và họa tiết riêng để bạn xem trước rõ hơn.</p>
                         <div class="studio-variant-grid" id="catalogGarmentVariants"></div>
                     </section>
-                    <section class="studio-catalog-card studio-catalog-card--style" aria-labelledby="catalogStyleTitle">
+                    <section class="studio-catalog-card studio-catalog-card--style" data-guide-card="style" aria-labelledby="catalogStyleTitle" hidden>
                         <div class="studio-catalog-card__head">
-                            <h2 id="catalogStyleTitle"><span aria-hidden="true">03</span> Bạn thích phong cách nào?</h2>
+                            <h2 id="catalogStyleTitle"><span aria-hidden="true">03</span> Bạn muốn trông thế nào?</h2>
                             <button type="button" data-mode="style">Xem tất cả <span aria-hidden="true">›</span></button>
                         </div>
+                        <p class="guide-card-note">Chọn cảm giác bạn muốn. Ảnh sẽ tự tạo khi đủ lựa chọn.</p>
                         <div class="studio-catalog-grid studio-catalog-grid--style" id="catalogStyles"></div>
                     </section>
 
-                    <details class="studio-customize">
+                    <section class="guide-review" id="guideReview" aria-labelledby="guideReviewTitle" hidden>
+                        <span class="guide-eyebrow">Lựa chọn của bạn</span>
+                        <h3 id="guideReviewTitle">Một bộ đồ dành cho bạn.</h3>
+                        <p>Đã đủ để tạo ảnh. Muốn đổi gì? Chạm vào dòng đó.</p>
+                        <button type="button" data-guide-step="event"><span><small>Dịp mặc</small><strong id="guideEventValue"></strong></span><span>Đổi ›</span></button>
+                        <button type="button" data-guide-step="garment"><span><small>Trang phục</small><strong id="guideGarmentValue"></strong></span><span>Đổi ›</span></button>
+                        <button type="button" data-guide-step="style"><span><small>Phong cách</small><strong id="guideStyleValue"></strong></span><span>Đổi ›</span></button>
+                        <p class="guide-review__hint">Không cần bấm tạo. Ảnh tự cập nhật sau mỗi thay đổi.</p>
+                        <button type="button" class="guide-view-preview" data-workspace-preview>Xem ảnh của tôi <?= $studioIcon('chevron-right') ?></button>
+                    </section>
+                    <div class="guide-navigation" id="guideNavigation" hidden>
+                        <button type="button" id="guideBack">‹ Quay lại</button>
+                        <button type="button" id="guideContinue" disabled>Tiếp tục <?= $studioIcon('chevron-right') ?></button>
+                    </div>
+
+                    <details class="studio-customize" id="guideCustomize" hidden>
                         <summary><strong>Thêm nét riêng của bạn</strong><small>Màu sắc, họa tiết, phụ kiện và nơi chụp · tuỳ chọn</small></summary>
                     <section class="studio-catalog-card studio-catalog-card--color" aria-labelledby="catalogColorTitle">
                         <div class="studio-catalog-card__head">
@@ -264,7 +279,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     </aside>
                 </aside>
 
-                <section class="studio-preview" aria-label="Bản xem trước">
+                <section class="studio-preview" aria-label="Bản xem trước" tabindex="-1">
                     <div class="studio-preview__top" hidden>
                         <div>
                             <p class="studio-kicker">Bản xem trước</p>
@@ -281,7 +296,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <div class="studio-frame">
                             <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
                             <img id="studioPreviewImage" class="studio-preview-image" alt="Bản phối AI đang xem trước" hidden>
-                            <span class="workspace-preview-label"><span class="workspace-label-reference">Video minh họa · chưa phải ảnh AI</span><span class="workspace-label-ai">Ảnh AI của bạn</span></span>
+                            <span class="workspace-preview-label"><span class="workspace-label-reference">Video minh họa · chưa phải ảnh AI</span><span class="workspace-label-ai">Ảnh AI của bạn</span><span class="workspace-label-catalog">Ảnh mẫu · chưa phải ảnh AI</span></span>
                             <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
                             <div class="studio-media-placeholder" aria-hidden="true">
                                 <span class="studio-media-placeholder__orb"></span>
@@ -289,9 +304,9 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             </div>
                             <div class="studio-frame__veil" aria-hidden="true"></div>
                             <div class="studio-preview__empty" id="previewEmpty">
-                                <strong>Bản phối tiếp theo là của bạn.</strong>
-                                <small>Chọn dịp, trang phục và phong cách để xem ảnh của bạn.</small>
-                                <button type="button" class="workspace-start" data-workspace-start>Bắt đầu phối <?= $studioIcon('chevron-right') ?></button>
+                                <strong>Bạn chọn dịp. Mình lo bản phối.</strong>
+                                <small>Chưa biết Việt phục? Cứ chọn nơi bạn muốn mặc đến.</small>
+                                <button type="button" class="workspace-start" data-workspace-start>Chọn dịp mặc <?= $studioIcon('chevron-right') ?></button>
                             </div>
                             <div class="studio-preview-progress" id="previewGenerationStatus" hidden>
                                 <i aria-hidden="true"></i>
@@ -301,7 +316,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <div class="studio-hotspots" id="studioHotspots"></div>
                     </div>
 
-                    <details class="studio-advanced">
+                    <details class="studio-advanced" id="guideAdvanced" hidden>
                         <summary><span>Tuỳ chọn nâng cao</span><small>Giữ nhân vật và thử từng thay đổi</small></summary>
                         <section class="studio-locks" aria-label="Giữ nguyên lựa chọn">
                             <div>
@@ -326,8 +341,8 @@ require __DIR__ . '/includes/components/studio-icon.php';
 
                     <section class="studio-auto-create" id="studioForm" aria-live="polite">
                         <div class="studio-rail__copy">
-                            <span class="studio-rail__status"><i></i><span id="studioStatus">Chưa có lựa chọn</span></span>
-                            <p id="selectionSummary">Chọn dịp trước, rồi chọn trang phục. Bản xem trước sẽ tự cập nhật.</p>
+                            <span class="studio-rail__status"><i></i><span id="studioStatus">Bắt đầu bằng cách chọn dịp mặc ở bên cạnh.</span></span>
+                            <p id="selectionSummary">Ảnh minh họa ở trên chưa phải kết quả của bạn.</p>
                         </div>
                         <label class="studio-upload" for="inputImage" hidden>
                             <span class="studio-upload__icon" aria-hidden="true"><?= $studioIcon('upload') ?></span>
@@ -339,11 +354,13 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <div class="studio-variants__actions">
                             <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
                             <button type="button" id="saveLook" disabled>Lưu bản phối</button>
-                            <button type="button" id="addVariant" aria-label="Tạo phương án khác"><?= $studioIcon('sparkles') ?><span>Thử cách khác</span></button>
+                            <a class="result-download" id="resultDownload" href="#" download hidden>Tải ảnh <span aria-hidden="true">↓</span></a>
+                            <button type="button" id="addVariant" aria-label="Thêm phụ kiện vào bản phối" hidden><?= $studioIcon('sparkles') ?><span>Thêm phụ kiện</span></button>
+                            <button type="button" id="retryGeneration" hidden>Thử tạo lại</button>
                         </div>
                     </section>
 
-                    <section class="studio-variants" id="studioVariants" aria-label="Các phương án bản phối">
+                    <section class="studio-variants" id="studioVariants" aria-label="Các phương án bản phối" hidden>
                         <div class="studio-variants__title">
                             <span id="workspaceVariantLabel">Dáng áo gợi ý</span>
                             <strong>Đổi từng chi tiết để chọn bản bạn thích.</strong>
@@ -403,7 +420,9 @@ require __DIR__ . '/includes/components/studio-icon.php';
             </div>
         </section>
 
-        <section class="studio-result" id="studioResult" aria-live="polite" hidden>
+        <details class="workspace-output-details" id="outputDetails" hidden>
+        <summary>Xem thông tin và toàn bộ kết quả</summary>
+        <section class="studio-result" id="studioResult" hidden>
             <div class="studio-result__backdrop" aria-hidden="true"></div>
             <div class="studio-result__header">
                 <div>
@@ -426,10 +445,10 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <div class="result-story result-score"><span>Mức độ phù hợp văn hóa</span><p id="resultCulturalScore">—</p></div>
                     <div class="result-story"><span>Gợi ý chụp & phối</span><p id="resultGenZTip">—</p></div>
                     <div class="result-video-branches" id="resultVideoBranches" hidden aria-label="Các video chuyển cảnh"></div>
-                    <a class="result-download" id="resultDownload" href="#" download hidden>Tải lookbook 9:16 <span aria-hidden="true">↓</span></a>
                 </div>
             </div>
         </section>
+        </details>
 
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
