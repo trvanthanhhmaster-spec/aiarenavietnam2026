@@ -90,13 +90,14 @@ $studioData = $catalog + [
         'email' => (string) ($authUser['email'] ?? ''),
     ],
 ];
+require __DIR__ . '/includes/components/studio-icon.php';
 ?>
 <!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#f3efe7">
+    <meta name="theme-color" content="#f2f0f8">
     <title>Studio — <?= $escape($site['title'] ?? 'V-Remix') ?></title>
     <meta name="description" content="Studio phối Việt phục V-Remix theo bối cảnh, dáng áo và điểm nhấn cá nhân.">
     <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
@@ -106,37 +107,43 @@ $studioData = $catalog + [
     <link rel="stylesheet" href="assets/css/app.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/app.css') ?>">
     <link rel="stylesheet" href="assets/css/studio.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-designer.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-designer.css') ?>">
+    <link rel="stylesheet" href="assets/css/studio-workspace.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-workspace.css') ?>">
 </head>
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
-        <header class="studio-masthead">
-            <div class="studio-brand-cluster">
-                <a class="studio-brand" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>">
-                    <?php $brandWordmarkClass = 'studio-brand__mark'; require __DIR__ . '/includes/components/brand-wordmark.php'; unset($brandWordmarkClass); ?>
-                </a>
-                <span class="studio-section-marker"><small>Không gian phối</small><strong>Studio</strong></span>
+        <?php require __DIR__ . '/includes/studio/workspace-navigation.php'; ?>
+        <div class="workspace-heading">
+            <div class="studio-intro" id="studioIntro">
+                <div>
+                    <p class="studio-kicker" id="projectKicker">Không gian của bạn</p>
+                    <h1 id="projectTitle">Việt phục, theo cách bạn.</h1>
+                    <p class="studio-intro__note" id="projectContext">Chọn một dịp mặc. Cùng tìm bản phối dành cho bạn.</p>
+                </div>
             </div>
-            <nav class="studio-header-actions" aria-label="Điều hướng Studio">
-                <a class="studio-nav-action" href="index.php#stage">
-                    <span><small>Trở về</small><strong>Tầng 1</strong></span>
-                </a>
-                <?php if ($authUser !== null): ?>
-                    <a class="studio-account is-authenticated" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>" aria-label="Mở tài khoản <?= $escape((string) ($authUser['email'] ?? '')) ?>">
-                        <span class="studio-account__avatar" aria-hidden="true"><?= $escape($accountInitial) ?></span>
-                        <span class="studio-account__copy"><small>Đã đăng nhập</small><strong><?= $escape($accountName) ?></strong></span>
-                    </a>
-                <?php else: ?>
-                    <a class="studio-account" href="auth.php?next=<?= rawurlencode(SupabaseAuth::safeNext($authNext)) ?>">
-                        <span class="studio-account__avatar" aria-hidden="true"><?= $escape($accountInitial) ?></span>
-                        <span class="studio-account__copy"><small>Tài khoản</small><strong>Đăng nhập</strong></span>
-                    </a>
-                <?php endif; ?>
-            </nav>
-        </header>
+            <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối">
+                <button type="button" class="studio-start-card" id="workspaceUpload">
+                    <span class="studio-start-card__icon"><?= $studioIcon('upload') ?></span>
+                    <span><strong>Ảnh của bạn</strong><small>Tuỳ chọn · tối đa 8 MB</small></span>
+                </button>
+                <button type="button" class="studio-start-card" data-start-mode="quick">
+                    <span class="studio-start-card__icon"><?= $studioIcon('sparkles') ?></span>
+                    <span><strong>Gợi ý nhanh</strong><small>Bắt đầu từ một dịp mặc</small></span>
+                </button>
+                <div class="studio-quick-start__options" id="quickStartOptions" hidden></div>
+            </section>
+        </div>
 
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">
             <div class="studio-workbench">
-                <aside class="studio-toolbox" aria-label="Bộ sưu tập phối đồ">
+                <header class="workspace-panel-header">
+                    <div><h2 id="workspacePanelTitle">Cùng phối một look</h2><p id="workspacePanelHint">Chọn theo gu của bạn, AI lo phần còn lại.</p></div>
+                    <nav class="workspace-panel-tabs" aria-label="Thông tin bản phối">
+                        <button type="button" class="is-active" data-workspace-panel="catalog" aria-pressed="true">Phối đồ</button>
+                        <button type="button" data-workspace-panel="heritage" aria-pressed="false">Văn hóa</button>
+                        <button type="button" data-workspace-panel="places" aria-pressed="false">Địa điểm</button>
+                    </nav>
+                </header>
+                <aside class="studio-toolbox" id="workspaceCatalog" aria-label="Bộ sưu tập phối đồ">
                     <div class="studio-collection-heading">
                         <span class="studio-collection-heading__eyebrow">V-Remix / Bắt đầu</span>
                         <strong>Bạn muốn mặc gì hôm nay?</strong>
@@ -258,32 +265,7 @@ $studioData = $catalog + [
                 </aside>
 
                 <section class="studio-preview" aria-label="Bản xem trước">
-                    <div class="studio-intro" id="studioIntro">
-                        <div>
-                            <p class="studio-kicker" id="projectKicker">Bản phối mới</p>
-                            <h1 id="projectTitle">Bắt đầu từ một dịp mặc.</h1>
-                            <p class="studio-intro__note" id="projectContext">Chọn dịp bạn sẽ mặc, dáng Việt phục và phong cách. Bạn không cần biết trước về AI.</p>
-                        </div>
-                        <div class="studio-intro__rule" aria-hidden="true"></div>
-                    </div>
-
-                    <section class="studio-quick-start" id="studioQuickStart" aria-label="Gợi ý nhanh">
-                        <button type="button" class="studio-start-card" data-start-mode="event">
-                            <span class="studio-start-card__icon" aria-hidden="true">⌁</span>
-                            <span><strong>Chọn dịp mặc</strong><small>Đi học, dạo phố, dự lễ…</small></span>
-                        </button>
-                        <label class="studio-start-card" for="inputImage">
-                            <span class="studio-start-card__icon" aria-hidden="true">▧</span>
-                            <span><strong>Tải ảnh của bạn</strong><small>JPG, PNG · Tối đa 8MB</small></span>
-                        </label>
-                        <button type="button" class="studio-start-card" data-start-mode="quick">
-                            <span class="studio-start-card__icon" aria-hidden="true">✦</span>
-                            <span><strong>Để V-Remix gợi ý</strong><small>Chọn một dịp để bắt đầu</small></span>
-                        </button>
-                        <div class="studio-quick-start__options" id="quickStartOptions" hidden></div>
-                    </section>
-
-                    <div class="studio-preview__top">
+                    <div class="studio-preview__top" hidden>
                         <div>
                             <p class="studio-kicker">Bản xem trước</p>
                             <h2 id="previewTitle">Khung hình đầu tiên</h2>
@@ -299,15 +281,17 @@ $studioData = $catalog + [
                         <div class="studio-frame">
                             <video id="studioMedia" class="studio-media" muted autoplay playsinline preload="metadata" aria-label="Media nền của Studio"></video>
                             <img id="studioPreviewImage" class="studio-preview-image" alt="Bản phối AI đang xem trước" hidden>
+                            <span class="workspace-preview-label"><span class="workspace-label-reference">Video minh họa · chưa phải ảnh AI</span><span class="workspace-label-ai">Ảnh AI của bạn</span></span>
+                            <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
                             <div class="studio-media-placeholder" aria-hidden="true">
                                 <span class="studio-media-placeholder__orb"></span>
                                 <span class="studio-media-placeholder__line"></span>
                             </div>
                             <div class="studio-frame__veil" aria-hidden="true"></div>
                             <div class="studio-preview__empty" id="previewEmpty">
-                                <span>V–R / 02</span>
-                                <strong>Chọn dịp, trang phục<br>và phong cách để bắt đầu.</strong>
-                                <small>Việt phục · Bối cảnh · Phong cách</small>
+                                <strong>Bản phối tiếp theo là của bạn.</strong>
+                                <small>Chọn dịp, trang phục và phong cách để xem ảnh của bạn.</small>
+                                <button type="button" class="workspace-start" data-workspace-start>Bắt đầu phối <?= $studioIcon('chevron-right') ?></button>
                             </div>
                             <div class="studio-preview-progress" id="previewGenerationStatus" hidden>
                                 <i aria-hidden="true"></i>
@@ -345,18 +329,23 @@ $studioData = $catalog + [
                             <span class="studio-rail__status"><i></i><span id="studioStatus">Chưa có lựa chọn</span></span>
                             <p id="selectionSummary">Chọn dịp trước, rồi chọn trang phục. Bản xem trước sẽ tự cập nhật.</p>
                         </div>
-                        <label class="studio-upload" for="inputImage">
-                            <span class="studio-upload__icon" aria-hidden="true">＋</span>
+                        <label class="studio-upload" for="inputImage" hidden>
+                            <span class="studio-upload__icon" aria-hidden="true"><?= $studioIcon('upload') ?></span>
                             <span><strong>Tải ảnh của bạn</strong><small id="uploadName">Tuỳ chọn · tối đa 8 MB</small></span>
                             <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                         </label>
                         <input id="outputType" type="hidden" value="<?= $escape((string) ($catalog['generation']['default_output_type'] ?? 'image')) ?>">
-                        <span class="studio-auto-create__hint">Khi bạn chọn đủ 3 điều chính, bản xem trước sẽ tự tạo.</span>
+                        <span class="studio-auto-create__hint">Ảnh AI tự cập nhật theo lựa chọn.</span>
+                        <div class="studio-variants__actions">
+                            <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
+                            <button type="button" id="saveLook" disabled>Lưu bản phối</button>
+                            <button type="button" id="addVariant" aria-label="Tạo phương án khác"><?= $studioIcon('sparkles') ?><span>Thử cách khác</span></button>
+                        </div>
                     </section>
 
                     <section class="studio-variants" id="studioVariants" aria-label="Các phương án bản phối">
                         <div class="studio-variants__title">
-                            <span>Thử các cách phối</span>
+                            <span id="workspaceVariantLabel">Dáng áo gợi ý</span>
                             <strong>Đổi từng chi tiết để chọn bản bạn thích.</strong>
                         </div>
                         <div class="studio-variants__strip" id="variantStrip">
@@ -365,15 +354,10 @@ $studioData = $catalog + [
                             <button type="button" data-variant="2"><span>02</span><strong>Phương án 2</strong><small>Chưa tạo</small></button>
                             <button type="button" data-variant="3"><span>03</span><strong>Phương án 3</strong><small>Chưa tạo</small></button>
                         </div>
-                        <div class="studio-variants__actions">
-                            <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
-                            <button type="button" id="saveLook" disabled>Lưu bản phối</button>
-                            <button type="button" id="addVariant">＋ Tạo phương án khác</button>
-                        </div>
                     </section>
                 </section>
 
-                <aside class="studio-insights" aria-label="Thông tin văn hoá và kiểm tra">
+                <aside class="studio-insights" id="workspaceInsights" aria-label="Thông tin văn hoá và kiểm tra" hidden>
                     <section class="studio-insight studio-passport">
                         <div class="studio-insight__head"><span>Về trang phục</span><small>01</small></div>
                         <div class="studio-passport__visual" id="passportVisual" aria-hidden="true"><span>V</span></div>
@@ -453,5 +437,6 @@ $studioData = $catalog + [
         window.VREMIX_STUDIO = <?= json_encode($studioData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
+    <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
 </body>
 </html>

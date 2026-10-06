@@ -55,6 +55,17 @@ trạng thái tải và vị trí capsule sẽ tự sinh theo dữ liệu.
 
 ## Studio tầng 2
 
+Studio dùng workspace sáng theo mẫu media-first: thanh công cụ bên trái,
+khung preview và dải ảnh tham khảo/phương án, bảng bên phải có các tab Phối đồ,
+Văn hóa và Địa điểm. Navigation được tách trong `includes/studio`, lớp bố cục
+mới nằm trong `studio-workspace.css` và hành vi tab trong `studio-workspace.js`.
+Các icon Lucide được lưu cục bộ kèm giấy phép; không cần React/Vite để chạy PHP.
+Video mở đầu luôn được ghi rõ là minh họa, không được nhận là ảnh AI của người
+dùng. Dải ảnh chuyển từ dáng áo tham khảo sang kết quả thật khi job hoàn tất;
+So sánh ảnh hiển thị trực tiếp hai kết quả trong khung preview.
+Kiểm thử tab, upload, responsive navigation và so sánh không gọi provider:
+`node tests/studio-workspace.cjs`.
+
 Mở `http://localhost/aiarenavietnam2026/studio.php` để chọn sự kiện, cổ phục, màu,
 phong cách, phụ kiện và bối cảnh. Khi đã đủ sự kiện, trang phục và phong cách,
 Studio tự tạo/cập nhật AI preview sau một khoảng debounce ngắn; người dùng không

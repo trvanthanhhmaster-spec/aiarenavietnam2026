@@ -36,6 +36,7 @@
   var compareLooksButton = document.getElementById('compareLooks');
   var addVariantButton = document.getElementById('addVariant');
   var variantStrip = document.getElementById('variantStrip');
+  var compareLayer = document.getElementById('studioCompare');
   var summary = document.getElementById('selectionSummary');
   var studioStatus = document.getElementById('studioStatus');
   var srStatus = document.getElementById('studioSrStatus');
@@ -357,9 +358,10 @@
     var previous = state.openMode;
     state.openMode = null;
     renderDock();
-    setStatus('Bản phối đã lưu lựa chọn hiện tại.');
+    setStatus('Đã đóng bảng lựa chọn.');
     if (restoreFocus && previous) {
-      var trigger = hotspots.querySelector('[data-mode="' + previous + '"]');
+      var trigger = experience.querySelector('.studio-catalog-card__head [data-mode="' + previous + '"]')
+        || experience.querySelector('[data-progress-step][data-mode="' + previous + '"]');
       if (trigger) trigger.focus();
     }
   }
@@ -452,6 +454,26 @@
     if (/^https?:\/\//i.test(value)) return value;
     if (/^assets\/media\/catalog\/[a-z0-9._/-]+$/i.test(value)) return value;
     return '';
+  }
+
+  function renderInspirationStrip() {
+    if (!variantStrip) return;
+    var buttons = variantStrip.querySelectorAll('[data-variant]');
+    buttons.forEach(function (button, index) {
+      var garment = (catalog.garments || [])[index];
+      if (!garment) { button.hidden = true; return; }
+      button.dataset.catalogKind = 'garment';
+      button.dataset.optionValue = garment.slug;
+      button.classList.remove('is-active');
+      button.setAttribute('aria-label', 'Chọn ' + garment.name + ' · ảnh tham khảo');
+      var url = catalogImageUrl(garment);
+      if (url) {
+        var image = document.createElement('img');
+        image.src = url; image.alt = 'Ảnh tham khảo ' + garment.name; image.loading = 'lazy';
+        button.prepend(image);
+      }
+      button.querySelector('strong').textContent = garment.name;
+    });
   }
 
   function bindCatalogImageFallback(root) {
@@ -637,14 +659,14 @@
     if (previewEmpty) previewEmpty.classList.toggle('is-ready', hasBaseLook);
     if (frame) frame.classList.toggle('has-look', hasBaseLook);
     if (projectKicker) projectKicker.textContent = state.event ? ('Bản phối · ' + event.label) : 'Bản phối mới';
-    if (projectTitle) projectTitle.innerHTML = state.event
-      ? 'Bản phối cho<br><em>' + escapeHtml(event.label.toLowerCase()) + '.</em>'
-      : 'Bắt đầu từ một dịp mặc.';
+    if (projectTitle) projectTitle.textContent = state.event
+      ? 'Một bản phối để ' + event.label.toLowerCase() + '.'
+      : 'Việt phục, theo cách bạn.';
     if (projectContext) {
       var preset = event.preset || {};
       projectContext.textContent = state.event
         ? [preset.location, preset.season, preset.weather, garment.name].filter(Boolean).join(' · ')
-        : 'Chọn dịp, trang phục và phong cách. Bạn có thể thêm ảnh của mình nếu muốn.';
+        : 'Chọn một dịp mặc. Cùng tìm bản phối dành cho bạn.';
     }
     updatePassport();
     updateRecommendations();
@@ -685,8 +707,9 @@
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
     if (passportSource) passportSource.textContent = source ? source.title : 'Nguồn đã được duyệt sẽ hiển thị tại đây.';
     if (passportVisual) {
-      var passportImage = String(garmentVariant.thumbnail_url || garmentVariant.image_url || garment.thumbnail_url || garment.image_url || '');
-      passportVisual.style.backgroundImage = /^https?:\/\//i.test(passportImage)
+      var passportImage = catalogImageUrl(garmentVariant) || catalogImageUrl(garment);
+      passportVisual.hidden = !passportImage;
+      passportVisual.style.backgroundImage = passportImage
         ? 'url("' + passportImage.replace(/["\\]/g, '') + '")'
         : '';
       passportVisual.classList.toggle('has-image', Boolean(passportVisual.style.backgroundImage));
@@ -860,7 +883,7 @@
 
     var reveal = function () {
       frame.classList.add('is-ready');
-      setStatus('Studio đã sẵn sàng.');
+      if (!generationPending) setStatus('Studio đã sẵn sàng.');
     };
     media.addEventListener('loadeddata', reveal, { once: true });
     media.addEventListener('canplay', reveal, { once: true });
@@ -942,6 +965,8 @@
       return;
     }
     var requestFingerprint = selectionFingerprint();
+    if (compareLayer) compareLayer.hidden = true;
+    if (compareLooksButton) compareLooksButton.textContent = 'So sánh ảnh';
     showResult();
     setResultState('queued', 'Đang xếp hàng bản phối.');
     prepareResultCopy();
@@ -1278,10 +1303,33 @@
     if (saveLookButton) saveLookButton.disabled = items.length === 0;
     if (compareLooksButton) compareLooksButton.disabled = items.length < 2;
     if (variantStrip && items.length) {
+      var stripLabel = document.getElementById('workspaceVariantLabel');
+      if (stripLabel) stripLabel.textContent = 'Các bản phối của bạn';
+      while (variantStrip.querySelectorAll('[data-variant]').length < items.length) {
+        var extra = document.createElement('button');
+        extra.type = 'button';
+        extra.dataset.variant = String(variantStrip.children.length);
+        extra.innerHTML = '<span></span><strong></strong><small></small>';
+        variantStrip.appendChild(extra);
+      }
       var variantButtons = variantStrip.querySelectorAll('[data-variant]');
       variantButtons.forEach(function (button, index) {
         var hasImage = Boolean(items[index]);
+        button.hidden = !hasImage;
+        delete button.dataset.catalogKind;
+        delete button.dataset.optionValue;
+        var oldImage = button.querySelector('img');
+        if (oldImage) oldImage.remove();
+        if (hasImage) {
+          var thumbnail = document.createElement('img');
+          thumbnail.src = items[index].url;
+          thumbnail.alt = index === 0 ? 'Bản phối gốc' : 'Phương án ' + index;
+          button.prepend(thumbnail);
+        }
+        button.querySelector('strong').textContent = index === 0 ? 'Bản gốc' : 'Phương án ' + index;
+        button.setAttribute('aria-label', index === 0 ? 'Xem bản phối gốc' : 'Xem phương án ' + index);
         button.classList.toggle('is-ready', hasImage);
+        button.classList.toggle('is-active', index === 0);
         var detail = button.querySelector('small');
         if (detail) detail.textContent = hasImage ? 'Đã có ảnh' : 'Chưa tạo';
         button.dataset.previewIndex = String(index);
@@ -1292,6 +1340,8 @@
   function selectPreviewAsset(index) {
     var item = currentLookbookItems[Number(index)];
     if (!item || !previewImage) return;
+    if (compareLayer) compareLayer.hidden = true;
+    if (compareLooksButton) compareLooksButton.textContent = 'So sánh ảnh';
     previewImage.src = item.url;
     previewImage.hidden = false;
     frame.classList.add('has-ai-preview', 'has-look');
@@ -1529,6 +1579,27 @@
 
   function compareCurrentLooks() {
     if (currentLookbookItems.length < 2) return;
+    if (compareLayer) {
+      if (!compareLayer.hidden) {
+        compareLayer.hidden = true;
+        compareLooksButton.textContent = 'So sánh ảnh';
+        setStatus('Đã trở về bản xem trước.');
+        return;
+      }
+      compareLayer.innerHTML = '';
+      currentLookbookItems.slice(0, 2).forEach(function (item, index) {
+        var figure = document.createElement('figure');
+        var image = document.createElement('img');
+        image.src = item.url; image.alt = 'Bản phối ' + (index + 1);
+        var caption = document.createElement('figcaption');
+        caption.textContent = index === 0 ? 'Bản gốc' : 'Phương án 1';
+        figure.appendChild(image); figure.appendChild(caption); compareLayer.appendChild(figure);
+      });
+      compareLayer.hidden = false;
+      compareLooksButton.textContent = 'Đóng so sánh';
+      setStatus('Đang so sánh hai bản phối trong khung xem trước.');
+      return;
+    }
     showResult();
     resultImages.scrollTo({ left: resultImages.clientWidth, behavior: 'smooth' });
     setStatus('Đang so sánh hai phương án lookbook.');
@@ -1573,6 +1644,7 @@
   buildHotspots();
   renderQuickStart();
   renderCatalogPanels();
+  renderInspirationStrip();
   renderDock();
   updateSummary();
   prepareMedia();

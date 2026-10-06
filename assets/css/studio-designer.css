@@ -655,17 +655,6 @@ body.studio-page {
   isolation: isolate;
   pointer-events: auto;
 }
-.studio-intro::before {
-  content: "衣";
-  position: absolute;
-  z-index: -1;
-  right: 26%;
-  bottom: -28px;
-  color: rgb(193 141 108 / .15);
-  font-family: "Lora", Georgia, serif;
-  font-size: 220px;
-  line-height: 1;
-}
 .studio-intro::after {
   content: "";
   position: absolute;
