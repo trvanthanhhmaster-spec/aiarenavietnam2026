@@ -4,6 +4,16 @@
   const dialog = document.getElementById('studioLibrary'), items = document.getElementById('libraryItems');
   const status = document.getElementById('libraryStatus'), more = document.getElementById('libraryMore');
   let offset = 0, trigger, loadVersion = 0;
+  function renderDraft(sync) {
+    if (!sync) return;
+    const message = document.getElementById('libraryDraftStatus');
+    const current = document.getElementById('continueStudioDraft'), retry = document.getElementById('retryStudioDraft');
+    if (message) message.textContent = sync.message;
+    if (current) current.hidden = !sync.hasDraft;
+    if (retry) retry.hidden = sync.state !== 'error';
+    document.getElementById('clearStudioDraft').disabled = !sync.hasDraft || sync.state === 'conflict';
+  }
+  document.addEventListener('vremix:draft-sync', e => renderDraft(e.detail));
   async function request(payload, page = 0) {
     const response = await fetch(config.lookEndpoint + (payload ? '' : '?offset=' + page), {
       method: payload ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'X-VRemix-CSRF': config.lookCsrf },
@@ -69,14 +79,29 @@
   document.querySelectorAll('[data-workspace-library]').forEach(element => element.addEventListener('click', () => {
     trigger = element;
     if (!config.auth.authenticated) { document.dispatchEvent(new Event('vremix:open-auth')); return; }
-    dialog.showModal(); load(true);
+    renderDraft(window.VRemixSession?.status?.()); dialog.showModal(); load(true);
   }));
   document.getElementById('libraryClose').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => { loadVersion++; trigger?.focus(); });
   more.addEventListener('click', () => load(false));
+  document.getElementById('continueStudioDraft')?.addEventListener('click', () => {
+    dialog.close(); document.querySelector('.studio-preview')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('retryStudioDraft')?.addEventListener('click', async () => {
+    try { await window.VRemixSession.retry(); } catch (e) { status.textContent = e.message; }
+  });
   document.getElementById('clearStudioDraft').addEventListener('click', async () => {
+    document.getElementById('confirmClearStudioDraft').hidden = false;
+  });
+  document.getElementById('cancelClearStudioDraft')?.addEventListener('click', () => {
+    document.getElementById('confirmClearStudioDraft').hidden = true;
+  });
+  document.getElementById('acceptClearStudioDraft')?.addEventListener('click', async function () {
+    this.disabled = true;
     try {
-      await window.VRemixSession.clear(); status.textContent = 'Đã xóa bản nháp trên thiết bị. Bản phối đã lưu trong tài khoản không bị xóa.';
-    } catch (_) { status.textContent = 'Chưa xóa được bản nháp. Trình duyệt không cho phép truy cập bộ nhớ lúc này.'; }
+      await window.VRemixSession.clear(); status.textContent = 'Đã xóa bản nháp trong tài khoản. Bản phối đã lưu không bị xóa.';
+      document.getElementById('confirmClearStudioDraft').hidden = true;
+    } catch (e) { status.textContent = 'Chưa xóa được bản nháp. ' + (e.message || 'Hãy thử lại khi kết nối ổn định.'); }
+    finally { this.disabled = false; }
   });
 })();

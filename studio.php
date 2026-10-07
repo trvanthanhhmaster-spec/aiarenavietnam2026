@@ -79,6 +79,7 @@ $studioData = $catalog + [
     'baseMedia' => $baseMedia,
     'basePoster' => $basePoster,
     'lookEndpoint' => 'look-api.php',
+    'draftEndpoint' => 'studio-draft.php',
     'lookCsrf' => $auth->csrfToken(),
     'sessionScope' => hash('sha256', $_SESSION['studio_generation_owner']),
     'auth' => [
@@ -319,6 +320,8 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <section class="studio-auto-create" id="studioForm" aria-live="polite">
                         <div class="studio-rail__copy">
                             <span class="studio-rail__status"><i></i><span id="studioStatus">Bắt đầu bằng cách chọn dịp mặc ở bên cạnh.</span></span>
+                            <small id="studioDraftStatus" role="status"></small>
+                            <button type="button" id="retryDraftSync" hidden>Thử đồng bộ bản nháp</button>
                             <p id="selectionSummary">Ảnh minh họa ở trên chưa phải kết quả của bạn.</p>
                         </div>
                         <label class="studio-upload" for="inputImage" hidden>

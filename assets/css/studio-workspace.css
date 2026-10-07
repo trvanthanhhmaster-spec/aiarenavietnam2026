@@ -352,6 +352,10 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .studio-library-grid input { width: 100%; min-height: 44px; border: 1px solid #d8d4de; border-radius: 10px; padding: 8px; }
 .studio-library [hidden] { display: none !important; }
 .library-privacy { margin-top: 24px; color: #64646f; }
+.library-draft { margin: 16px 0 24px; padding: 16px; border: 1px solid #e6e3ec; border-radius: 14px; }
+.library-draft h3 { margin: 0; font-size: 16px; }
+.library-draft button { margin: 4px 4px 0 0; }
+#studioDraftStatus { display: block; margin-top: 8px; font-size: 12px; color: #64646f; }
 .workspace-panel-header p, .guide-card-note { font-size: 13px; line-height: 1.65; }
 .guide-card-note { color: #64646f; margin: -3px 0 18px; }
 .studio-catalog-card__head h2 { font-size: 16px; letter-spacing: -.025em; }

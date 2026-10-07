@@ -9,10 +9,10 @@ function element() {
     showModal() { this.open = true; }, close() { this.open = false; this.events.close?.(); } };
 }
 async function main() {
-  const ids = Object.fromEntries(['studioExperience', 'studioLibrary', 'libraryItems', 'libraryStatus', 'libraryMore', 'libraryClose', 'clearStudioDraft'].map(k => [k, element()]));
+  const ids = Object.fromEntries(['studioExperience', 'studioLibrary', 'libraryItems', 'libraryStatus', 'libraryMore', 'libraryClose', 'clearStudioDraft', 'confirmClearStudioDraft', 'cancelClearStudioDraft', 'acceptClearStudioDraft'].map(k => [k, element()]));
   const opened = [], requests = [], trigger = element();
   ids.studioExperience.resultsApi = { open(look, edit) { opened.push({ look, edit }); } };
-  const document = { getElementById: id => ids[id], createElement: () => element(), querySelectorAll: () => [trigger] };
+  const document = { getElementById: id => ids[id], createElement: () => element(), querySelectorAll: () => [trigger], addEventListener() {} };
   const config = { auth: { authenticated: true }, lookEndpoint: 'look-api.php' };
   vm.runInNewContext(fs.readFileSync('assets/js/studio-library.js', 'utf8'), {
     document, window: { VREMIX_STUDIO: config, VRemixSession: { clear: async () => { throw new Error('blocked'); } } },
@@ -33,6 +33,8 @@ async function main() {
   assert.equal(opened[0].edit, true, 'editing remains available without an image');
   assert.equal(ids.studioLibrary.open, false);
   await ids.clearStudioDraft.events.click();
+  assert.equal(ids.confirmClearStudioDraft.hidden, false, 'deleting the cloud draft requires confirmation');
+  await ids.acceptClearStudioDraft.events.click.call(ids.acceptClearStudioDraft);
   assert.match(ids.libraryStatus.textContent, /Chưa xóa được/);
   console.log('Studio library audit: stale-response suppression, unavailable media, independent editing and storage errors passed offline.');
 }

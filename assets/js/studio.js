@@ -1871,6 +1871,7 @@
     person: function (id) {
       if (generationPending || !planning.people[id - 1]) return;
       planning.activePerson = id; Planner.load(planning, state); syncVariantSelections(); renderCatalogPanels(); updateSummary('person');
+      persistStudio();
     },
     profile: function (name, height, weight) {
       if (generationPending) return;
@@ -1957,6 +1958,13 @@
     persist: persistStudio
   };
   document.addEventListener('vremix:draft-storage-error', function () { setStatus('Trình duyệt không giữ được bản nháp. Hãy tải ảnh hoặc lưu vào tài khoản trước khi rời trang.'); });
+  document.addEventListener('vremix:draft-sync', function (event) {
+    document.getElementById('studioDraftStatus').textContent = event.detail.message;
+    document.getElementById('retryDraftSync').hidden = event.detail.state !== 'error';
+  });
+  document.getElementById('retryDraftSync').addEventListener('click', function () {
+    window.VRemixSession.retry().catch(function () { /* The sync status shows the error. */ });
+  });
   experience.addEventListener('studio:guide-step', persistStudio);
   if (window.VRemixSession) window.VRemixSession.read().then(async function (record) {
     if (record && !draftEdited) {
@@ -1965,6 +1973,7 @@
         experience.dispatchEvent(new CustomEvent('studio:restore-step', { detail: record.guideStep || Planner.missing(planning, state.event) }));
         if (planning.count || state.event) setStatus('Đã khôi phục lựa chọn trước. Bạn có thể chỉnh hoặc kiểm tra rồi tạo ảnh; chưa tiêu lượt tạo.');
       }
+      if (record.mediaUnavailable) setStatus('Đã mở lựa chọn của bản nháp. Ảnh cũ chưa tải được; bạn có thể chỉnh tiếp mà chưa cần tạo lại.');
       if (record.output && record.selection) {
         var output = record.output;
         if (record.jobId) {
