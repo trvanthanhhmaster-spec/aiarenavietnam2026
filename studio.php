@@ -274,7 +274,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <?php endif; ?>
                             <video id="studioMedia" class="studio-media" muted loop playsinline preload="metadata" aria-label="Không gian minh họa của Studio"<?= $basePoster !== '' ? ' poster="' . $escape($basePoster) . '"' : '' ?>></video>
                             <img id="studioPreviewImage" class="studio-preview-image" alt="Bản phối AI đang xem trước" hidden>
-                            <span class="workspace-preview-label"><span class="workspace-label-reference">Không gian minh họa</span><span class="workspace-label-ai">Ảnh AI của bạn</span><span class="workspace-label-catalog">Ảnh mẫu · chưa phải ảnh AI</span></span>
                             <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
                             <div class="studio-media-placeholder" aria-hidden="true">
                                 <span class="studio-media-placeholder__orb"></span>
