@@ -68,6 +68,13 @@
   async function load(append) {
     append = append === true;
     var request = ++serial, selected = api.current();
+    // A new project should not show unrelated older generations. Restore the
+    // rail only for the result currently opened, or an explicit recent action.
+    if (!recent && !selected.jobId && !selected.lookId) {
+      items = []; strip.replaceChildren(); visible(false);
+      pendingChoice = null; confirm.hidden = true;
+      return;
+    }
     var query = !recent && selected.lookId ? '?lookId=' + encodeURIComponent(selected.lookId)
       : !recent && selected.jobId ? '?jobId=' + encodeURIComponent(selected.jobId) : '';
     if (append) query += (query ? '&' : '?') + 'offset=' + nextOffset;
@@ -78,9 +85,6 @@
       var body = await response.json();
       if (request !== serial) return;
       if (!response.ok) throw new Error(body.error || 'Chưa tải được lịch sử ảnh.');
-      if (!append && body.scoped && body.items && body.items.length === 1 && !body.hasMore) {
-        recent = true; return load(); // Legacy independent jobs are shown honestly as recent images.
-      }
       if (append) items = scoped ? items.concat(body.items || []) : (body.items || []).concat(items);
       else items = body.items || [];
       scoped = Boolean(body.scoped); nextOffset = body.nextOffset || 0;

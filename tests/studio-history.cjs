@@ -47,5 +47,11 @@ async function tick() { await new Promise(resolve => setImmediate(resolve)); }
   fail = true; ids.studioExperience.dispatch('studio:history-change'); await tick();
   assert.equal(ids.historyItems.children.length, 3, 'history outage does not remove prior images');
   assert.equal(ids.historyRetry.hidden, false);
+  const previousCalls = calls.length;
+  current = { jobId: null, lookId: null, pending: false, edited: false };
+  ids.studioExperience.dispatch('studio:history-change'); await tick();
+  assert.equal(ids.studioHistory.hidden, true, 'blank projects never expose unrelated recent generations');
+  assert.equal(ids.historyItems.children.length, 0);
+  assert.equal(calls.length, previousCalls, 'blank projects do not load the global history');
   console.log('Studio history: unsaved versions, active thumbnail, snapshot restore, edit confirmation, compare, pending guard and outage safety passed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
