@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/StudioPlan.php';
+require __DIR__ . '/src/Support/SupabaseAuth.php';
+require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
+require __DIR__ . '/src/Infrastructure/StudioStorage.php';
 require __DIR__ . '/src/Infrastructure/SupabaseClient.php';
 require __DIR__ . '/src/Repositories/StudioRepository.php';
 
@@ -10,6 +13,9 @@ use App\Support\Env;
 use App\Support\StudioPlan;
 use App\Infrastructure\SupabaseClient;
 use App\Repositories\StudioRepository;
+use App\Support\SupabaseAuth;
+use App\Infrastructure\SupabaseAdminClient;
+use App\Infrastructure\StudioStorage;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -24,11 +30,33 @@ $remoteAddress = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 if (!in_array($remoteAddress, ['127.0.0.1', '::1'], true)) {
     $respond(['error' => 'Local Gemini Web generation is only available from this machine.'], 403);
 }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+if (!in_array($_SERVER['REQUEST_METHOD'], ['POST', 'GET'], true)) {
     $respond(['error' => 'Method not allowed.'], 405);
 }
 
 Env::load(__DIR__ . '/.env');
+$auth = new SupabaseAuth((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_ANON_KEY'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
+$auth->boot();
+$user = $auth->user();
+if (!$auth->verifyCsrf((string) ($_SERVER['HTTP_X_VREMIX_CSRF'] ?? ''))) $respond(['error' => 'Phiên tạo ảnh không hợp lệ. Hãy tải lại Studio.'], 403);
+if (empty($_SESSION['studio_generation_owner'])) $_SESSION['studio_generation_owner'] = bin2hex(random_bytes(32));
+$owner = hash('sha256', $_SESSION['studio_generation_owner']);
+session_write_close(); // Polling/auth requests must not wait for the provider.
+$admin = new SupabaseAdminClient((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
+$storage = new StudioStorage((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
+$job = null;
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    try {
+        $field = isset($_GET['jobId']) ? 'id' : 'client_request_id';
+        $value = (string) ($_GET['jobId'] ?? $_GET['requestId'] ?? '');
+        if (!preg_match('/^[0-9a-f-]{36}$/i', $value)) $respond(['error' => 'ID yêu cầu không hợp lệ.'], 400);
+        $rows = $admin->select('generation_jobs', [$field => 'eq.' . $value, 'select' => '*', 'limit' => '1']);
+        $found = $rows[0] ?? null;
+        if (!$found || ($found['owner_session_hash'] !== $owner && (!$user || $found['user_id'] !== $user['id']))) $respond(['error' => 'Không tìm thấy bản phối trong phiên này.'], 404);
+        $respond(['jobId' => $found['id'], 'status' => $found['status'], 'error' => $found['error_message'],
+            'output' => $found['status'] === 'completed' ? $storage->refreshOutput($found['output']) : []]);
+    } catch (Throwable $error) { $respond(['error' => 'Không thể kiểm tra tiến trình.'], 503); }
+}
 $bridgeUrl = rtrim((string) getenv('GEMINI_WEB_BRIDGE_URL'), '/');
 $bridgeSecret = (string) getenv('GEMINI_WEB_BRIDGE_SECRET');
 if ($bridgeUrl === '' || $bridgeSecret === '') {
@@ -48,6 +76,11 @@ try {
     if (!preg_match('/^[0-9a-f-]{36}$/i', $requestId)) {
         $respond(['error' => 'clientRequestId must be a UUID.'], 400);
     }
+    // Quality and dimensions are admin-owned, never a client-side override.
+    $settings = $admin->select('studio_generation_settings', ['id' => 'eq.1', 'select' => 'canvas_aspect_ratio,target_resolution', 'limit' => '1']);
+    if (empty($settings[0])) throw new RuntimeException('Cấu hình tạo ảnh chưa sẵn sàng.');
+    $input['aspectRatio'] = $settings[0]['canvas_aspect_ratio'];
+    $input['targetResolution'] = $settings[0]['target_resolution'];
     $aspectRatio = (string) ($input['aspectRatio'] ?? '16:9');
     $resolution = (string) ($input['targetResolution'] ?? '1080');
     if (!in_array($aspectRatio, ['16:9', '1:1', '9:16'], true)
@@ -118,6 +151,22 @@ try {
         }
     }
 
+    if ($plan === null) $respond(['error' => 'Hãy hoàn tất luồng bốn bước trước khi tạo ảnh.'], 422);
+    $prompts = $admin->select('studio_prompt_versions', ['slug' => 'eq.studio-group-web', 'is_active' => 'eq.true', 'select' => 'id,version,system_prompt', 'limit' => '1']);
+    if (empty($prompts[0])) throw new RuntimeException('Chưa có phiên bản prompt nhóm được duyệt.');
+    $basePrompt = $prompts[0]['system_prompt'] . "\n" . $basePrompt;
+    $safeInput = $input; unset($safeInput['inputImage'], $safeInput['_provider'], $safeInput['_estimate']);
+    $safeInput['planning'] = $plan;
+    $reserved = $admin->rpc('reserve_local_generation', ['p_request' => $requestId, 'p_user' => $user['id'] ?? null,
+        'p_owner' => $owner, 'p_input' => $safeInput]);
+    $job = $reserved[0] ?? null;
+    if (!$job) throw new RuntimeException('Không thể đăng ký lượt tạo ảnh.');
+    if ($job['status'] !== 'queued') {
+        $respond(['jobId' => $job['id'], 'status' => $job['status'], 'error' => $job['error_message'],
+            'output' => $job['status'] === 'completed' ? $storage->refreshOutput($job['output']) : []]);
+    }
+    $claimed = $admin->update('generation_jobs', ['id' => 'eq.' . $job['id'], 'status' => 'eq.queued'], ['status' => 'processing', 'prompt_version_id' => $prompts[0]['id'], 'updated_at' => gmdate(DATE_ATOM)]);
+    if (!$claimed) $respond(['jobId' => $job['id'], 'status' => 'processing', 'output' => []]);
     $callBridge = static function (array $payload) use ($bridgeUrl, $bridgeSecret): array {
         $handle = curl_init($bridgeUrl . '/v1/images/generate');
         if ($handle === false) {
@@ -183,10 +232,12 @@ try {
             error_log('[V-Remix] Frame ' . $key . ' fallback to frame A: ' . $error->getMessage());
         }
         $mimeType = (string) ($image['mimeType'] ?? 'image/png');
+        $path = $job['id'] . '/' . strtolower($key) . '.png';
+        $imageUrl = $storage->uploadData($path, 'data:' . $mimeType . ';base64,' . (string) $image['data']);
         $frames[] = [
             'key' => $key,
-            'path' => 'local/' . $requestId . '/' . strtolower($key),
-            'url' => 'data:' . $mimeType . ';base64,' . (string) $image['data'],
+            'path' => $path,
+            'url' => $imageUrl,
             'mimeType' => $mimeType,
             'index' => count($frames) + 1,
             'fallback' => in_array($key, $fallbackFrames, true),
@@ -210,21 +261,29 @@ try {
         'imageUrl' => $frames[0]['url'] ?? null,
         'planning' => $plan,
         'workflowVersion' => $plan !== null ? 'studio-group-v1' : 'legacy-frame-plan',
+        'promptVersionId' => $prompts[0]['id'],
+        'promptVersion' => $prompts[0]['version'],
         'lookbook' => ['aspectRatio' => $aspectRatio, 'items' => $frames],
     ];
+    $admin->update('generation_jobs', ['id' => 'eq.' . $job['id']], ['status' => 'completed', 'output' => $output,
+        'image_count' => count($frames), 'completed_at' => gmdate(DATE_ATOM), 'updated_at' => gmdate(DATE_ATOM)]);
     if (in_array($output['generationType'], ['video', 'both'], true)) {
         $output['videoStatus'] = 'failed';
         $output['videoError'] = 'Local Gemini Web provider currently generates the A-E image set; video remains on the configured Veo provider.';
     }
     $respond([
-        'jobId' => 'local-' . $requestId,
+        'jobId' => $job['id'],
         'requestId' => $requestId,
         'status' => 'completed',
         'output' => $output,
         'usage' => ['imageCount' => count($frames), 'videoCount' => 0],
-        'estimatedCostVnd' => 0,
+        'estimatedCostVnd' => $job['estimated_cost_vnd'],
+        'costSource' => 'admin-estimate',
     ]);
 } catch (Throwable $error) {
+    if ($job && $job['status'] === 'queued') {
+        try { $admin->update('generation_jobs', ['id' => 'eq.' . $job['id'], 'status' => 'eq.processing'], ['status' => 'failed', 'error_message' => 'Tạo ảnh chưa hoàn tất. Kiểm tra provider rồi thử lại.', 'updated_at' => gmdate(DATE_ATOM)]); } catch (Throwable) {}
+    }
     error_log('[V-Remix] Local Gemini Web generation: ' . $error->getMessage());
     $respond(['status' => 'failed', 'error' => $error->getMessage()], 502);
 }

@@ -1,182 +1,108 @@
 <?php
 declare(strict_types=1);
-
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
-require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 require __DIR__ . '/src/Support/StudioPlan.php';
-
-use App\Infrastructure\SupabaseAdminClient;
+require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
+require __DIR__ . '/src/Infrastructure/StudioStorage.php';
 use App\Support\Env;
 use App\Support\SupabaseAuth;
-
+use App\Support\StudioPlan;
+use App\Infrastructure\SupabaseAdminClient;
+use App\Infrastructure\StudioStorage;
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-
-$respond = static function (mixed $body, int $status = 200): never {
-    http_response_code($status);
-    echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-    exit;
+$respond = static function (array $body, int $status = 200): never {
+    http_response_code($status); echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR); exit;
 };
-
 Env::load(__DIR__ . '/.env');
-$auth = new SupabaseAuth(
-    (string) getenv('SUPABASE_URL'),
-    (string) getenv('SUPABASE_ANON_KEY'),
-    (string) getenv('SUPABASE_SERVICE_ROLE_KEY')
-);
-$auth->boot();
-$user = $auth->user();
-if ($user === null) {
-    $respond(['error' => 'Hãy đăng nhập để lưu Look vào thư viện riêng.'], 401);
-}
-if (!$auth->verifyCsrf((string) ($_SERVER['HTTP_X_VREMIX_CSRF'] ?? ''))) {
-    $respond(['error' => 'Phiên Studio không hợp lệ. Hãy tải lại trang.'], 403);
-}
+$auth = new SupabaseAuth((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_ANON_KEY'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
+$auth->boot(); $user = $auth->user();
+if (!$user) $respond(['error' => 'Đăng nhập để mở thư viện riêng.'], 401);
+if (!$auth->verifyCsrf((string) ($_SERVER['HTTP_X_VREMIX_CSRF'] ?? ''))) $respond(['error' => 'Phiên không hợp lệ. Hãy tải lại Studio.'], 403);
+$owner = hash('sha256', (string) ($_SESSION['studio_generation_owner'] ?? ''));
 $userId = (string) $user['id'];
-
-$supabaseUrl = rtrim((string) getenv('SUPABASE_URL'), '/');
-$serviceRoleKey = (string) getenv('SUPABASE_SERVICE_ROLE_KEY');
-if ($supabaseUrl === '' || $serviceRoleKey === '') {
-    $respond(['error' => 'Dịch vụ lưu Look chưa được cấu hình.'], 503);
-}
-
+session_write_close();
+$uuid = static fn (mixed $v): bool => is_string($v) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $v) === 1;
 try {
-    $client = new SupabaseAdminClient($supabaseUrl, $serviceRoleKey);
-    $sessionToken = (string) ($_SESSION['look_session_token'] ?? '');
-    if ($sessionToken === '') {
-        $sessionToken = bin2hex(random_bytes(32));
-        $_SESSION['look_session_token'] = $sessionToken;
-    }
-    $sessionHash = hash('sha256', $sessionToken);
-    $sessionRows = $client->select('user_context_sessions', [
-        'session_token_hash' => 'eq.' . $sessionHash,
-        'select' => 'id',
-        'limit' => '1',
-    ]);
-    $sessionId = (string) ($sessionRows[0]['id'] ?? '');
-
+    $client = new SupabaseAdminClient((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
+    $storage = new StudioStorage((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $items = $client->select('looks', [
-            'user_id' => 'eq.' . $userId,
-            'select' => 'id,name,occasion_slug,garment_slug,color_slug,pattern_slug,style_slug,scene_slug,selection,locks,image_url,visibility,created_at',
-            'order' => 'created_at.desc',
-            'limit' => '20',
-        ]);
-        $respond(['items' => $items]);
+        $offset = max(0, min(10000, (int) ($_GET['offset'] ?? 0)));
+        $items = $client->select('looks', ['user_id' => 'eq.' . $userId, 'select' => '*',
+            'order' => 'created_at.desc,id.desc', 'limit' => '21', 'offset' => (string) $offset]);
+        $more = count($items) > 20; $items = array_slice($items, 0, 20);
+        foreach ($items as &$item) {
+            if (!empty($item['storage_path'])) {
+                try { $item['image_url'] = $storage->sign($item['storage_path']); }
+                catch (Throwable) { $item['image_url'] = null; $item['media_error'] = true; }
+            }
+        } unset($item);
+        $respond(['items' => $items, 'hasMore' => $more]);
     }
-
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        $respond(['error' => 'Method không được hỗ trợ.'], 405);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') $respond(['error' => 'Method không được hỗ trợ.'], 405);
+    $raw = (string) file_get_contents('php://input');
+    if (strlen($raw) > 18_000_000) $respond(['error' => 'Dữ liệu quá lớn.'], 413);
+    $input = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+    $action = $input['action'] ?? '';
+    if (in_array($action, ['rename', 'delete'], true)) {
+        if (!$uuid($input['id'] ?? null)) $respond(['error' => 'Bản phối không hợp lệ.'], 422);
+        $filters = ['id' => 'eq.' . $input['id'], 'user_id' => 'eq.' . $userId];
+        if (!$client->select('looks', $filters + ['select' => 'id', 'limit' => '1'])) $respond(['error' => 'Không tìm thấy bản phối.'], 404);
+        if ($action === 'delete') $client->delete('looks', $filters);
+        else {
+            $name = trim((string) ($input['name'] ?? ''));
+            if (mb_strlen($name) < 1 || mb_strlen($name) > 120) $respond(['error' => 'Tên bản phối cần từ 1 đến 120 ký tự.'], 422);
+            $client->update('looks', $filters, ['name' => $name, 'updated_at' => gmdate(DATE_ATOM)]);
+        }
+        $respond(['ok' => true]);
     }
-
-    $input = json_decode((string) file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
-    if (!is_array($input) || ($input['action'] ?? '') !== 'save') {
-        $respond(['error' => 'Payload lưu Look không hợp lệ.'], 400);
-    }
+    if ($action !== 'save' || !$uuid($input['saveId'] ?? null)) $respond(['error' => 'Yêu cầu lưu không hợp lệ.'], 422);
+    // Recover a prior successful save without repeating uploads or database writes.
+    $existing = $client->select('looks', ['user_id' => 'eq.' . $userId, 'client_save_id' => 'eq.' . $input['saveId'], 'select' => 'id', 'limit' => '1']);
+    if ($existing) $respond(['saved' => true, 'lookId' => $existing[0]['id']]);
     $selection = $input['selection'] ?? null;
-    if (!is_array($selection)) {
-        $respond(['error' => 'Thiếu lựa chọn của Look.'], 422);
-    }
-    $slug = static function (mixed $value): ?string {
-        $value = trim((string) $value);
-        return $value !== '' && preg_match('/^[a-z0-9-]{1,80}$/', $value) ? $value : null;
-    };
-    $occasion = $slug($selection['event'] ?? null);
-    if (isset($selection['planning'])) {
-        // Only normalized metadata, never source face pixels, is saved in the plan.
-        try { $selection['planning'] = \App\Support\StudioPlan::normalize($selection['planning']); }
-        catch (InvalidArgumentException $error) { $respond(['error' => $error->getMessage()], 422); }
-    }
-    $garment = $slug($selection['garment'] ?? null);
-    if ($occasion === 'custom' && empty($selection['planning']['customOccasion'])) $respond(['error' => 'Look cần có tên dịp tự nhập.'], 422);
-    if ($occasion === null || $garment === null) {
-        $respond(['error' => 'Look cần có dịp mặc và Việt phục hợp lệ.'], 422);
-    }
-
-    $context = is_array($input['context'] ?? null) ? $input['context'] : [];
-    if ($sessionId === '') {
-        $created = $client->insert('user_context_sessions', [
-            'session_token_hash' => $sessionHash,
-            'branch_key' => $slug($context['branch'] ?? null),
-            'occasion_slug' => $occasion,
-            'context' => $context,
-            'last_seen_at' => gmdate(DATE_ATOM),
-        ]);
-        $sessionId = (string) ($created[0]['id'] ?? '');
-    } else {
-        $client->update('user_context_sessions', ['id' => 'eq.' . $sessionId], [
-            'branch_key' => $slug($context['branch'] ?? null),
-            'occasion_slug' => $occasion,
-            'context' => $context,
-            'last_seen_at' => gmdate(DATE_ATOM),
-        ]);
-    }
-
-    $images = array_values(array_filter(
-        is_array($input['images'] ?? null) ? $input['images'] : [],
-        static fn (mixed $url): bool => is_string($url) && preg_match('#^https?://#i', $url) === 1
-    ));
-    $visibility = ($input['visibility'] ?? '') === 'public' ? 'public' : 'private';
-    $lookRows = $client->insert('looks', [
-        'user_id' => $userId,
-        'session_id' => $sessionId,
-        'name' => mb_substr(trim((string) ($input['name'] ?? 'Look V-Remix')), 0, 120),
-        'occasion_slug' => $occasion,
-        'garment_slug' => $garment,
-        'color_slug' => $slug($selection['color'] ?? null),
-        'pattern_slug' => $slug($selection['pattern'] ?? null),
-        'style_slug' => $slug($selection['style'] ?? null),
-        'scene_slug' => $slug($selection['scene'] ?? null),
-        'selection' => $selection,
-        'locks' => is_array($input['locks'] ?? null) ? $input['locks'] : [],
-        'image_url' => $images[0] ?? null,
-        'visibility' => $visibility,
-    ]);
-    $lookId = (string) ($lookRows[0]['id'] ?? '');
-    if ($lookId === '') {
-        throw new RuntimeException('Supabase không trả về ID Look.');
-    }
-
-    foreach (array_slice($images, 0, 5) as $index => $imageUrl) {
-        $client->insert('look_variants', [
-            'look_id' => $lookId,
-            'variant_index' => $index,
-            'label' => $index === 0 ? 'Look gốc' : 'Variant ' . $index,
-            'selection' => $selection,
-            'image_url' => $imageUrl,
-        ]);
-    }
-
-    $accessorySlugs = array_values(array_filter(
-        is_array($selection['accessories'] ?? null) ? $selection['accessories'] : [],
-        static fn (mixed $value): bool => is_string($value) && preg_match('/^[a-z0-9-]{1,80}$/', $value) === 1
-    ));
-    if ($accessorySlugs !== []) {
-        $accessories = $client->select('studio_accessories', [
-            'slug' => 'in.(' . implode(',', $accessorySlugs) . ')',
-            'select' => 'id,name',
-        ]);
-        foreach ($accessories as $accessory) {
-            $client->insert('look_accessories', [
-                'look_id' => $lookId,
-                'accessory_id' => (string) $accessory['id'],
-                'accessory_name' => (string) $accessory['name'],
-            ]);
+    if (!is_array($selection)) $respond(['error' => 'Thiếu lựa chọn bản phối.'], 422);
+    $selection['planning'] = StudioPlan::normalize($selection['planning'] ?? null);
+    $job = null;
+    if ($uuid($input['jobId'] ?? null)) {
+        $rows = $client->select('generation_jobs', ['id' => 'eq.' . $input['jobId'], 'select' => '*', 'limit' => '1']);
+        $job = $rows[0] ?? null;
+        if (!$job || $job['status'] !== 'completed'
+            || ($job['user_id'] !== $userId && (empty($job['owner_session_hash']) || !hash_equals($job['owner_session_hash'], $owner)))) {
+            $respond(['error' => 'Kết quả tạo ảnh không thuộc tài khoản hoặc phiên của bạn.'], 403);
         }
     }
-
-    if ($visibility === 'public') {
-        $client->insert('discovery_looks', [
-            'look_id' => $lookId,
-            'status' => 'pending',
-        ]);
+    $items = $job ? ($job['output']['lookbook']['items'] ?? []) : ($input['images'] ?? []);
+    $images = [];
+    foreach (array_slice($items, 0, 5) as $index => $item) {
+        $url = is_array($item) ? (string) ($item['url'] ?? '') : (string) $item;
+        $path = is_array($item) ? (string) ($item['path'] ?? '') : '';
+        if (str_starts_with($url, 'data:image/')) {
+            $path = $userId . '/saved/' . $input['saveId'] . '/' . $index . '.png';
+            $url = $storage->uploadData($path, $url);
+        } elseif ($storage->trustedUrl($url)) {
+            if (!$path && preg_match('#/storage/v1/object/(?:sign|public)/generated-lookbooks/([^?]+)#', $url, $m)) $path = rawurldecode($m[1]);
+            if ($path) $url = $storage->sign($path);
+        } else $respond(['error' => 'Ảnh chưa được lưu vào Storage tin cậy.'], 422);
+        $images[] = ['url' => $url, 'path' => $path];
     }
-
-    $respond(['lookId' => $lookId, 'visibility' => $visibility, 'saved' => true], 201);
+    if (!$images) $respond(['error' => 'Chưa có ảnh để lưu.'], 422);
+    $slug = static function ($v): ?string { return is_string($v) && preg_match('/^[a-z0-9-]{1,80}$/', $v) ? $v : null; };
+    $occasion = $slug($selection['event'] ?? null); $garment = $slug($selection['garment'] ?? null);
+    if (!$occasion || !$garment || ($occasion === 'custom' && !$selection['planning']['customOccasion'])) $respond(['error' => 'Thiếu dịp mặc hoặc trang phục.'], 422);
+    $record = ['name' => mb_substr(trim((string) ($input['name'] ?? 'Bản phối của tôi')), 0, 120),
+        'occasion_slug' => $occasion, 'garment_slug' => $garment, 'selection' => $selection,
+        'locks' => $selection['locks'] ?? [], 'image_url' => $images[0]['url'], 'storage_path' => $images[0]['path'] ?: null,
+        'generation_job_id' => $job['id'] ?? null, 'prompt_version_id' => $job['prompt_version_id'] ?? null];
+    foreach (['color', 'pattern', 'style', 'scene'] as $key) $record[$key . '_slug'] = $slug($selection[$key] ?? null);
+    $saved = $client->rpc('save_studio_look', ['p_user' => $userId, 'p_save' => $input['saveId'], 'p_record' => $record, 'p_images' => $images]);
+    $respond(['saved' => true, 'lookId' => $saved[0]['id'], 'visibility' => 'private'], 201);
+} catch (InvalidArgumentException $error) {
+    $respond(['error' => $error->getMessage()], 422);
 } catch (JsonException) {
     $respond(['error' => 'JSON không hợp lệ.'], 400);
 } catch (Throwable $error) {
-    error_log('[V-Remix] look-api: ' . $error->getMessage());
-    $respond(['error' => 'Không thể lưu Look vào Supabase.'], 500);
+    error_log('[V-Remix] library: ' . $error->getMessage());
+    $respond(['error' => 'Không thể cập nhật thư viện. Ảnh hiện tại vẫn được giữ; bạn có thể thử lại.'], 503);
 }

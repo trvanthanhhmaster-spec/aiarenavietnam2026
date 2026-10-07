@@ -22,6 +22,7 @@ $auth = new SupabaseAuth(
 );
 $auth->boot();
 $authUser = $auth->user();
+if (empty($_SESSION['studio_generation_owner'])) $_SESSION['studio_generation_owner'] = bin2hex(random_bytes(32));
 $authNext = 'studio.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . (string) $_SERVER['QUERY_STRING'] : '');
 $site = null;
 $catalog = null;
@@ -73,14 +74,16 @@ $accountInitial = $authUser !== null
 $studioData = $catalog + [
     'generationEndpoint' => $localWebGeneration
         ? 'local-generate.php'
-        : rtrim($database['url'], '/') . '/functions/v1/generate-look',
+        : 'generation-edge.php',
     'generationProvider' => $localWebGeneration ? 'gemini-webapi-local' : 'supabase-edge',
     'baseMedia' => $baseMedia,
     'basePoster' => $basePoster,
     'lookEndpoint' => 'look-api.php',
     'lookCsrf' => $auth->csrfToken(),
+    'sessionScope' => hash('sha256', $_SESSION['studio_generation_owner']),
     'auth' => [
         'authenticated' => $authUser !== null,
+        'userId' => (string) ($authUser['id'] ?? ''),
         'loginUrl' => 'auth.php?next=' . rawurlencode(SupabaseAuth::safeNext($authNext)),
         'email' => (string) ($authUser['email'] ?? ''),
     ],
@@ -329,6 +332,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
                             <button type="button" id="saveLook" disabled>Lưu bản phối</button>
                             <a class="result-download" id="resultDownload" href="#" download hidden>Tải ảnh <span aria-hidden="true">↓</span></a>
+                            <button type="button" id="downloadStory" hidden>Tải thẻ bản phối 9:16</button>
                             <button type="button" id="addVariant" aria-label="Thêm phụ kiện vào bản phối" hidden><?= $studioIcon('sparkles') ?><span>Thêm phụ kiện</span></button>
                             <button type="button" id="retryGeneration" hidden>Thử tạo lại</button>
                         </div>
@@ -426,6 +430,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
 
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
+    <?php require __DIR__ . '/includes/studio/library.php'; ?>
     <dialog class="studio-auth-dialog" id="studioAuthDialog" aria-labelledby="studioAuthTitle">
         <button type="button" class="studio-auth-close" aria-label="Đóng đăng nhập" id="studioAuthClose">×</button>
         <h2 id="studioAuthTitle"><?= $authUser !== null ? 'Tài khoản của bạn' : 'Đăng nhập hoặc đăng ký' ?></h2>
@@ -436,9 +441,11 @@ require __DIR__ . '/includes/components/studio-icon.php';
         window.VREMIX_STUDIO = <?= json_encode($studioData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
     <script src="assets/js/studio-planner.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner.js') ?>" defer></script>
+    <script src="assets/js/studio-session.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-session.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
     <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>
+    <script src="assets/js/studio-library.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-library.js') ?>" defer></script>
 </body>
 </html>

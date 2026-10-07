@@ -317,49 +317,24 @@ async function estimatedUsageSince(isoDate: string) {
     total + Number(row.estimated_cost_vnd || 0), 0);
 }
 
-async function createJob(input: LookRequest, promptVersionId: string, settings: RuntimeSettings) {
-  const requestId = input.clientRequestId as string;
-  const existing = await getJobByRequestId(requestId);
-  if (existing) return { id: existing.id as string, existing: true };
-
-  if (!settings.generationEnabled) {
-    throw new Error("AI generation is temporarily disabled by the admin.");
-  }
+async function createJob(input: LookRequest, promptVersionId: string, settings: RuntimeSettings, owner: string, user: string | null) {
   const estimate = costEstimate(input, settings);
-  const now = new Date();
-  const dayStart = new Date(now);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const [todayUsage, monthUsage] = await Promise.all([
-    estimatedUsageSince(dayStart.toISOString()),
-    estimatedUsageSince(monthStart.toISOString()),
-  ]);
-  if (settings.dailyBudgetVnd > 0 && todayUsage + estimate.estimatedCostVnd > settings.dailyBudgetVnd) {
-    throw new Error("Daily AI budget would be exceeded. Hãy giảm số biến thể hoặc tăng ngân sách trong Admin.");
-  }
-  if (settings.monthlyBudgetVnd > 0 && monthUsage + estimate.estimatedCostVnd > settings.monthlyBudgetVnd) {
-    throw new Error("Monthly AI budget would be exceeded. Hãy kiểm tra chi phí trong Admin.");
-  }
-
-  const response = await rest("generation_jobs?on_conflict=client_request_id", {
+  const response = await rest("rpc/reserve_local_generation", {
     method: "POST",
-    headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
-    body: JSON.stringify({
-      status: "queued",
-      client_request_id: requestId,
-      input: persistedInput(input),
-      prompt_version_id: promptVersionId,
-      estimated_cost_vnd: estimate.estimatedCostVnd,
-      image_count: estimate.imageCount,
-      video_count: estimate.videoCount,
-    }),
+    body: JSON.stringify({ p_request: input.clientRequestId, p_user: user, p_owner: owner,
+      p_input: { ...persistedInput(input), _provider: "supabase-edge", _estimate: estimate.estimatedCostVnd } }),
   });
   const rows = await response.json();
-  if (rows[0]?.id) return { id: rows[0].id as string, existing: false };
-
-  const concurrent = await getJobByRequestId(requestId);
-  if (!concurrent?.id) throw new Error("Unable to create generation job.");
-  return { id: concurrent.id as string, existing: true };
+  const reserved = rows[0];
+  if (!reserved?.id) throw new Error("Unable to register generation.");
+  if (reserved.status !== "queued") return { id: reserved.id as string, existing: true };
+  const claimed = await rest(`generation_jobs?id=eq.${encodeURIComponent(reserved.id)}&status=eq.queued`, {
+    method: "PATCH", headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ status: "processing", prompt_version_id: promptVersionId,
+      image_count: estimate.imageCount, video_count: estimate.videoCount }),
+  });
+  const updated = await claimed.json();
+  return { id: reserved.id as string, existing: !updated.length };
 }
 
 async function updateJob(jobId: string, status: string, output: unknown, errorMessage?: string) {
@@ -378,7 +353,7 @@ async function updateJob(jobId: string, status: string, output: unknown, errorMe
 async function getJob(jobId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `id=eq.${encodeURIComponent(jobId)}&select=id,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
+    `id=eq.${encodeURIComponent(jobId)}&select=id,user_id,owner_session_hash,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
 }
@@ -386,7 +361,7 @@ async function getJob(jobId: string) {
 async function getJobByRequestId(requestId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `client_request_id=eq.${encodeURIComponent(requestId)}&select=id,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
+    `client_request_id=eq.${encodeURIComponent(requestId)}&select=id,user_id,owner_session_hash,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
 }
@@ -1001,6 +976,11 @@ async function refreshVideoJob(job: Record<string, any>, settings: RuntimeSettin
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // All browser requests enter through the session/CSRF-protected PHP gateway.
+  if (request.headers.get('Authorization') !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) return json({ error: 'Server gateway required.' }, 403);
+  const owner = request.headers.get('x-vremix-owner') || '';
+  const user = request.headers.get('x-vremix-user') || null;
+  if (!/^[a-f0-9]{64}$/.test(owner) || (user !== null && !isUuid(user))) return json({ error: 'Invalid caller.' }, 403);
 
   const url = new URL(request.url);
   if (request.method === "GET") {
@@ -1013,7 +993,11 @@ Deno.serve(async (request) => {
       const current = jobId
         ? await getJob(jobId)
         : await getJobByRequestId(requestId as string);
+      if (current && current.owner_session_hash !== owner && (!user || current.user_id !== user)) return json({ error: 'Job not found.' }, 404);
       const job = current ? await refreshVideoJob(current, settings) : null;
+      if (job?.status === 'completed') {
+        for (const item of job.output?.lookbook?.items || []) if (item.path) item.url = await signedUrl(item.path);
+      }
       return job ? json(jobResponse(job)) : json({ error: "Job not found." }, 404);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Unable to read job." }, 502);
@@ -1067,7 +1051,7 @@ Deno.serve(async (request) => {
   try {
     const settings = await runtimeSettings();
     const promptVersion = await activePrompt();
-    job = await createJob(input, promptVersion.id, settings);
+    job = await createJob(input, promptVersion.id, settings, owner, user);
     if (job.existing) {
       const current = await getJob(job.id);
       const resumed = current ? await refreshVideoJob(current, settings) : null;

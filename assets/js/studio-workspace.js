@@ -107,11 +107,16 @@
     guideStep = step;
     showPanel('catalog', true);
     renderGuide(true);
+    experience.dispatchEvent(new Event('studio:guide-step'));
   }
 
   experience.addEventListener('studio:selection', function (event) {
     guide = event.detail;
     if (!canVisit(guideStep)) guideStep = guide.next;
+    renderGuide(false);
+  });
+  experience.addEventListener('studio:restore-step', function (event) {
+    guideStep = canVisit(event.detail) ? event.detail : guide.next;
     renderGuide(false);
   });
   guideContinue.addEventListener('click', function () {
@@ -124,6 +129,7 @@
     var steps = ['event', 'people', 'time', 'garment', 'review'];
     guideStep = steps[steps.indexOf(guideStep) + 1];
     renderGuide(true);
+    experience.dispatchEvent(new Event('studio:guide-step'));
   });
   guideBack.addEventListener('click', function () {
     var steps = ['event', 'people', 'time', 'garment']; visitGuide(steps[Math.max(0, steps.indexOf(guideStep) - 1)]);

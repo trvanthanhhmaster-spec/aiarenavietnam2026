@@ -89,6 +89,7 @@ Object.assign(context, {
   imageInput: { files: [] }, generationPending: false,
   saveLookButton: element(), compareLooksButton: element(), resultDownload: element(),
   currentLookbookItems: [], syncSubmitButton() {},
+  persistStudio() {}, draftEdited: false,
   setStatus: message => { context.lastStatus = message; },
   window: { setTimeout(fn, ms) { pendingTimers.push({ fn, ms }); return pendingTimers.length; } }
 });

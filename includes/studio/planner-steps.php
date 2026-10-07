@@ -16,7 +16,7 @@
     <details class="planner-details"><summary>Cần gợi ý hoặc có dịp khác?</summary>
         <p class="guide-card-note">Gợi ý từ bộ sưu tập đã duyệt, không gọi AI hay tạo ảnh ở bước này.</p>
         <div id="occasionSuggestions" class="planner-suggestions"></div>
-        <label class="planner-field">Mô tả thêm dịp của bạn<textarea id="occasionNote" maxlength="400" placeholder="Ví dụ: chụp kỷ yếu cùng bạn thân ở sân trường"></textarea></label>
+        <label class="planner-field">Mô tả nhu cầu (không bắt buộc)<textarea id="occasionNote" maxlength="400" placeholder="Ví dụ: chụp kỷ yếu cùng bạn thân ở sân trường"></textarea></label>
         <button type="button" class="planner-secondary" id="useNoteOccasion" disabled>Dùng mô tả này làm dịp mặc</button>
         <small>Không cần chọn một dịp có sẵn. Dịp tự nhập là nhu cầu của bạn, không phải thông tin văn hóa đã xác minh.</small>
     </details>
@@ -50,6 +50,6 @@
         <label class="planner-field">Ngày kết thúc <small>Không bắt buộc</small><input type="date" id="periodEnd"></label>
         <button type="button" class="planner-secondary" id="applyCustomPeriod">Dùng ngày đã chọn</button>
     </details>
-    <p class="guide-card-note">Đây là ngày mặc, không phải thời điểm trong ảnh. Studio không dùng dự báo thời tiết trực tiếp.</p>
+    <p class="guide-card-note">Chưa biết ngày thì chọn “Chưa xác định”. Ngày mặc không quyết định ánh sáng trong ảnh; Studio không hiển thị dự báo thời tiết khi chưa có dữ liệu thật.</p>
 </section>
 <p id="plannerError" class="planner-error" role="alert" hidden></p>

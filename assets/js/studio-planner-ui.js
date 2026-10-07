@@ -4,7 +4,15 @@
   var api = experience.plannerApi;
   function id(name) { return document.getElementById(name); }
   function error(message) { id('plannerError').hidden = !message; id('plannerError').textContent = message || ''; }
-  function action(fn) { try { fn(); error(''); } catch (e) { error(e.message); } }
+  function action(fn) { try { fn(); error(''); return true; } catch (e) { error(e.message); return false; } }
+  function commitProfile() {
+    var plan = api.get(), person = plan.people[plan.activePerson - 1];
+    if (!person) return true;
+    var name = id('personName').value, height = id('personHeight').value, weight = id('personWeight').value;
+    if (name === person.name && height === String(person.heightCm == null ? '' : person.heightCm)
+        && weight === String(person.weightKg == null ? '' : person.weightKg)) return true;
+    return action(function () { api.profile(name, height, weight); });
+  }
   function render() {
     var guide = experience.studioGuide, plan = guide.planning, data = window.VREMIX_STUDIO;
     id('plannerGroupMode').hidden = plan.count < 2;
@@ -14,6 +22,7 @@
       var garment = (data.garments || []).find(function (g) { return g.slug === p.outfit.garment; });
       var label = p.name || 'Người ' + p.id;
       var button = document.createElement('button'); button.type = 'button';
+      button.dataset.plannerPerson = p.id;
       button.textContent = label + ' · ' + (p.outfit.garment ? 'Đã chọn' : 'Chưa chọn');
       button.setAttribute('aria-pressed', String(p.id === plan.activePerson));
       button.addEventListener('click', function () { api.person(p.id); }); id('plannerPeople').appendChild(button);
@@ -53,7 +62,14 @@
   id('occasionNote').addEventListener('input', function () { api.occasionNote(this.value); });
   id('useSearchOccasion').addEventListener('click', function () { action(function () { api.customOccasion(id('occasionSearch').value); }); });
   id('useNoteOccasion').addEventListener('click', function () { action(function () { api.customOccasion(id('occasionNote').value); }); });
-  ['personName', 'personHeight', 'personWeight'].forEach(function (name) { id(name).addEventListener('change', function () { action(function () { api.profile(id('personName').value, id('personHeight').value, id('personWeight').value); }); }); });
+  ['personName', 'personHeight', 'personWeight'].forEach(function (name) { id(name).addEventListener('change', commitProfile); });
+  // Capture before the workspace's navigation handlers: invalid measurements
+  // must not silently create a look using the previously saved profile.
+  experience.addEventListener('click', function (event) {
+    if (experience.dataset.guideStep !== 'garment') return;
+    if (!event.target.closest('#guideContinue, #plannerGenerate, [data-planner-person]')) return;
+    if (!commitProfile()) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
   id('personFaceConsent').addEventListener('change', function () {
     id('personFace').disabled = !this.checked; if (!this.checked) api.face(null, false);
   });

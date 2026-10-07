@@ -5,7 +5,9 @@
   const frame = document.getElementById('studioAuthFrame');
   if (!trigger || !dialog || typeof dialog.showModal !== 'function') return;
   trigger.setAttribute('aria-haspopup', 'dialog');
-  const open = () => {
+  const open = async () => {
+    document.getElementById('studioExperience')?.resultsApi?.persist();
+    if (window.VRemixSession) await window.VRemixSession.flush();
     if (!frame.getAttribute('src')) frame.src = frame.dataset.src;
     if (!dialog.open) dialog.showModal();
   };
@@ -24,7 +26,11 @@
   frame.addEventListener('load', () => {
     try {
       const url = new URL(frame.contentWindow.location.href);
-      if (url.pathname.endsWith('/studio.php')) { window.location.reload(); return; }
+      if (url.pathname.endsWith('/studio.php')) {
+        if (window.VRemixSession) window.VRemixSession.flush().then(() => window.location.reload());
+        else window.location.reload();
+        return;
+      }
       const account = frame.contentDocument.querySelector('[data-account-name]');
       if (account) {
         const name = account.dataset.accountName;

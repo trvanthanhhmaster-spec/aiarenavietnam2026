@@ -82,7 +82,7 @@
   };
   var frameSteps = document.querySelectorAll('[data-frame-step]');
   var submitLabel = submitButton ? submitButton.innerHTML : '';
-  var activeJobKey = 'vremix.active-generation-job.v2';
+  var activeJobKey = 'vremix.active-generation-job.v3.' + catalog.sessionScope;
   var generationPending = false;
   var lastOutputFingerprint = '';
   var currentLookbookItems = [];
@@ -93,6 +93,19 @@
   var currentResultSelection = null;
   var currentRequestSelection = null;
   var requestFingerprint = '';
+  var currentOutput = null;
+  var currentResultJobId = null;
+  var resultSaveId = null;
+  var savedLookId = null;
+  var saveAfterLogin = false;
+  var draftEdited = false;
+
+  function persistStudio() {
+    if (!window.VRemixSession) return;
+    window.VRemixSession.save({ draft: Object.assign({}, state, { planning: Planner.clone(planning) }),
+      selection: currentResultSelection, output: currentOutput, jobId: currentResultJobId,
+      saveId: resultSaveId, savedLookId: savedLookId, saveAfterLogin: saveAfterLogin, guideStep: experience.dataset.guideStep });
+  }
 
   var modes = [
     { id: 'event', index: '01 / 07', title: 'Dịp mặc', description: 'Chọn hoàn cảnh để hệ thống gợi ý dáng áo, màu và cách phối phù hợp.', anchor: { x: 20, y: 39 } },
@@ -215,11 +228,28 @@
 
   function restoreSelection(selection) {
     if (!selection) return;
-    if (selection.planning) {
-      planning = Planner.clone(selection.planning);
-      planning.people.forEach(function (person) { person.faceSupplied = false; });
-      Planner.load(planning, state);
-    }
+    var restored = Object.assign({}, selection);
+    planning = Planner.restore(selection);
+    planning.people.forEach(function (person) {
+      person.faceSupplied = false;
+      if (!lookup(catalog.garments, person.outfit.garment).slug) { person.outfit.garment = ''; person.outfit.garmentVariant = ''; }
+      ['color', 'pattern', 'style', 'scene'].forEach(function (kind) {
+        var table = { color: 'colors', pattern: 'patterns', style: 'styles', scene: 'scenes' }[kind];
+        if (!lookup(catalog[table], person.outfit[kind]).slug) person.outfit[kind] = '';
+      });
+      person.outfit.accessories = person.outfit.accessories.filter(function (slug) { return Boolean(lookup(catalog.accessories, slug).slug); });
+      Object.assign(state, person.outfit);
+      syncVariantSelections();
+      person.outfit = Planner.outfit(state);
+      person.customized = person.id > 1 && JSON.stringify(person.outfit) !== JSON.stringify(planning.people[0].outfit);
+    });
+    Object.assign(state, Planner.outfit({}));
+    Planner.load(planning, state);
+    // Top-level fields describe Person 1; the controls must describe the active
+    // person. Never overwrite Person 2's outfit with those summary fields.
+    var activePerson = planning.people[planning.activePerson - 1];
+    selection = Object.assign(restored, activePerson ? activePerson.outfit : Planner.outfit({}), { planning: planning });
+    state.event = '';
     if (selectedEvent(selection.event, selection.planning).slug) state.event = selection.event;
     if (lookup(catalog.garments, selection.garment).slug) state.garment = selection.garment;
     if (lookup(catalog.garmentVariants, selection.garmentVariant).slug) {
@@ -258,6 +288,7 @@
         if (Object.prototype.hasOwnProperty.call(selection.locks, key)) state.locks[key] = Boolean(selection.locks[key]);
       });
     }
+    renderCatalogPanels();
     updateSummary();
   }
 
@@ -1014,15 +1045,19 @@
 
   function selectionChanged() {
     // Editing is never permission to consume a provider generation.
-    if (saveLookButton) saveLookButton.disabled = true;
-    if (compareLooksButton) compareLooksButton.disabled = true;
-    if (resultDownload) resultDownload.hidden = true;
+    draftEdited = true;
     if (currentLookbookItems.length) setStatus('Lựa chọn đã đổi. Ảnh đang hiện là bản tạo trước; kiểm tra rồi tạo ảnh mới khi bạn muốn.');
     syncSubmitButton();
+    persistStudio();
   }
 
   async function generateLook() {
     if (generationPending) return;
+    var unresolvedJob = readActiveJob();
+    if (unresolvedJob) {
+      setStatus('Đang kiểm tra yêu cầu trước để tránh tạo ảnh trùng.');
+      return resumeGeneration(unresolvedJob);
+    }
     if (experience.dataset.guideStep !== 'review' || Planner.missing(planning, state.event) !== 'review') {
       setStatus('Hoàn tất bốn bước và kiểm tra thông tin trước khi tạo ảnh.');
       return;
@@ -1104,12 +1139,12 @@
         throw new Error('Dịch vụ tạo ảnh chưa sẵn sàng.');
       }
 
-      if (!isSynchronousLocalGeneration()) saveActiveJob(activeJob);
+      saveActiveJob(activeJob);
 
       setResultState('processing', 'Đang tạo bản phối và kiểm tra độ phù hợp văn hóa…');
       var response = await fetch(catalog.generationEndpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-VRemix-CSRF': catalog.lookCsrf || '' },
         body: JSON.stringify(payload)
       });
       var body = await response.json();
@@ -1119,24 +1154,33 @@
       }
       if (body.jobId) {
         activeJob.jobId = body.jobId;
-        if (!isSynchronousLocalGeneration()) saveActiveJob(activeJob);
+        saveActiveJob(activeJob);
       }
-      applyOutput(body.output || {});
       var completed = body.status === 'completed' ? body : await pollJob(activeJob);
       if (completed.status !== 'completed') {
         terminalFailure = true;
         throw new Error(completed.error || 'Generation job did not complete.');
       }
+      terminalFailure = true; // A finished request with no image cannot be resumed.
+      requireImageOutput(completed.output);
       applyOutput(completed.output || {});
       clearActiveJob();
       generationPending = false;
       syncSubmitButton();
       setResultState('completed', resultMessage(completed.output || {}));
       currentResultSelection = Planner.clone(currentRequestSelection);
+      currentResultJobId = completed.jobId || activeJob.jobId;
+      resultSaveId = createRequestId(); savedLookId = null;
+      saveLookButton.textContent = 'Lưu bản phối';
+      persistStudio();
     } catch (error) {
       if (terminalFailure) clearActiveJob();
       generationPending = false;
       syncSubmitButton();
+      if (currentLookbookItems.length) {
+        saveLookButton.disabled = Boolean(savedLookId);
+        resultDownload.hidden = false;
+      }
       var message = humanizeGenerationError(error && error.message
         ? error.message
         : 'Không thể hoàn thành bản phối.');
@@ -1149,7 +1193,7 @@
       showResult();
       return;
     }
-    restoreSelection(activeJob.selection);
+    // Recover the result snapshot without overwriting edits made since submission.
     currentRequestSelection = Planner.clone(activeJob.selection);
     requestFingerprint = selectionFingerprint();
     showResult();
@@ -1165,8 +1209,13 @@
         }
         throw new Error(completed.error || 'Generation job did not complete.');
       }
+      clearActiveJob();
+      requireImageOutput(completed.output);
       applyOutput(completed.output || {});
       currentResultSelection = Planner.clone(currentRequestSelection);
+      currentResultJobId = completed.jobId || activeJob.jobId;
+      resultSaveId = createRequestId(); savedLookId = null; persistStudio();
+      saveLookButton.textContent = 'Lưu bản phối';
       clearActiveJob();
       setResultState('completed', resultMessage(completed.output || {}));
     } catch (error) {
@@ -1214,7 +1263,7 @@
         ? 'jobId=' + encodeURIComponent(activeJob.jobId)
         : 'requestId=' + encodeURIComponent(activeJob.requestId);
       var response = await fetch(catalog.generationEndpoint + '?' + query, {
-        headers: { Accept: 'application/json' }
+        headers: { Accept: 'application/json', 'X-VRemix-CSRF': catalog.lookCsrf || '' }
       });
       var body = await response.json();
       if (!response.ok) {
@@ -1225,7 +1274,7 @@
         activeJob.jobId = body.jobId;
         saveActiveJob(activeJob);
       }
-      if (body.output) {
+      if (body.output && body.status === 'completed') {
         applyOutput(body.output);
       }
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
@@ -1251,10 +1300,18 @@
     return 'Ảnh bản phối đã sẵn sàng. Bạn có thể lưu, tải hoặc sửa lựa chọn để tạo ảnh khác.';
   }
 
+  function requireImageOutput(output) {
+    var items = output && output.lookbook && output.lookbook.items;
+    if (!Array.isArray(items) || !items.some(function (item) { return item && typeof item.url === 'string' && item.url.trim(); })) {
+      throw new Error('Dịch vụ chưa trả ảnh bản phối. Ảnh trước vẫn được giữ; bạn có thể thử lại.');
+    }
+  }
+
   function applyOutput(output) {
     var items = output.lookbook && Array.isArray(output.lookbook.items)
       ? output.lookbook.items.filter(function (item) { return item && item.url; })
       : [];
+    if (!items.length && currentLookbookItems.length) return;
     var fingerprint = JSON.stringify({
       story: output.story || '',
       guardrail: output.guardrail || '',
@@ -1268,6 +1325,7 @@
     });
     if (fingerprint === lastOutputFingerprint) return;
     lastOutputFingerprint = fingerprint;
+    if (items.length) currentOutput = Planner.clone(output);
 
     resultStory.textContent = output.story || resultStory.textContent;
     resultGuardrail.textContent = output.guardrail || resultGuardrail.textContent;
@@ -1293,6 +1351,8 @@
     var gallery = document.getElementById('studioVariants');
     if (gallery) gallery.hidden = items.length < 2;
     if (addVariantButton) addVariantButton.hidden = true;
+    var storyDownload = document.getElementById('downloadStory');
+    if (storyDownload) storyDownload.hidden = items.length === 0;
     experience.querySelectorAll('[data-workspace-variants]').forEach(function (button) {
       button.disabled = items.length < 2;
       button.title = items.length ? 'Xem các ảnh đã tạo' : 'Chưa có ảnh đã tạo';
@@ -1517,9 +1577,8 @@
       return loadCanvasImage(item.url);
     }));
     var canvas = document.createElement('canvas');
-    var aspect = state.aspectRatio || '16:9';
-    canvas.width = aspect === '16:9' ? 1920 : 1080;
-    canvas.height = aspect === '16:9' ? 1080 : (aspect === '1:1' ? 1080 : 1920);
+    canvas.width = 1080;
+    canvas.height = 1920;
     var context = canvas.getContext('2d');
     if (!context) throw new Error('Trình duyệt không hỗ trợ xuất lookbook.');
 
@@ -1527,7 +1586,11 @@
     context.fillRect(0, 0, canvas.width, canvas.height);
     var layout = lookbookLayout(images.length, canvas.width, canvas.height);
     images.forEach(function (image, index) {
-      coverRect(context, image, layout[index]);
+      // Story format must not crop faces or garments from the original.
+      var rect = layout[index];
+      var scale = Math.min(rect.width / image.naturalWidth, (rect.height - 240) / image.naturalHeight);
+      var width = image.naturalWidth * scale, height = image.naturalHeight * scale;
+      context.drawImage(image, rect.x + (rect.width - width) / 2, rect.y + 180 + (rect.height - 240 - height) / 2, width, height);
     });
 
     var topShade = context.createLinearGradient(0, 0, 0, 210);
@@ -1583,6 +1646,10 @@
   function showResult() {
     result.hidden = false;
     document.body.style.overflow = '';
+    if (currentLookbookItems.length) {
+      syncSubmitButton();
+      return; // Keep the previous completed result until its replacement exists.
+    }
     resultImages.innerHTML = '';
     resultImages.hidden = true;
     resultVideo.pause();
@@ -1631,6 +1698,7 @@
   async function saveCurrentLook() {
     if (!catalog.lookEndpoint || currentLookbookItems.length === 0 || !currentResultSelection) return;
     if (!catalog.auth || !catalog.auth.authenticated) {
+      saveAfterLogin = true; persistStudio();
       var authDialog = document.getElementById('studioAuthDialog');
       if (authDialog && typeof authDialog.showModal === 'function') {
         document.dispatchEvent(new Event('vremix:open-auth'));
@@ -1652,6 +1720,8 @@
         },
         body: JSON.stringify({
           action: 'save',
+          saveId: resultSaveId || (resultSaveId = createRequestId()),
+          jobId: currentResultJobId,
           name: (selectedEvent(currentResultSelection.event, currentResultSelection.planning).label || 'Bản phối') + ' / ' + currentResultSelection.planning.count + ' người',
           selection: currentResultSelection,
           locks: Object.assign({}, currentResultSelection.locks),
@@ -1664,11 +1734,12 @@
       });
       var body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Không thể lưu Look.');
-      saveLookButton.textContent = 'Đã lưu Look';
-      setStatus('Look đã lưu vào thư viện riêng.');
+      savedLookId = body.lookId; saveAfterLogin = false; persistStudio();
+      saveLookButton.textContent = 'Đã lưu bản phối';
+      setStatus('Đã lưu vào “Bản phối của tôi”.');
     } catch (error) {
       saveLookButton.disabled = false;
-      saveLookButton.textContent = 'Lưu Look';
+      saveLookButton.textContent = 'Lưu bản phối';
       setStatus(error.message || 'Không thể lưu Look.');
     }
   }
@@ -1726,7 +1797,14 @@
     var previousLabel = resultDownload.textContent;
     resultDownload.setAttribute('aria-disabled', 'true');
     resultDownload.textContent = 'Đang chuẩn bị file ảnh…';
-    downloadLookbookComposite(currentLookbookItems)
+    fetch(currentLookbookItems[0].url).then(function (response) {
+      if (!response.ok) throw new Error('Không thể tải ảnh. Hãy mở lại từ thư viện để làm mới quyền truy cập.');
+      return response.blob();
+    }).then(function (blob) {
+      var url = URL.createObjectURL(blob), link = document.createElement('a');
+      link.href = url; link.download = 'v-remix-anh-goc.' + (blob.type === 'image/jpeg' ? 'jpg' : blob.type === 'image/webp' ? 'webp' : 'png');
+      link.click(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    })
       .then(function () {
         setStatus('Đã tải ảnh về máy của bạn.');
       })
@@ -1738,6 +1816,13 @@
         resultDownload.removeAttribute('aria-disabled');
         resultDownload.textContent = previousLabel;
       });
+  });
+  document.getElementById('downloadStory').addEventListener('click', async function () {
+    if (!currentLookbookItems.length || this.disabled) return;
+    this.disabled = true;
+    try { await downloadLookbookComposite(currentLookbookItems); setStatus('Đã tải thẻ bản phối 1080 × 1920.'); }
+    catch (error) { setStatus(error.message || 'Không thể xuất thẻ bản phối. Ảnh gốc vẫn được giữ.'); }
+    finally { this.disabled = false; }
   });
   window.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
@@ -1753,6 +1838,8 @@
     get: function () { return Planner.clone(planning); },
     count: function (count) {
       if (generationPending) return;
+      if (planning.count && count < planning.count && planning.people.slice(count).some(function (person) { return person.outfit.garment || person.name || person.faceSupplied; })
+          && !window.confirm('Giảm số người sẽ bỏ trang phục và ảnh tham khảo của những người ở cuối danh sách. Bạn muốn tiếp tục?')) return;
       Planner.setCount(planning, count);
       faceFiles.forEach(function (value, id) { if (id > count) { URL.revokeObjectURL(value.url); faceFiles.delete(id); } });
       Planner.load(planning, state); syncVariantSelections(); renderCatalogPanels(); updateSummary('people'); selectionChanged();
@@ -1842,5 +1929,60 @@
   updateSummary();
   prepareMedia();
   var pendingJob = readActiveJob();
-  if (pendingJob) resumeGeneration(pendingJob);
+  experience.resultsApi = {
+    open: function (look, edit) {
+      if (generationPending) throw new Error('Hãy đợi bản phối đang tạo hoàn tất trước khi mở bản khác.');
+      if (!look.image_url && !edit) throw new Error('Ảnh chưa tải được. Hãy mở lại thư viện để thử lại.');
+      if (!look.selection || typeof look.selection !== 'object') throw new Error('Bản phối cũ thiếu lựa chọn để chỉnh tiếp.');
+      if (look.image_url) {
+      currentResultSelection = Planner.clone(look.selection);
+      currentResultJobId = look.generation_job_id || null;
+      resultSaveId = look.client_save_id || createRequestId(); savedLookId = look.id;
+      lastOutputFingerprint = '';
+      applyOutput({ story: 'Bản phối đã lưu trong thư viện riêng.', lookbook: { aspectRatio: look.selection.aspectRatio || '16:9', items: [{ url: look.image_url, path: look.storage_path }] } });
+      }
+      if (edit) {
+        draftEdited = true;
+        faceFiles.forEach(function (ref) { URL.revokeObjectURL(ref.url); }); faceFiles.clear();
+        var editable = Planner.clone(look.selection); editable.planning = Planner.restore(editable); editable.planning.activePerson = 1;
+        restoreSelection(editable); updateSummary('restore');
+        experience.dispatchEvent(new CustomEvent('studio:restore-step', { detail: 'garment' }));
+        document.getElementById('occasionNote').value = planning.occasionNote || '';
+      }
+      if (look.image_url) { saveLookButton.disabled = true; saveLookButton.textContent = 'Đã lưu bản phối'; }
+      setStatus(!look.image_url ? 'Đã mở lựa chọn cũ để chỉnh tiếp. Ảnh cũ không tải được; chỉ tạo ảnh mới khi bạn xác nhận.' : edit ? 'Đã mở lựa chọn để chỉnh tiếp. Ảnh đã lưu vẫn giữ nguyên; chỉ tạo ảnh mới khi bạn xác nhận.' : 'Đang xem bản phối đã lưu. Lựa chọn đang chỉnh không bị thay đổi.');
+      persistStudio();
+      document.querySelector('.studio-preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    persist: persistStudio
+  };
+  document.addEventListener('vremix:draft-storage-error', function () { setStatus('Trình duyệt không giữ được bản nháp. Hãy tải ảnh hoặc lưu vào tài khoản trước khi rời trang.'); });
+  experience.addEventListener('studio:guide-step', persistStudio);
+  if (window.VRemixSession) window.VRemixSession.read().then(async function (record) {
+    if (record && !draftEdited) {
+      if (record.draft) {
+        restoreSelection(record.draft); updateSummary('restore'); document.getElementById('occasionNote').value = planning.occasionNote || '';
+        experience.dispatchEvent(new CustomEvent('studio:restore-step', { detail: record.guideStep || Planner.missing(planning, state.event) }));
+        if (planning.count || state.event) setStatus('Đã khôi phục lựa chọn trước. Bạn có thể chỉnh hoặc kiểm tra rồi tạo ảnh; chưa tiêu lượt tạo.');
+      }
+      if (record.output && record.selection) {
+        var output = record.output;
+        if (record.jobId) {
+          try {
+            var response = await fetch(catalog.generationEndpoint + '?jobId=' + encodeURIComponent(record.jobId), { headers: { 'X-VRemix-CSRF': catalog.lookCsrf } });
+            var fresh = await response.json(); if (response.ok && fresh.status === 'completed') output = fresh.output;
+          } catch (_) { /* Keep the last available result during an outage. */ }
+        }
+        if (draftEdited) return;
+        currentResultSelection = record.selection; currentResultJobId = record.jobId;
+        resultSaveId = record.saveId; savedLookId = record.savedLookId;
+        applyOutput(output);
+        saveLookButton.disabled = Boolean(savedLookId); saveLookButton.textContent = savedLookId ? 'Đã lưu bản phối' : 'Lưu bản phối';
+        setStatus('Đã khôi phục bản phối trước. Ảnh mặt tham khảo không được giữ; hãy thêm lại nếu muốn dùng cho ảnh mới.');
+        if (record.saveAfterLogin && catalog.auth.authenticated) await saveCurrentLook();
+      }
+    }
+    if (pendingJob) resumeGeneration(pendingJob);
+  });
+  else if (pendingJob) resumeGeneration(pendingJob);
 })();

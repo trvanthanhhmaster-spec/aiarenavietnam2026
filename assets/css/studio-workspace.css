@@ -336,6 +336,22 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .studio-experience.has-generated-output .studio-frame {
   min-height: 0;
 }
+.studio-library { width: min(960px, calc(100vw - 32px)); max-height: 85dvh; padding: 24px; border: 1px solid #e6e3ec; border-radius: 22px; background: #f9f8fc; color: #17171b; }
+.studio-library::backdrop { background: rgb(25 22 34 / .45); }
+.studio-library header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+.studio-library h2 { margin: 0; font-size: 24px; }
+.studio-library p { font-size: 13px; line-height: 1.6; }
+.studio-library button { min-height: 44px; padding: 8px 14px; border: 1px solid #d8d4de; border-radius: 12px; background: white; cursor: pointer; }
+.studio-library button:focus-visible { outline: 2px solid #a53737; outline-offset: 3px; }
+.studio-library button:disabled { opacity: .5; cursor: wait; }
+.studio-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 18px; }
+.studio-library-grid article { padding: 12px; border-radius: 16px; background: white; }
+.studio-library-grid img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #efedf3; border-radius: 10px; }
+.studio-library-grid h3 { overflow-wrap: anywhere; font-size: 16px; }
+.studio-library-grid article > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.studio-library-grid input { width: 100%; min-height: 44px; border: 1px solid #d8d4de; border-radius: 10px; padding: 8px; }
+.studio-library [hidden] { display: none !important; }
+.library-privacy { margin-top: 24px; color: #64646f; }
 .workspace-panel-header p, .guide-card-note { font-size: 13px; line-height: 1.65; }
 .guide-card-note { color: #64646f; margin: -3px 0 18px; }
 .studio-catalog-card__head h2 { font-size: 16px; letter-spacing: -.025em; }
@@ -377,6 +393,14 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 @media (min-width: 1024px) {
   .guide-review > .guide-view-preview { position: sticky; bottom: 0; z-index: 3; box-shadow: 0 -10px 0 #fcf9f9; }
 }
+/* Confirmation must expose the complete summary before asking for a generation. */
+.studio-experience[data-guide-step='review'] .studio-workbench { height: auto; }
+.studio-experience[data-guide-step='review'] .studio-toolbox { height: auto; overflow: visible; }
+.studio-experience[data-guide-step='review'] .studio-preview {
+  height: auto; align-self: start; grid-template-rows: auto auto auto;
+}
+.studio-experience[data-guide-step='review']:not(.has-generated-output) .studio-plane { aspect-ratio: 16 / 9; }
+.studio-experience[data-guide-step='review'] #plannerGenerate { position: static; box-shadow: none; }
 .guide-navigation { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0; }
 .guide-navigation button { min-height: 46px; border: 0; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #17171b; background: rgb(255 255 255 / .8); }
 .guide-navigation #guideContinue { display: inline-flex; align-items: center; gap: 5px; background: #17171b; color: white; }

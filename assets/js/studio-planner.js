@@ -37,6 +37,25 @@
     var active = plan.people[plan.activePerson - 1];
     if (active) Object.assign(state, clone(active.outfit));
   }
+  function restore(selection) {
+    var plan = selection && selection.planning;
+    if (plan && Array.isArray(plan.people)) {
+      plan = clone(plan);
+      plan.activePerson = Math.max(1, Math.min(plan.people.length || 1, Number(plan.activePerson) || 1));
+      plan.people.forEach(function (p, i) {
+        p.id = i + 1;
+        p.outfit = outfit(p.outfit || {});
+        p.faceSupplied = false;
+      });
+      return plan;
+    }
+    // Saved single looks from before the group planner remain editable.
+    plan = create();
+    setCount(plan, 1);
+    plan.period = period('unspecified');
+    plan.people[0].outfit = outfit(selection || {});
+    return plan;
+  }
   function setShared(plan, shared, state) {
     plan.shared = Boolean(shared);
     if (plan.shared) plan.people.forEach(function (p) {
@@ -85,6 +104,6 @@
     function format(s) { return s.split('-').reverse().join('/'); }
     return labels[p.kind] + ' · ' + format(p.start) + (p.start === p.end ? '' : ' – ' + format(p.end));
   }
-  return { create: create, setCount: setCount, capture: capture, load: load, setShared: setShared,
+  return { create: create, setCount: setCount, capture: capture, load: load, restore: restore, setShared: setShared,
     outfit: outfit, clone: clone, period: period, periodLabel: periodLabel, missing: missing, localDate: localDate };
 });

@@ -26,6 +26,11 @@ final class SupabaseAdminClient
         return $this->request('GET', $table, $query);
     }
 
+    public function rpc(string $name, array $arguments): array
+    {
+        return $this->request('POST', 'rpc/' . $name, [], $arguments);
+    }
+
     /**
      * @param array<string, mixed> $record
      * @return array<int, array<string, mixed>>
@@ -65,7 +70,7 @@ final class SupabaseAdminClient
         ?array $body = null,
         string $prefer = ''
     ): array {
-        $endpoint = $this->url . '/rest/v1/' . rawurlencode($table);
+        $endpoint = $this->url . '/rest/v1/' . implode('/', array_map('rawurlencode', explode('/', $table)));
         if ($query !== []) {
             $endpoint .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
@@ -93,7 +98,7 @@ final class SupabaseAdminClient
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
         ]);
         if ($body !== null) {
-            curl_setopt($handle, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            curl_setopt($handle, CURLOPT_POSTFIELDS, json_encode(str_starts_with($table, 'rpc/') && $body === [] ? (object) [] : $body, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         }
 
         $responseBody = curl_exec($handle);
