@@ -27,4 +27,6 @@ assert.match(css, /:not\(\.has-preview-variants\) \.studio-preview/);
 assert.match(css, /has-generated-output \.studio-preview \{\s*height: auto;\s*align-self: start;/);
 assert.match(css, /aspect-ratio: var\(--studio-preview-ratio/);
 assert.match(css, /\.studio-preview-image \{[^}]*object-fit: contain/);
+assert.match(css, /has-history:not\(\.has-generated-output\) \.studio-plane \{\s*align-self: stretch;/,
+  'history must not collapse the idle video frame to zero height');
 console.log('Studio preview layout: OK');

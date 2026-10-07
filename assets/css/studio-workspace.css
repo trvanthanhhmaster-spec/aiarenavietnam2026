@@ -341,6 +341,11 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
   grid-template-areas: 'variants canvas' 'variants status' 'advanced advanced';
   align-items: start;
 }
+/* The idle frame has absolutely positioned media, so it cannot supply its
+   own grid-row height. Keep it stretched when the history rail is present. */
+.studio-experience.has-history:not(.has-generated-output) .studio-plane {
+  align-self: stretch;
+}
 .studio-history { grid-area: variants; min-width: 0; align-self: start; display: flex; flex-direction: column; gap: 10px; }
 .studio-history header { order: 2; display: grid; gap: 8px; }
 .studio-history header strong { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
