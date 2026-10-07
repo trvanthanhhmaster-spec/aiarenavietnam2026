@@ -319,7 +319,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
 
                     <section class="studio-auto-create" id="studioForm" aria-live="polite">
                         <div class="studio-rail__copy">
-                            <span class="studio-rail__status"><i></i><span id="studioStatus">Bắt đầu bằng cách chọn dịp mặc ở bên cạnh.</span></span>
+                            <span class="studio-rail__status"><i></i><span id="studioStatus" hidden></span></span>
                             <small id="studioDraftStatus" role="status"></small>
                             <button type="button" id="retryDraftSync" hidden>Thử đồng bộ bản nháp</button>
                             <p id="selectionSummary" hidden></p>
