@@ -27,8 +27,8 @@
     } catch (error) { status.textContent = error.message; }
   }
   function render() {
-    compare.textContent = 'So sánh';
-    compare.title = 'So sánh ảnh đang chọn với ảnh trước đó';
+    compare.textContent = api.isComparing && api.isComparing() ? 'Đóng so sánh' : 'So sánh';
+    compare.title = 'Chọn hai phiên bản để đối chiếu';
     strip.replaceChildren();
     document.getElementById('historyTitle').textContent = scoped ? 'Phiên bản' : 'Ảnh gần đây';
     document.getElementById('historyRecent').hidden = !scoped;
@@ -61,8 +61,7 @@
       });
       strip.appendChild(button);
     });
-    var selected = items.findIndex(function (item) { return item.id === currentId(); });
-    compare.hidden = selected < 1 || !items[selected].image_url || !items[selected - 1].image_url;
+    compare.hidden = items.filter(function (item) { return item.image_url; }).length < 2;
     visible(items.length > 0);
   }
   async function load(append) {
@@ -103,11 +102,10 @@
   document.getElementById('historyAccept').addEventListener('click', function () { if (pendingChoice) open(pendingChoice); });
   document.getElementById('historyCancel').addEventListener('click', function () { pendingChoice = null; confirm.hidden = true; });
   compare.addEventListener('click', function () {
-    var index = items.findIndex(function (item) { return item.id === currentId(); });
-    if (index < 1) return;
-    api.compare([items[index - 1], items[index]].map(function (item, offset) { return { url: item.image_url, label: label(item, index - 1 + offset) }; }));
-    compare.textContent = compare.textContent === 'Đóng so sánh' ? 'So sánh' : 'Đóng so sánh';
+    if (api.isComparing && api.isComparing()) { api.closeCompare(); return; }
+    api.compare(items.map(function (item, index) { return { url: item.image_url, label: label(item, index), active: item.id === currentId() }; }));
   });
+  app.addEventListener('studio:compare-change', function () { compare.textContent = api.isComparing && api.isComparing() ? 'Đóng so sánh' : 'So sánh'; });
   app.addEventListener('studio:history-change', function () { recent = false; load(); });
   load();
 })();

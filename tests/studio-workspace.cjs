@@ -168,18 +168,30 @@ const start = source.indexOf('  function compareCurrentLooks(versions)');
 const end = source.indexOf('  if (saveLookButton)', start);
 const compareLayer = element(); compareLayer.hidden = true; compareLayer.children = [];
 compareLayer.appendChild = item => compareLayer.children.push(item);
+Object.defineProperty(compareLayer, 'innerHTML', { set() { this.children = []; } });
 const compareButton = element();
-const createElement = () => ({ children: [], appendChild(item) { this.children.push(item); } });
+const createElement = () => ({ children: [], listeners: {}, appendChild(item) { this.children.push(item); }, setAttribute(key, value) { this[key] = value; }, addEventListener(type, fn) { this.listeners[type] = fn; } });
 const compareContext = {
   currentLookbookItems: [{ url: 'https://example.com/a.png' }, { url: 'https://example.com/b.png' }],
   compareLayer, compareLooksButton: compareButton, document: { createElement }, setStatus() {},
+  experience: { dispatchEvent() {} }, Event: class { constructor(type) { this.type = type; } },
   showResult() { throw new Error('comparison must stay in the preview'); }
 };
 vm.createContext(compareContext);
 vm.runInContext(source.slice(start, end) + '\ncompareCurrentLooks();', compareContext);
 assert.equal(compareLayer.hidden, false);
-assert.equal(compareLayer.children.length, 2);
-assert.equal(compareLayer.children[0].children[0].src, 'https://example.com/a.png');
+assert.equal(compareLayer.children.length, 3);
+assert.equal(compareLayer.children[1].children[1].src, 'https://example.com/a.png');
+const leftSelect = compareLayer.children[1].children[0].children[1];
+leftSelect.value = '1'; leftSelect.listeners.change();
+assert.equal(compareLayer.children[1].children[1].src, 'https://example.com/b.png', 'changing left selector updates only the comparison image');
+vm.runInContext('compareCurrentLooks([{url:"/one",label:"One"},{url:"/two",label:"Two"},{url:"/three",label:"Three",active:true}]);', compareContext);
+assert.equal(compareLayer.hidden, false, 'explicit pair update does not close comparison');
+assert.equal(compareLayer.children[1].children[1].src, '/two');
+assert.equal(compareLayer.children[2].children[1].src, '/three');
+const rightSelect = compareLayer.children[2].children[0].children[1];
+rightSelect.value = '0'; rightSelect.listeners.change();
+assert.equal(compareLayer.children[2].children[1].src, '/one', 'right selector can choose any version');
 vm.runInContext('compareCurrentLooks();', compareContext);
 assert.equal(compareLayer.hidden, true);
 assert.equal(compareButton.textContent, 'So sánh ảnh');

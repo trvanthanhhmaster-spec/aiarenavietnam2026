@@ -35,7 +35,8 @@ async function tick() { await new Promise(resolve => setImmediate(resolve)); }
   assert.equal(ids.historyItems.children[2]['aria-pressed'], 'true');
   assert.equal(ids.historyItems.children[1].children[2].textContent, 'Chưa lưu');
   assert.equal(ids.studioExperience.classes.has('has-history'), true);
-  ids.historyCompare.click(); assert.equal(compared[0][0].url, '/img-2'); assert.equal(compared[0][1].url, '/img-3');
+  ids.historyCompare.click(); assert.equal(compared[0].length, 3, 'all versions available for either comparison side');
+  assert.equal(compared[0][0].url, '/img-1'); assert.equal(compared[0][2].active, true);
   current.pending = true; ids.historyItems.children[0].click(); assert.equal(opened.length, 0);
   current.pending = false; current.edited = true; ids.historyItems.children[0].click();
   assert.equal(ids.historyConfirm.hidden, false); assert.equal(opened.length, 0);

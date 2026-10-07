@@ -1768,26 +1768,47 @@
   }
 
   function compareCurrentLooks(versions) {
-    var compared = Array.isArray(versions) ? versions : currentLookbookItems;
-    if (compared.length < 2) return;
+    var explicit = Array.isArray(versions);
+    var compared = (explicit ? versions : currentLookbookItems).filter(function (item) { return item.url; });
     if (compareLayer) {
-      if (!compareLayer.hidden) {
+      if (!explicit && !compareLayer.hidden) {
         compareLayer.hidden = true;
         compareLooksButton.textContent = 'So sánh ảnh';
+        experience.dispatchEvent(new Event('studio:compare-change'));
         setStatus('Đã trở về bản xem trước.');
         return;
       }
+      if (compared.length < 2) return;
       compareLayer.innerHTML = '';
-      compared.slice(0, 2).forEach(function (item, index) {
+      var selected = compared.findIndex(function (item) { return item.active; });
+      var choices = selected < 0 ? [0, 1] : [selected > 0 ? selected - 1 : 1, selected];
+      var toolbar = document.createElement('div'); toolbar.className = 'workspace-compare-toolbar';
+      var close = document.createElement('button'); close.type = 'button'; close.textContent = 'Đóng so sánh';
+      close.addEventListener('click', function () { compareCurrentLooks(); });
+      toolbar.appendChild(close); compareLayer.appendChild(toolbar);
+      [0, 1].forEach(function (index) {
         var figure = document.createElement('figure');
+        var label = document.createElement('label'); label.className = 'workspace-compare-picker';
+        var name = document.createElement('span'); name.textContent = index === 0 ? 'Ảnh bên trái' : 'Ảnh bên phải';
+        var select = document.createElement('select'); select.setAttribute('aria-label', name.textContent);
+        compared.forEach(function (item, optionIndex) {
+          var option = document.createElement('option'); option.value = String(optionIndex);
+          option.textContent = item.label || 'Bản ' + (optionIndex + 1); select.appendChild(option);
+        });
+        select.value = String(choices[index]); label.appendChild(name); label.appendChild(select);
         var image = document.createElement('img');
-        image.src = item.url; image.alt = 'Bản phối ' + (index + 1);
         var caption = document.createElement('figcaption');
-        caption.textContent = item.label || (index === 0 ? 'Bản gốc' : 'Phương án 1');
-        figure.appendChild(image); figure.appendChild(caption); compareLayer.appendChild(figure);
+        function update() {
+          var item = compared[Number(select.value)];
+          image.src = item.url; image.alt = item.label || 'Bản phối ' + (Number(select.value) + 1);
+          caption.textContent = image.alt;
+        }
+        select.addEventListener('change', update); update();
+        figure.appendChild(label); figure.appendChild(image); figure.appendChild(caption); compareLayer.appendChild(figure);
       });
       compareLayer.hidden = false;
       compareLooksButton.textContent = 'Đóng so sánh';
+      experience.dispatchEvent(new Event('studio:compare-change'));
       setStatus('Đang so sánh hai bản phối trong khung xem trước.');
       return;
     }
@@ -1957,6 +1978,8 @@
   prepareMedia();
   var pendingJob = readActiveJob();
   experience.resultsApi = {
+    isComparing: function () { return Boolean(compareLayer && !compareLayer.hidden); },
+    closeCompare: function () { if (compareLayer && !compareLayer.hidden) compareCurrentLooks(); },
     current: function () { return { jobId: currentResultJobId, lookId: savedLookId, pending: generationPending, edited: draftEdited }; },
     compare: compareCurrentLooks,
     open: function (look, edit) {
