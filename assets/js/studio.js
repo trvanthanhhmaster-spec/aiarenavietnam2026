@@ -99,6 +99,7 @@
   var savedLookId = null;
   var saveAfterLogin = false;
   var draftEdited = false;
+  function notifyHistory() { experience.dispatchEvent(new Event('studio:history-change')); }
 
   function persistStudio() {
     if (!window.VRemixSession) return;
@@ -797,7 +798,16 @@
     ].filter(Boolean).join(' · ') || '—';
     if (passportMeaning) passportMeaning.textContent = garment.significance_note || '—';
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
-    if (passportSource) passportSource.textContent = source ? source.title : 'Nguồn đã được duyệt sẽ hiển thị tại đây.';
+    if (passportSource) {
+      passportSource.textContent = source ? source.title : 'Nguồn đã được duyệt sẽ hiển thị tại đây.';
+      var sourceUrl = source && safeExternalUrl(source.source_url || source.url, '');
+      if (sourceUrl) {
+        var sourceLink = document.createElement('a');
+        sourceLink.href = sourceUrl; sourceLink.target = '_blank'; sourceLink.rel = 'noopener noreferrer';
+        sourceLink.textContent = source.title + ' ↗';
+        passportSource.replaceChildren(sourceLink);
+      }
+    }
     if (passportVisual) {
       var passportImage = catalogImageUrl(garmentVariant) || catalogImageUrl(garment);
       passportVisual.hidden = !passportImage;
@@ -808,22 +818,22 @@
       var mark = passportVisual.querySelector('span');
       if (mark) mark.textContent = (garmentVariant.name || garment.name || 'V').charAt(0).toUpperCase();
     }
-    if (tipLocation) tipLocation.textContent = [scene.label, event.label].filter(Boolean).join(' · ') || 'Khuôn viên · Phố cổ · Văn Miếu';
+    if (tipLocation) tipLocation.textContent = scene.label || 'Chọn bối cảnh để xem gợi ý nơi chụp.';
     if (tipStyling) tipStyling.textContent = [color.label, style.label].filter(Boolean).join(' + ') || 'Chọn một điểm nhấn hiện đại vừa đủ.';
     var colorCheck = document.querySelector('[data-check="color"]');
     var eventCheck = document.querySelector('[data-check="event"]');
     var accessoryCheck = document.querySelector('[data-check="accessory"]');
     if (colorCheck) {
-      colorCheck.textContent = color.label ? '✓ ' + color.label + ' hài hòa' : '○ Chưa chọn màu';
-      colorCheck.classList.toggle('is-ok', Boolean(color.label));
+      colorCheck.textContent = color.label ? '○ Đã chọn ' + color.label + ' · xem độ hài hòa trên ảnh.' : '○ Chưa chọn màu';
+      colorCheck.classList.toggle('is-ok', false);
     }
     if (eventCheck) {
-      eventCheck.textContent = state.event === 'custom' ? '○ Dịp tự nhập: cần kiểm tra độ phù hợp trang phục.' : event.label ? '✓ Phù hợp dịp ' + event.label.toLowerCase() : '○ Chưa chọn dịp mặc';
-      eventCheck.classList.toggle('is-ok', Boolean(event.label) && state.event !== 'custom');
+      eventCheck.textContent = event.label ? '○ Dịp ' + event.label.toLowerCase() + ' · đối chiếu lưu ý trang phục bên dưới.' : '○ Chưa chọn dịp mặc';
+      eventCheck.classList.toggle('is-ok', false);
     }
     if (accessoryCheck) {
-      accessoryCheck.textContent = state.accessories.length ? '✓ Phụ kiện không che cấu trúc áo' : '○ Chưa thêm phụ kiện';
-      accessoryCheck.classList.toggle('is-ok', state.accessories.length > 0);
+      accessoryCheck.textContent = state.accessories.length ? '○ Kiểm tra phụ kiện không che cấu trúc áo trên ảnh.' : '○ Chưa thêm phụ kiện';
+      accessoryCheck.classList.toggle('is-ok', false);
     }
     var rule = (catalog.rules || []).find(function (item) {
       return !item.garment_id || item.garment_id === garment.id;
@@ -871,26 +881,30 @@
           escapeHtml([typeLabel, item.province, price].filter(Boolean).join(' · ')) + '</small></span><span aria-hidden="true">↗</span></a>';
       }).join('');
     }
-    var locationQuery = [lookup(catalog.scenes, state.scene).label, lookup(catalog.events, state.event).label, 'Hà Nội'].filter(Boolean).join(' ');
+    var region = (lookup(catalog.events, state.event).preset || {}).location || '';
+    var locationQuery = [lookup(catalog.scenes, state.scene).label, selectedEvent(state.event).label, region].filter(Boolean).join(' ');
     if (listingSearchLink) {
       var listingQuery = [garment.name].concat(selectedAccessories.map(function (item) { return item.name; })).filter(Boolean).join(' ');
-      listingSearchLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('mua thuê ' + (listingQuery || 'cổ phục') + ' ' + ((lookup(catalog.events, state.event).preset || {}).location || 'Hà Nội'));
+      listingSearchLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('mua thuê ' + (listingQuery || 'cổ phục') + ' ' + region);
+      listingSearchLink.title = 'Tìm kiếm bên ngoài; kết quả chưa được V-Remix xác minh';
     }
     var suitableContexts = [state.scene, state.event].filter(Boolean);
     var locations = (catalog.locations || []).filter(function (item) {
       var contexts = Array.isArray(item.suitable_contexts) ? item.suitable_contexts : [];
       return contexts.length === 0 || suitableContexts.some(function (context) { return contexts.indexOf(context) !== -1; });
     }).slice(0, 3);
-    if (!locations.length) locations = (catalog.locations || []).slice(0, 3);
     if (!locations.length) {
-      locationsPanel.innerHTML = '<p class="studio-recommendation-empty">Chưa có địa điểm đã xác minh cho lựa chọn này.</p>';
+      locationsPanel.innerHTML = '<p class="studio-recommendation-empty">Chưa có địa điểm được biên tập cho lựa chọn này.</p>';
     } else {
       locationsPanel.innerHTML = locations.map(function (item) {
         return '<a class="studio-recommendation" href="' + escapeHtml(safeExternalUrl(item.map_url, '#')) + '" target="_blank" rel="noopener noreferrer">' +
           '<span><strong>' + escapeHtml(item.name) + '</strong><small>' + escapeHtml([item.address, item.province].filter(Boolean).join(' · ')) + '</small></span><span aria-hidden="true">↗</span></a>';
       }).join('');
     }
-    if (locationSearchLink) locationSearchLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationQuery || 'địa điểm chụp ảnh Việt phục Hà Nội');
+    if (locationSearchLink) {
+      locationSearchLink.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationQuery || 'địa điểm chụp ảnh Việt phục');
+      locationSearchLink.title = 'Tìm kiếm bên ngoài; kết quả chưa được V-Remix xác minh';
+    }
   }
 
   function syncFrameSteps() {
@@ -1127,6 +1141,9 @@
     Object.assign(currentRequestSelection, Planner.clone(primary));
     activeJob.selection = Planner.clone(currentRequestSelection);
     payload.weather = ''; payload.season = '';
+    // Resolve the selected previous image on the server; never send an arbitrary image URL.
+    if (savedLookId) payload.referenceLookId = savedLookId;
+    else if (currentResultJobId) payload.referenceJobId = currentResultJobId;
     var terminalFailure = false;
     try {
       payload.inputImage = await buildFaceReferences(payload.planning);
@@ -1171,8 +1188,10 @@
       currentResultSelection = Planner.clone(currentRequestSelection);
       currentResultJobId = completed.jobId || activeJob.jobId;
       resultSaveId = createRequestId(); savedLookId = null;
+      draftEdited = requestFingerprint !== selectionFingerprint();
       saveLookButton.textContent = 'Lưu bản phối';
       persistStudio();
+      notifyHistory();
     } catch (error) {
       if (terminalFailure) clearActiveJob();
       generationPending = false;
@@ -1215,6 +1234,8 @@
       currentResultSelection = Planner.clone(currentRequestSelection);
       currentResultJobId = completed.jobId || activeJob.jobId;
       resultSaveId = createRequestId(); savedLookId = null; persistStudio();
+      draftEdited = requestFingerprint !== selectionFingerprint();
+      notifyHistory();
       saveLookButton.textContent = 'Lưu bản phối';
       clearActiveJob();
       setResultState('completed', resultMessage(completed.output || {}));
@@ -1735,6 +1756,7 @@
       var body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Không thể lưu Look.');
       savedLookId = body.lookId; saveAfterLogin = false; persistStudio();
+      notifyHistory();
       saveLookButton.textContent = 'Đã lưu bản phối';
       setStatus('Đã lưu vào “Bản phối của tôi”.');
     } catch (error) {
@@ -1744,8 +1766,9 @@
     }
   }
 
-  function compareCurrentLooks() {
-    if (currentLookbookItems.length < 2) return;
+  function compareCurrentLooks(versions) {
+    var compared = Array.isArray(versions) ? versions : currentLookbookItems;
+    if (compared.length < 2) return;
     if (compareLayer) {
       if (!compareLayer.hidden) {
         compareLayer.hidden = true;
@@ -1754,12 +1777,12 @@
         return;
       }
       compareLayer.innerHTML = '';
-      currentLookbookItems.slice(0, 2).forEach(function (item, index) {
+      compared.slice(0, 2).forEach(function (item, index) {
         var figure = document.createElement('figure');
         var image = document.createElement('img');
         image.src = item.url; image.alt = 'Bản phối ' + (index + 1);
         var caption = document.createElement('figcaption');
-        caption.textContent = index === 0 ? 'Bản gốc' : 'Phương án 1';
+        caption.textContent = item.label || (index === 0 ? 'Bản gốc' : 'Phương án 1');
         figure.appendChild(image); figure.appendChild(caption); compareLayer.appendChild(figure);
       });
       compareLayer.hidden = false;
@@ -1931,28 +1954,31 @@
   prepareMedia();
   var pendingJob = readActiveJob();
   experience.resultsApi = {
+    current: function () { return { jobId: currentResultJobId, lookId: savedLookId, pending: generationPending, edited: draftEdited }; },
+    compare: compareCurrentLooks,
     open: function (look, edit) {
       if (generationPending) throw new Error('Hãy đợi bản phối đang tạo hoàn tất trước khi mở bản khác.');
       if (!look.image_url && !edit) throw new Error('Ảnh chưa tải được. Hãy mở lại thư viện để thử lại.');
       if (!look.selection || typeof look.selection !== 'object') throw new Error('Bản phối cũ thiếu lựa chọn để chỉnh tiếp.');
       if (look.image_url) {
       currentResultSelection = Planner.clone(look.selection);
-      currentResultJobId = look.generation_job_id || null;
-      resultSaveId = look.client_save_id || createRequestId(); savedLookId = look.id;
+      currentResultJobId = look.generation_job_id || look.jobId || null;
+      resultSaveId = look.client_save_id || createRequestId(); savedLookId = look.lookId || (look.saved === false ? null : look.id);
       lastOutputFingerprint = '';
-      applyOutput({ story: 'Bản phối đã lưu trong thư viện riêng.', lookbook: { aspectRatio: look.selection.aspectRatio || '16:9', items: [{ url: look.image_url, path: look.storage_path }] } });
+      applyOutput({ story: look.saved === false ? 'Ảnh trong lịch sử của bạn. Có thể lưu bản phối này vào thư viện.' : 'Bản phối đã lưu trong thư viện riêng.', lookbook: { aspectRatio: look.selection.aspectRatio || '16:9', items: [{ url: look.image_url, path: look.storage_path }] } });
       }
       if (edit) {
-        draftEdited = true;
+        draftEdited = false;
         faceFiles.forEach(function (ref) { URL.revokeObjectURL(ref.url); }); faceFiles.clear();
         var editable = Planner.clone(look.selection); editable.planning = Planner.restore(editable); editable.planning.activePerson = 1;
         restoreSelection(editable); updateSummary('restore');
         experience.dispatchEvent(new CustomEvent('studio:restore-step', { detail: 'garment' }));
         document.getElementById('occasionNote').value = planning.occasionNote || '';
       }
-      if (look.image_url) { saveLookButton.disabled = true; saveLookButton.textContent = 'Đã lưu bản phối'; }
-      setStatus(!look.image_url ? 'Đã mở lựa chọn cũ để chỉnh tiếp. Ảnh cũ không tải được; chỉ tạo ảnh mới khi bạn xác nhận.' : edit ? 'Đã mở lựa chọn để chỉnh tiếp. Ảnh đã lưu vẫn giữ nguyên; chỉ tạo ảnh mới khi bạn xác nhận.' : 'Đang xem bản phối đã lưu. Lựa chọn đang chỉnh không bị thay đổi.');
+      if (look.image_url) { saveLookButton.disabled = Boolean(savedLookId); saveLookButton.textContent = savedLookId ? 'Đã lưu bản phối' : 'Lưu bản phối'; }
+      setStatus(!look.image_url ? 'Đã mở lựa chọn cũ để chỉnh tiếp. Ảnh cũ không tải được; chỉ tạo ảnh mới khi bạn xác nhận.' : edit ? 'Đã mở phiên bản để chỉnh tiếp. Ảnh trước vẫn được giữ; chỉ tạo ảnh mới khi bạn xác nhận.' : 'Đang xem bản phối đã lưu. Lựa chọn đang chỉnh không bị thay đổi.');
       persistStudio();
+      notifyHistory();
       document.querySelector('.studio-preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     persist: persistStudio
@@ -1986,6 +2012,7 @@
         currentResultSelection = record.selection; currentResultJobId = record.jobId;
         resultSaveId = record.saveId; savedLookId = record.savedLookId;
         applyOutput(output);
+        notifyHistory();
         saveLookButton.disabled = Boolean(savedLookId); saveLookButton.textContent = savedLookId ? 'Đã lưu bản phối' : 'Lưu bản phối';
         setStatus('Đã khôi phục bản phối trước. Ảnh mặt tham khảo không được giữ; hãy thêm lại nếu muốn dùng cho ảnh mới.');
         if (record.saveAfterLogin && catalog.auth.authenticated) await saveCurrentLook();

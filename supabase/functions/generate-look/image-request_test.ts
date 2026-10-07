@@ -25,3 +25,14 @@ Deno.test("Gemini image request locks the source and lookbook to 16:9", () => {
   assert(reference.data === "ZmFrZQ==", "Reference bytes must be preserved.");
   assert(request.contents[0].parts[0].text.includes("background only"), "Edit scope must be explicit.");
 });
+ Deno.test('group edits attach the previous composition before new face references', () => {
+  const body = buildImageRequest('Approved plan', 'Look', { mimeType: 'image/png', data: 'previous' }, {
+    operation: 'group-edit', changeScope: 'Only add a beige bag',
+    references: [{ mimeType: 'image/jpeg', data: 'face' }],
+  });
+  const parts = body.contents[0].parts;
+  assert(parts[1].inline_data.data === 'previous', 'Previous composition must be the first image');
+  assert(parts[2].inline_data.data === 'face', 'Face references must be separate');
+  assert(parts[0].text.includes('previous photograph to edit'), 'Group edit instruction missing');
+  assert(parts[0].text.includes('Only add a beige bag'), 'Change scope missing');
+ });

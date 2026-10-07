@@ -80,6 +80,7 @@ $studioData = $catalog + [
     'basePoster' => $basePoster,
     'lookEndpoint' => 'look-api.php',
     'draftEndpoint' => 'studio-draft.php',
+    'historyEndpoint' => 'studio-history.php',
     'lookCsrf' => $auth->csrfToken(),
     'sessionScope' => hash('sha256', $_SESSION['studio_generation_owner']),
     'auth' => [
@@ -341,6 +342,19 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         </div>
                     </section>
 
+                    <aside class="studio-history" id="studioHistory" aria-label="Lịch sử ảnh bản phối" hidden>
+                        <header><strong id="historyTitle">Phiên bản</strong><button type="button" id="historyRecent" aria-label="Xem ảnh gần đây" title="Xem tất cả ảnh gần đây">Ảnh khác</button></header>
+                        <p id="historyStatus" role="status"></p>
+                        <button type="button" id="historyRetry" hidden>Thử tải lại</button>
+                        <div id="historyItems" class="studio-history-strip"></div>
+                        <button type="button" id="historyMore" hidden>Xem thêm</button>
+                        <button type="button" id="historyCompare" hidden>So sánh</button>
+                        <div id="historyConfirm" hidden>
+                            <p>Mở phiên bản này sẽ thay lựa chọn đang chỉnh. Ảnh đã tạo vẫn được giữ.</p>
+                            <button type="button" id="historyAccept">Mở phiên bản</button>
+                            <button type="button" id="historyCancel">Giữ lựa chọn</button>
+                        </div>
+                    </aside>
                     <section class="studio-variants" id="studioVariants" aria-label="Các phương án bản phối" hidden>
                         <div class="studio-variants__title">
                             <span id="workspaceVariantLabel">Dáng áo gợi ý</span>
@@ -446,6 +460,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-planner.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner.js') ?>" defer></script>
     <script src="assets/js/studio-session.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-session.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
+    <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
     <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/StudioPlan.php';
+require __DIR__ . '/src/Support/StudioHistory.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 require __DIR__ . '/src/Infrastructure/StudioStorage.php';
@@ -11,6 +12,7 @@ require __DIR__ . '/src/Repositories/StudioRepository.php';
 
 use App\Support\Env;
 use App\Support\StudioPlan;
+use App\Support\StudioHistory;
 use App\Infrastructure\SupabaseClient;
 use App\Repositories\StudioRepository;
 use App\Support\SupabaseAuth;
@@ -152,10 +154,15 @@ try {
     }
 
     if ($plan === null) $respond(['error' => 'Hãy hoàn tất luồng bốn bước trước khi tạo ảnh.'], 422);
+    $input['planning'] = $plan;
+    $referenceImage = (new StudioHistory($admin, $storage, $user['id'] ?? null, $owner))->reference($input);
+    $faceReferenceImage = $referenceImage ? $inputImage : null;
+    if ($referenceImage) { $inputImage = $referenceImage; $input['generationMode'] = 'image-to-image'; }
+    $basePrompt .= "\n" . ($input['editInstruction'] ?? '');
     $prompts = $admin->select('studio_prompt_versions', ['slug' => 'eq.studio-group-web', 'is_active' => 'eq.true', 'select' => 'id,version,system_prompt', 'limit' => '1']);
     if (empty($prompts[0])) throw new RuntimeException('Chưa có phiên bản prompt nhóm được duyệt.');
     $basePrompt = $prompts[0]['system_prompt'] . "\n" . $basePrompt;
-    $safeInput = $input; unset($safeInput['inputImage'], $safeInput['_provider'], $safeInput['_estimate']);
+    $safeInput = $input; unset($safeInput['inputImage'], $safeInput['faceReferenceImage'], $safeInput['_provider'], $safeInput['_estimate']);
     $safeInput['planning'] = $plan;
     $reserved = $admin->rpc('reserve_local_generation', ['p_request' => $requestId, 'p_user' => $user['id'] ?? null,
         'p_owner' => $owner, 'p_input' => $safeInput]);
@@ -218,8 +225,9 @@ try {
                 'sourceImage' => $sourceImage,
                 'aspectRatio' => $aspectRatio,
                 'targetResolution' => $resolution,
-                'changeScope' => $scope,
-                'operation' => $plan !== null ? 'group' : 'edit',
+                'changeScope' => $input['editInstruction'] ?? $scope,
+                'operation' => $referenceImage ? 'group-edit' : 'group',
+                'referenceImages' => $faceReferenceImage ? [$faceReferenceImage] : [],
             ]);
         } catch (Throwable $error) {
             if ($key === 'A' || !is_array($sourceImage) || empty($sourceImage['data'])) {
@@ -280,6 +288,8 @@ try {
         'estimatedCostVnd' => $job['estimated_cost_vnd'],
         'costSource' => 'admin-estimate',
     ]);
+} catch (InvalidArgumentException $error) {
+    $respond(['status'=>'failed','error'=>$error->getMessage()], 422);
 } catch (Throwable $error) {
     if ($job && $job['status'] === 'queued') {
         try { $admin->update('generation_jobs', ['id' => 'eq.' . $job['id'], 'status' => 'eq.processing'], ['status' => 'failed', 'error_message' => 'Tạo ảnh chưa hoàn tất. Kiểm tra provider rồi thử lại.', 'updated_at' => gmdate(DATE_ATOM)]); } catch (Throwable) {}

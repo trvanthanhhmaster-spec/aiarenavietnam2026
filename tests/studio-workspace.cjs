@@ -164,7 +164,7 @@ assert.equal(ids.workspaceUpload.focused, true, 'removing an upload returns focu
 
 // Test the real comparison renderer without a paid provider job.
 const source = fs.readFileSync(path.join(__dirname, '../assets/js/studio.js'), 'utf8');
-const start = source.indexOf('  function compareCurrentLooks()');
+const start = source.indexOf('  function compareCurrentLooks(versions)');
 const end = source.indexOf('  if (saveLookButton)', start);
 const compareLayer = element(); compareLayer.hidden = true; compareLayer.children = [];
 compareLayer.appendChild = item => compareLayer.children.push(item);

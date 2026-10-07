@@ -30,7 +30,7 @@
     roles: { kicker: 'Accounts / 10B', title: 'Phân quyền', columns: ['user_id', 'role', 'created_at'] },
     looks: { kicker: 'Operations / 11', title: 'Looks đã lưu', columns: ['name', 'occasion_slug', 'garment_slug', 'visibility', 'created_at'] },
     discovery: { kicker: 'Operations / 12', title: 'Discovery pool', columns: ['look_id', 'status', 'moderation_note', 'created_at'] },
-    jobs: { kicker: 'Operations / 13', title: 'Generation jobs', columns: ['status', 'created_at', 'client_request_id', 'estimated_cost_vnd', 'error_message'] }
+    jobs: { kicker: 'Operations / 13', title: 'Lịch sử tạo ảnh', columns: ['status', 'provider', 'cost_source', 'created_at', 'client_request_id', 'estimated_cost_vnd', 'error_message'] }
   };
   var fields = {
     'ai-settings': [

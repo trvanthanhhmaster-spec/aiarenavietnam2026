@@ -15,7 +15,19 @@
     if (!db) db = new Promise((resolve, reject) => {
       const request = indexedDB.open('vremix-studio-drafts', 1);
       request.onupgradeneeded = () => request.result.createObjectStore('drafts');
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const conn = request.result;
+        const tx = conn.transaction('drafts', 'readwrite');
+        const cursor = tx.objectStore('drafts').openCursor();
+        cursor.onsuccess = () => {
+          const item = cursor.result;
+          if (!item) return;
+          if (!Number.isFinite(item.value?.updatedAt) || Date.now() - item.value.updatedAt > 86400000) item.delete();
+          item.continue();
+        };
+        tx.oncomplete = () => resolve(conn);
+        tx.onerror = tx.onabort = () => reject(tx.error);
+      };
       request.onerror = () => reject(request.error);
     });
     return db;

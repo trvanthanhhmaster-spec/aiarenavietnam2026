@@ -33,6 +33,26 @@ async def test():
     else:
         raise AssertionError("No generated images must be a real failure, not a fallback")
     assert not client.temporary_path.exists(), "Source reference must be removed even on failure"
+    class EditClient:
+        async def generate_content(self, prompt, files, temporary):
+            assert "first attachment is the previous photograph to edit" in prompt
+            assert "Additional attachments are numbered face references" in prompt
+            assert "ONE new group photograph" not in prompt
+            assert len(files) == 2
+            assert files[0].read_bytes() == b"previous-image"
+            assert files[1].read_bytes() == b"new-face"
+            self.paths = list(files)
+            return SimpleNamespace(images=[], text="Offline only")
+    edit_client = EditClient()
+    try:
+        await generate(edit_client, {
+            "operation": "group-edit", "prompt": "Change only bag.",
+            "sourceImage": {"mimeType": "image/png", "data": base64.b64encode(b"previous-image").decode()},
+            "referenceImages": [{"mimeType": "image/jpeg", "data": base64.b64encode(b"new-face").decode()}],
+        })
+    except RuntimeError:
+        pass
+    assert all(not path.exists() for path in edit_client.paths)
     print("Group bridge: face-sheet instructions, correct source MIME, explicit failure and temporary-file cleanup passed offline.")
 
 

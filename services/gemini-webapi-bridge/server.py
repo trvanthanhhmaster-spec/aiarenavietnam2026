@@ -113,7 +113,8 @@ async def read_request(reader: asyncio.StreamReader) -> tuple[str, dict[str, str
             key, value = line.split(":", 1)
             headers[key.lower()] = value.strip()
     length = int(headers.get("content-length", "0"))
-    if length > 12_000_000:
+    # One previous composition + one optional face sheet, each bounded below.
+    if length < 0 or length > 24_000_000:
         raise ValueError("Request body is too large.")
     body = await reader.readexactly(length) if length else b""
     return f"{method} {path}", headers, body
@@ -132,22 +133,38 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     if not prompt:
         raise ValueError("prompt is required.")
     source = payload.get("sourceImage")
-    source_file = None
-    files = None
-    if isinstance(source, dict) and source.get("data"):
+    source_files = []
+    attachments = ([source] if isinstance(source, dict) and source.get("data") else [])
+    references = payload.get("referenceImages") or []
+    if not isinstance(references, list) or len(references) > 1:
+        raise ValueError("At most one additional face reference sheet is allowed.")
+    attachments.extend(references)
+    for attachment in attachments:
+        if not isinstance(attachment, dict) or attachment.get("mimeType") not in ["image/png", "image/jpeg", "image/webp"]:
+            raise ValueError("Invalid image attachment.")
+        if not isinstance(attachment.get("data"), str) or len(attachment["data"]) > 11_200_000:
+            raise ValueError("Image attachment is too large.")
+        base64.b64decode(attachment["data"], validate=True)
+    for attachment in attachments:
         # The upstream uploader assigns raw bytes a .txt filename. Gemini may
         # then treat the attachment as a document instead of an image, so
         # provide a real image suffix for image-to-image requests.
-        suffix = {"image/jpeg": ".jpg", "image/webp": ".webp"}.get(source.get("mimeType"), ".png")
+        suffix = {"image/jpeg": ".jpg", "image/webp": ".webp"}.get(attachment.get("mimeType"), ".png")
         source_file = tempfile.NamedTemporaryFile(prefix="vremix-source-", suffix=suffix)
-        source_file.write(base64.b64decode(str(source["data"])))
+        source_files.append(source_file)
+        source_file.write(base64.b64decode(attachment["data"], validate=True))
         source_file.flush()
-        files = [Path(source_file.name)]
+    files = [Path(file.name) for file in source_files] or None
 
     aspect = str(payload.get("aspectRatio") or "16:9")
     resolution = str(payload.get("targetResolution") or "1080")
     scope = str(payload.get("changeScope") or "preserve the source subject and composition")
     instruction = (
+        f"The first attachment is the previous photograph to edit. Approved edit scope: {scope}. "
+        "Preserve unchanged identities, faces, clothes, camera and composition. "
+        "If the people count changes, add/remove only the required people. "
+        "Additional attachments are numbered face references only; never reproduce their labels or layout. "
+        if payload.get("operation") == "group-edit" else
         "Create ONE new group photograph as specified in the plan. "
         "The attached image, if any, is a numbered face reference sheet, NOT the output composition. "
         "Map each Person label to that person's face; never reproduce the sheet, its layout or labels. "
@@ -169,7 +186,7 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
         except asyncio.TimeoutError as error:
             raise RuntimeError(
                 "Gemini Web image generation timed out. Retry explicitly when ready."
-                if payload.get("operation") == "group"
+                if payload.get("operation") in ("group", "group-edit")
                 else "Gemini Web image generation timed out. The branch can safely fall back to frame A."
             ) from error
         generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
@@ -192,7 +209,7 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
                 images.append({"mimeType": mime_type, "data": data})
         return {"images": images, "provider": "gemini-webapi", "aspectRatio": aspect}
     finally:
-        if source_file is not None:
+        for source_file in source_files:
             source_file.close()
 
 

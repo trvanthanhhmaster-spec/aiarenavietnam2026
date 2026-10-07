@@ -49,6 +49,30 @@ final class StudioStorage
             && str_starts_with((string) parse_url($url, PHP_URL_PATH), '/storage/v1/');
     }
 
+    public function imageData(array $image): array
+    {
+        $url = (string) ($image['url'] ?? '');
+        if (str_starts_with($url, 'data:image/')) {
+            if (!preg_match('#^data:(image/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$#', $url, $match)) throw new RuntimeException('Ảnh phiên bản cũ không hợp lệ.');
+            $mime = $match[1]; $bytes = base64_decode($match[2], true);
+        } else {
+            if (!empty($image['path'])) $url = $this->sign($image['path']);
+            if (!$this->trustedUrl($url)) throw new RuntimeException('Không thể dùng ảnh phiên bản cũ làm tham chiếu.');
+            $handle = curl_init($url);
+            $bytes = '';
+            curl_setopt_array($handle, [CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>20,CURLOPT_FOLLOWLOCATION=>false,
+                CURLOPT_WRITEFUNCTION=>static function ($h, string $chunk) use (&$bytes): int {
+                    if (strlen($bytes) + strlen($chunk) > 8_000_000) return 0;
+                    $bytes .= $chunk; return strlen($chunk);
+                }]);
+            $ok = curl_exec($handle); $status = (int) curl_getinfo($handle,CURLINFO_RESPONSE_CODE); curl_close($handle);
+            if ($ok === false || $status !== 200) throw new RuntimeException('Ảnh phiên bản cũ chưa tải được. Không tự tạo lại khi thiếu ảnh tham chiếu.');
+            $mime = getimagesizefromstring($bytes)['mime'] ?? '';
+        }
+        if (!is_string($bytes) || strlen($bytes)>8_000_000 || !in_array($mime,['image/png','image/jpeg','image/webp'],true) || !getimagesizefromstring($bytes)) throw new RuntimeException('Ảnh tham chiếu không hợp lệ hoặc quá lớn.');
+        return ['mimeType'=>$mime,'data'=>base64_encode($bytes)];
+    }
+
     private function path(string $path): string
     {
         if (!preg_match('#^[a-zA-Z0-9/_\-.]+$#', $path) || str_contains($path, '..')) throw new RuntimeException('Đường dẫn ảnh không hợp lệ.');

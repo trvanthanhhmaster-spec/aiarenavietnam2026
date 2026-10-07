@@ -12,7 +12,17 @@ function fixture(server, { userId = 'owner', authenticated = true, cache = new M
         const tx = { objectStore() { return {
           get(key) { return operation(() => cache.get(key)); },
           put(value, key) { return operation(() => { cache.set(key, value); }); },
-          delete(key) { return operation(() => { cache.delete(key); }); }
+          delete(key) { return operation(() => { cache.delete(key); }); },
+          openCursor() {
+            const result = {}, entries = [...cache.entries()]; let index = 0;
+            function next() { queueMicrotask(() => {
+              const entry = entries[index++];
+              result.result = entry ? { value: entry[1], delete: () => cache.delete(entry[0]), continue: next } : null;
+              result.onsuccess();
+              if (!entry) tx.oncomplete();
+            }); }
+            next(); return result;
+          }
         }; } };
         function operation(fn) { const result = {}; queueMicrotask(() => { result.result = fn(); tx.oncomplete(); }); return result; }
         return tx;
@@ -41,6 +51,9 @@ function fixture(server, { userId = 'owner', authenticated = true, cache = new M
 }
 function draft(event) { return { draft: { event, planning: { count: 1, people: [{ faceSupplied: true }] } }, guideStep: 'garment', output: { imageUrl: 'data:image/png;base64,not-sent' } }; }
 async function main() {
+  const expired = new Map([['old-session', { updatedAt: Date.now() - 86400001 }]]);
+  await fixture({}, { authenticated: false, userId: '', cache: expired }).api.read();
+  assert.equal(expired.size, 0, 'expired device drafts are physically removed, including old sessions');
   const server = { revision: 0, record: null };
   const first = fixture(server);
   assert.equal(await first.api.read(), null);

@@ -31,4 +31,6 @@ curl -H "x-vremix-bridge-secret: $GEMINI_WEB_BRIDGE_SECRET" \
 
 The generation contract is `POST /v1/images/generate` with a JSON body containing `prompt`, optional `sourceImage` (`mimeType`, base64 `data`), `aspectRatio`, `targetResolution`, and `changeScope`.
 
+Studio uses `operation: group` for the first complete image and `operation: group-edit` when editing a selected version. For `group-edit`, `sourceImage` is the previous composition; optional `referenceImages` contains one additional numbered face-reference sheet. Each image is bounded to 8 MB. Restart the bridge after changing its code. History records keep selection metadata, never the uploaded face-sheet bytes.
+
 Do not commit `.env`, browser cookies, or generated images. Do not expose this loopback bridge directly to the public internet; if it must serve Supabase Edge Functions, put it behind an authenticated HTTPS service and rotate the bridge secret.

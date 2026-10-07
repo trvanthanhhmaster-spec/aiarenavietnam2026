@@ -1120,6 +1120,10 @@ alter table public.generation_jobs add column if not exists cost_source text not
 insert into storage.buckets(id, name, public) values ('generated-lookbooks', 'generated-lookbooks', false)
 on conflict(id) do nothing;
 
+create index if not exists studio_history_user_idx on public.generation_jobs(user_id,status,created_at);
+create index if not exists studio_history_root_idx on public.generation_jobs((input->'history'->>'rootJobId'));
+create index if not exists studio_history_look_idx on public.generation_jobs((input->'history'->>'rootLookId'));
+
 create or replace function public.reserve_local_generation(p_request uuid, p_user uuid, p_owner text, p_input jsonb)
 returns setof public.generation_jobs language plpgsql security definer set search_path = public as $$
 declare existing public.generation_jobs; cfg public.ai_runtime_settings; estimate numeric; spent numeric;

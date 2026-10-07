@@ -147,7 +147,7 @@ $resources = [
     ],
     'jobs' => [
         'table' => 'generation_jobs',
-        'select' => 'id,client_request_id,status,input,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at',
+        'select' => 'id,client_request_id,provider,cost_source,status,input,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at',
         'order' => 'created_at.desc',
         'fields' => [],
         'readonly' => true,
@@ -202,35 +202,8 @@ try {
             }
             unset($row);
 
-            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-            $monthStart = $now->modify('first day of this month')->setTime(0, 0);
-            $todayStart = $now->setTime(0, 0);
-            $costRows = $client->select('generation_jobs', [
-                'select' => 'estimated_cost_vnd,image_count,video_count,status,created_at',
-                'created_at' => 'gte.' . $monthStart->format(DATE_ATOM),
-                'limit' => '1000',
-            ]);
-            $usage = [
-                'today_cost_vnd' => 0.0,
-                'month_cost_vnd' => 0.0,
-                'month_images' => 0,
-                'month_videos' => 0,
-                'month_jobs' => 0,
-            ];
-            foreach ($costRows as $costRow) {
-                if (($costRow['status'] ?? '') === 'cancelled') {
-                    continue;
-                }
-                $cost = (float) ($costRow['estimated_cost_vnd'] ?? 0);
-                $usage['month_cost_vnd'] += $cost;
-                $usage['month_images'] += (int) ($costRow['image_count'] ?? 0);
-                $usage['month_videos'] += (int) ($costRow['video_count'] ?? 0);
-                $usage['month_jobs']++;
-                $createdAt = new DateTimeImmutable((string) ($costRow['created_at'] ?? 'now'));
-                if ($createdAt >= $todayStart) {
-                    $usage['today_cost_vnd'] += $cost;
-                }
-            }
+            // Server aggregate avoids silently truncating usage after 1,000 jobs.
+            $usage = $client->rpc('studio_usage_summary', []);
         }
         $respond(['resource' => $resourceKey, 'items' => $rows, 'count' => count($rows), 'usage' => $usage]);
     }

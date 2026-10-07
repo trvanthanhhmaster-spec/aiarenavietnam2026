@@ -34,6 +34,11 @@ type LookRequest = {
   locks?: Record<string, boolean>;
   generationType?: "image" | "video" | "both";
   inputImage?: { mimeType: string; data: string };
+  faceReferenceImage?: { mimeType: string; data: string };
+  referenceJobId?: string;
+  referenceLookId?: string;
+  history?: { rootJobId: string | null; rootLookId: string | null; parentJobId: string | null };
+  editInstruction?: string;
   aspectRatio?: "16:9" | "1:1" | "9:16";
   targetResolution?: "720" | "1080" | "2160";
   generationMode?: "text-to-image" | "image-to-image";
@@ -115,9 +120,10 @@ function isUuid(value: unknown) {
 }
 
 function persistedInput(input: LookRequest) {
-  const { inputImage, ...selection } = input;
+  const { inputImage, faceReferenceImage, ...selection } = input;
   return {
     ...selection,
+    faceReferenceImage: faceReferenceImage ? { mimeType: faceReferenceImage.mimeType, supplied: true } : null,
     inputImage: inputImage
       ? { mimeType: inputImage.mimeType, supplied: true }
       : null,
@@ -477,9 +483,10 @@ async function generateImages(
           prompt,
           aspectRatio,
           targetResolution,
-          changeScope: request?.planning ? 'Create ONE complete photo of the specified people and their chosen outfits. The supplied image is a face reference sheet, not a frame to preserve.' : variant.scope,
-          operation: request?.planning ? 'group' : 'edit',
+          changeScope: request?.editInstruction || (request?.planning ? 'Create ONE complete photo of the specified people and their chosen outfits. The supplied image is a face reference sheet, not a frame to preserve.' : variant.scope),
+          operation: request?.editInstruction ? 'group-edit' : request?.planning ? 'group' : 'edit',
           sourceImage: source ? { mimeType: source.mimeType, data: source.data } : null,
+          referenceImages: request?.faceReferenceImage ? [request.faceReferenceImage] : [],
         }),
       });
       if (response.ok) {
@@ -503,8 +510,9 @@ async function generateImages(
           {
             aspectRatio,
             targetResolution,
-            operation: request?.planning ? 'group' : index === 0 && mode === "text-to-image" ? "base" : "edit",
-            changeScope: variant.scope,
+            operation: request?.editInstruction ? 'group-edit' : request?.planning ? 'group' : index === 0 && mode === "text-to-image" ? "base" : "edit",
+            changeScope: request?.editInstruction || variant.scope,
+            references: request?.faceReferenceImage ? [request.faceReferenceImage] : [],
           },
         )),
       });
@@ -1042,7 +1050,7 @@ Deno.serve(async (request) => {
   if (!isUuid(input.clientRequestId)) {
     return json({ error: "clientRequestId must be a UUID." }, 400);
   }
-  if (!input.eventSlug || !input.garmentSlug || !isSafeImage(input.inputImage)) {
+  if (!input.eventSlug || !input.garmentSlug || !isSafeImage(input.inputImage) || !isSafeImage(input.faceReferenceImage)) {
     return json({ error: "A valid event, garment and optional image are required." }, 400);
   }
   if (input.eventSlug === 'custom' && !input.planning?.customOccasion) return json({ error: 'Nhập tên dịp của bạn để tiếp tục.' }, 400);

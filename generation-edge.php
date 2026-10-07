@@ -2,10 +2,12 @@
 declare(strict_types=1);
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
+require __DIR__ . '/src/Support/StudioHistory.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 require __DIR__ . '/src/Infrastructure/StudioStorage.php';
 use App\Support\Env;
 use App\Support\SupabaseAuth;
+use App\Support\StudioHistory;
 use App\Infrastructure\SupabaseAdminClient;
 use App\Infrastructure\StudioStorage;
 header('Content-Type: application/json; charset=utf-8');
@@ -42,6 +44,13 @@ try {
         if (empty($settings[0])) throw new RuntimeException('Cấu hình tạo ảnh chưa sẵn sàng.');
         $input['aspectRatio'] = $settings[0]['canvas_aspect_ratio']; $input['targetResolution'] = $settings[0]['target_resolution'];
         $input['generationType'] = 'image';
+        unset($input['faceReferenceImage']);
+        $reference = (new StudioHistory($client, new StudioStorage($url, $key), $user['id'] ?? null, $owner))->reference($input);
+        if ($reference) {
+            $input['faceReferenceImage'] = $input['inputImage'] ?? null;
+            $input['inputImage'] = $reference;
+            $input['generationMode'] = 'image-to-image';
+        }
         $body = json_encode($input, JSON_THROW_ON_ERROR);
     } else $respond(['error' => 'Method không được hỗ trợ.'], 405);
     $handle = curl_init($url . '/functions/v1/generate-look' . $query);
@@ -54,4 +63,5 @@ try {
     if (!is_string($result) || !$status) $respond(['error' => 'Kết nối bị gián đoạn. Yêu cầu có thể vẫn đang xử lý; hãy xem tiến trình trước khi tạo lại.'], 503);
     $decoded = json_decode($result, true, 512, JSON_THROW_ON_ERROR);
     $respond($decoded, $status);
+} catch (InvalidArgumentException $error) { $respond(['status'=>'failed','error'=>$error->getMessage()],422);
 } catch (Throwable) { $respond(['error' => 'Dịch vụ tạo ảnh chưa sẵn sàng. Bản phối cũ vẫn được giữ.'], 503); }
