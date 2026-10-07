@@ -1942,7 +1942,9 @@
   var suggestions = document.getElementById('occasionSuggestions');
   (catalog.events || []).filter(function (event) { return event.description; }).slice(0, 6).forEach(function (event) {
     var button = document.createElement('button'); button.type = 'button';
-    button.textContent = event.label + ' · ' + event.description;
+    var title = document.createElement('strong'); title.textContent = event.label;
+    var description = document.createElement('small'); description.textContent = event.description;
+    button.append(title, description);
     button.addEventListener('click', function () { chooseOption('event', event.slug); }); suggestions.appendChild(button);
   });
 

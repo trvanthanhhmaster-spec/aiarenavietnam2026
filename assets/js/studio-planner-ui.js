@@ -31,7 +31,8 @@
     });
     id('plannerPeriodSummary').textContent = guide.labels.time;
     id('customOccasionStatus').hidden = !plan.customOccasion;
-    id('customOccasionStatus').textContent = plan.customOccasion ? 'Đã chọn: ' + plan.customOccasion + ' · dịp tự nhập' : '';
+    id('customOccasionStatus').textContent = plan.customOccasion ? plan.customOccasion : '';
+    id('customOccasionStatus').setAttribute('aria-label', 'Dịp đã chọn: ' + (plan.customOccasion || ''));
     id('useNoteOccasion').disabled = id('occasionNote').value.trim().length < 2;
     id('groupCount').value = plan.count || '';
     document.querySelectorAll('[data-person-count]').forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.personCount) === plan.count)); });
