@@ -315,6 +315,7 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 
 /* Beginner flow: one question at a time, with edits always within reach. */
 .studio-experience [hidden] { display: none !important; }
+.studio-rail__status:has(#studioStatus[hidden]) { display: none; }
 .studio-experience:not(.has-preview-variants) .studio-preview {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'canvas' 'status' 'advanced';

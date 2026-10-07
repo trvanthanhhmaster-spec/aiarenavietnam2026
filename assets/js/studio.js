@@ -966,6 +966,7 @@
 
   function setStatus(message) {
     studioStatus.textContent = message;
+    studioStatus.hidden = /^(Chọn |Bắt đầu |Đã cập nhật |Đã chọn |Đã đóng |Đang tinh chỉnh |Đã khôi phục lựa chọn|Đã khôi phục bản phối)/.test(message);
     srStatus.textContent = message;
     if (previewGenerationMessage && previewGenerationStatus && !generationPending) {
       previewGenerationMessage.textContent = message;
@@ -1985,7 +1986,9 @@
   };
   document.addEventListener('vremix:draft-storage-error', function () { setStatus('Trình duyệt không giữ được bản nháp. Hãy tải ảnh hoặc lưu vào tài khoản trước khi rời trang.'); });
   document.addEventListener('vremix:draft-sync', function (event) {
-    document.getElementById('studioDraftStatus').textContent = event.detail.message;
+    var draftNotice = document.getElementById('studioDraftStatus');
+    draftNotice.textContent = event.detail.message;
+    draftNotice.hidden = !['error', 'conflict'].includes(event.detail.state);
     document.getElementById('retryDraftSync').hidden = event.detail.state !== 'error';
   });
   document.getElementById('retryDraftSync').addEventListener('click', function () {

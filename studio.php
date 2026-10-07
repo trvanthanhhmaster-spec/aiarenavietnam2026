@@ -117,7 +117,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                 <div>
                     <p class="studio-kicker" id="projectKicker">Không gian của bạn</p>
                     <h1 id="projectTitle">Việt phục, theo cách bạn.</h1>
-                    <p class="studio-intro__note" id="projectContext">Chỉ cần chọn dịp mặc. V-Remix sẽ gợi ý và tạo ảnh cho bạn.</p>
+                    <p class="studio-intro__note" id="projectContext" hidden></p>
                 </div>
             </div>
             <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối" hidden>
@@ -133,7 +133,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <section class="studio-stage" id="studioStage" aria-label="Không gian phối Việt phục">
             <div class="studio-workbench">
                 <header class="workspace-panel-header">
-                    <div><h2 id="workspacePanelTitle">Bạn sẽ mặc đi đâu?</h2><p id="workspacePanelHint">Chọn một dịp bên dưới. Chưa biết mặc gì cũng không sao.</p></div>
+                    <div hidden><h2 id="workspacePanelTitle">Bạn sẽ mặc đi đâu?</h2><p id="workspacePanelHint"></p></div>
                     <nav class="workspace-panel-tabs" aria-label="Thông tin bản phối">
                         <button type="button" class="is-active" data-workspace-panel="catalog" aria-pressed="true">Phối đồ</button>
                         <button type="button" data-workspace-panel="heritage" aria-pressed="false">Về trang phục</button>
@@ -177,7 +177,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <button type="button" data-guide-step="time"><span><small>Thời gian</small><strong id="guideTimeValue"></strong></span><span>Đổi ›</span></button>
                         <button type="button" data-guide-step="garment"><span><small>Trang phục</small><strong id="guideGarmentValue"></strong></span><span>Đổi ›</span></button>
                         <div id="plannerReviewPeople"></div>
-                        <p class="guide-review__hint">Chỉ tạo khi bạn xác nhận. Đổi lựa chọn không tiêu lượt tạo ảnh.</p>
                         <button type="button" class="guide-view-preview" id="plannerGenerate">Tạo ảnh bản phối <?= $studioIcon('chevron-right') ?></button>
                     </section>
                     <div class="guide-navigation" id="guideNavigation" hidden>
@@ -284,7 +283,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <div class="studio-frame__veil" aria-hidden="true"></div>
                             <div class="studio-preview__empty" id="previewEmpty">
                                 <strong id="plannerPreviewTitle">Bắt đầu từ dịp bạn sẽ mặc.</strong>
-                                <small id="plannerPreviewHint">Chuẩn bị qua bốn bước. Chỉ tạo ảnh khi bạn xác nhận.</small>
+                                <small id="plannerPreviewHint" hidden></small>
                                 <button type="button" class="workspace-start" data-workspace-start><span id="plannerPreviewAction">Chọn dịp mặc</span> <?= $studioIcon('chevron-right') ?></button>
                             </div>
                             <div class="studio-preview-progress" id="previewGenerationStatus" hidden>
@@ -323,7 +322,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <span class="studio-rail__status"><i></i><span id="studioStatus">Bắt đầu bằng cách chọn dịp mặc ở bên cạnh.</span></span>
                             <small id="studioDraftStatus" role="status"></small>
                             <button type="button" id="retryDraftSync" hidden>Thử đồng bộ bản nháp</button>
-                            <p id="selectionSummary">Ảnh minh họa ở trên chưa phải kết quả của bạn.</p>
+                            <p id="selectionSummary" hidden></p>
                         </div>
                         <label class="studio-upload" for="inputImage" hidden>
                             <span class="studio-upload__icon" aria-hidden="true"><?= $studioIcon('upload') ?></span>
@@ -331,7 +330,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                         </label>
                         <input id="outputType" type="hidden" value="<?= $escape((string) ($catalog['generation']['default_output_type'] ?? 'image')) ?>">
-                        <span class="studio-auto-create__hint">Ảnh chỉ tạo sau khi bạn kiểm tra và xác nhận.</span>
                         <div class="studio-variants__actions">
                             <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
                             <button type="button" id="saveLook" disabled>Lưu bản phối</button>

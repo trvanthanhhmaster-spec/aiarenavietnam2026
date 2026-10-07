@@ -4,7 +4,7 @@
             <span><?= sprintf('%02d', array_search($step, ['event', 'people', 'time', 'garment'], true) + 1) ?></span><strong><?= $label ?></strong>
         </button>
     <?php endforeach; ?>
-    <p id="studioNextHint">Bắt đầu bằng cách chọn dịp bạn sẽ mặc.</p>
+    <p id="studioNextHint" hidden></p>
 </div>
 
 <section class="studio-catalog-card studio-catalog-card--event" data-guide-card="event" aria-labelledby="catalogEventTitle">
@@ -14,11 +14,9 @@
     <p id="customOccasionStatus" class="guide-card-note" role="status" hidden></p>
     <div id="occasionNoResults" hidden><p class="guide-card-note">Chưa có dịp này trong bộ sưu tập. Bạn vẫn có thể dùng dịp tự nhập để tiếp tục.</p><button type="button" class="planner-secondary" id="useSearchOccasion"></button></div>
     <details class="planner-details"><summary>Cần gợi ý hoặc có dịp khác?</summary>
-        <p class="guide-card-note">Gợi ý từ bộ sưu tập đã duyệt, không gọi AI hay tạo ảnh ở bước này.</p>
         <div id="occasionSuggestions" class="planner-suggestions"></div>
         <label class="planner-field">Mô tả nhu cầu (không bắt buộc)<textarea id="occasionNote" maxlength="400" placeholder="Ví dụ: chụp kỷ yếu cùng bạn thân ở sân trường"></textarea></label>
         <button type="button" class="planner-secondary" id="useNoteOccasion" disabled>Dùng mô tả này làm dịp mặc</button>
-        <small>Không cần chọn một dịp có sẵn. Dịp tự nhập là nhu cầu của bạn, không phải thông tin văn hóa đã xác minh.</small>
     </details>
 </section>
 
@@ -32,7 +30,7 @@
     <div id="groupCountFields" hidden>
         <label class="planner-field">Số người trong nhóm<input type="number" id="groupCount" min="1" max="12" step="1" inputmode="numeric" placeholder="Ví dụ: 4"></label>
         <button type="button" class="planner-secondary" id="applyGroupCount">Chọn số người này</button>
-        <p class="guide-card-note">Bản demo hỗ trợ 1–12 người. Giảm số người sẽ bỏ lựa chọn của những người ở cuối danh sách.</p>
+        <p class="guide-card-note">Tối đa 12 người.</p>
     </div>
 </section>
 
@@ -50,6 +48,5 @@
         <label class="planner-field">Ngày kết thúc <small>Không bắt buộc</small><input type="date" id="periodEnd"></label>
         <button type="button" class="planner-secondary" id="applyCustomPeriod">Dùng ngày đã chọn</button>
     </details>
-    <p class="guide-card-note">Chưa biết ngày thì chọn “Chưa xác định”. Ngày mặc không quyết định ánh sáng trong ảnh; Studio không hiển thị dự báo thời tiết khi chưa có dữ liệu thật.</p>
 </section>
 <p id="plannerError" class="planner-error" role="alert" hidden></p>
