@@ -15,6 +15,8 @@ Do not change unrelated virtual hosts, PHP pools, containers or firewall rules.
 - `/var/lib/vremix/{cache,sessions,tmp}`: private writable runtime state.
 - `/var/lib/vremix-acme`: HTTP certificate validation only.
 - `/var/log/vremix`: dedicated logs; access logs omit query parameters.
+- `/etc/logrotate.d/vremix`: this site's logs only, 12 rotations, weekly or
+  at 20 MiB. Docker's separate container log also has a bounded 10 MiB × 3 policy.
 - `/www/server/panel/vhost/nginx/v-remix.vietnamsir.com.conf`: this site only.
 
 Keep the same Supabase project and encryption key as the existing application.
