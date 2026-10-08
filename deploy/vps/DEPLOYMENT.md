@@ -2,8 +2,8 @@
 
 - Public URL: https://v-remix.vietnamsir.com/
 - Studio: https://v-remix.vietnamsir.com/studio.php
-- Runtime release: `277dc62`; immutable source under
-  `/opt/vremix/releases/277dc62`, active symlink `/opt/vremix/current`.
+- Runtime release: `1736740`; immutable source under
+  `/opt/vremix/releases/1736740`, active symlink `/opt/vremix/current`.
 - Host: 160.30.160.101, SSH port 8686. No credentials are recorded here.
 - Isolated Docker container `vremix-php`, UID/GID 10001, PHP 8.3.35,
   read-only source, capabilities dropped, 384 MiB RAM limit.
@@ -33,12 +33,16 @@
   login, private ownership, CSRF, per-collection revisions, independent writes,
   atomic rollback, stale-tab conflicts, guest-chain claim, deleted versions and
   collections, RLS and service-only RPC. Fixtures/accounts were cleaned.
-- All 19 JavaScript test files passed locally; public Studio was visually checked
+- All 20 JavaScript test files passed locally; public Studio was visually checked
   in the browser with its idle illustration and four-step flow.
 - Generating state now uses the supplied 10-second muted loading video. It is
   lazy-loaded, paused on completion/error or backgrounding, and respects reduced
   motion with a static poster. Local browser playback/pause/stop and all loading
   lifecycle tests passed with a simulated state, without calling an AI provider.
+- Result toolbar keeps save/original download as primary actions. Story-card
+  export and version deletion live in a compact disclosure menu. Desktop and
+  390px browser checks verified placement, outside/Escape dismissal and focus
+  return; original export handlers and permissions remain unchanged.
 - Existing `chatgpt.vietnamsir.com`, `shop.vietnamsir.com` and `vietnamsir.com`
   still return HTTP 200. The new container has no restart loop.
 
