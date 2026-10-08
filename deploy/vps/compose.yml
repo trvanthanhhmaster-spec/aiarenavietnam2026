@@ -1,0 +1,26 @@
+services:
+  php:
+    image: vremix-php:${VREMIX_RELEASE:?Set the verified release SHA}
+    container_name: vremix-php
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 1.0
+    mem_limit: 384m
+    memswap_limit: 768m
+    pids_limit: 128
+    ports: ["127.0.0.1:9183:9000"]
+    volumes:
+      - /opt/vremix/current:/var/www/html:ro
+      - /etc/vremix/app.env:/var/www/html/.env:ro
+      - /var/lib/vremix:/var/lib/vremix
+      - /var/log/vremix:/var/log/vremix
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+

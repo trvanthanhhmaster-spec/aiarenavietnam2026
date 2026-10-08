@@ -1,0 +1,6 @@
+**
+!deploy/
+!deploy/vps/
+!deploy/vps/Dockerfile
+!deploy/vps/php-fpm.conf
+

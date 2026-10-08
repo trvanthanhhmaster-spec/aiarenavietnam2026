@@ -17,7 +17,8 @@ function collectionRemote(string $method,string $route,?array $body=null,?string
 }
 function collectionHttp(string $jar,string $route,?array $body=null,?string $csrf=null,bool $form=false,?string $override=null): array {
  global $accounts;
- $h=curl_init('http://localhost/aiarenavietnam2026/'.$route);
+ $base=rtrim((string)(getenv('VREMIX_TEST_BASE_URL')?:'http://localhost/aiarenavietnam2026'),'/');
+ $h=curl_init($base.'/'.$route);
  $headers=array_filter([$form?'Content-Type: application/x-www-form-urlencoded':'Content-Type: application/json',$csrf?'X-VRemix-CSRF: '.$csrf:null,($override??$accounts[$jar]??null)?'X-VRemix-Account: '.($override??$accounts[$jar]):null]);
  curl_setopt_array($h,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_TIMEOUT=>35,CURLOPT_COOKIEFILE=>$jar,CURLOPT_COOKIEJAR=>$jar,CURLOPT_HTTPHEADER=>$headers]);
  if($body!==null) curl_setopt_array($h,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$form?http_build_query($body):json_encode($body)]);
