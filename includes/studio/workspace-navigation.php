@@ -4,7 +4,7 @@
     <div class="workspace-sidebar__tools">
         <button type="button" class="is-active" data-workspace-tooltip data-workspace-panel="catalog" aria-label="Phối đồ" aria-pressed="true"><?= $studioIcon('sliders-horizontal') ?></button>
         <button type="button" data-workspace-tooltip data-workspace-mode="garment" aria-label="Chọn trang phục"><?= $studioIcon('shirt') ?></button>
-        <button type="button" data-workspace-tooltip data-workspace-library aria-label="Bản phối của tôi"><?= $studioIcon('images') ?></button>
+        <button type="button" data-workspace-tooltip data-workspace-collections aria-label="Bộ sưu tập của tôi"><?= $studioIcon('images') ?></button>
         <button type="button" data-workspace-tooltip data-workspace-panel="heritage" aria-label="Về trang phục" aria-pressed="false"><?= $studioIcon('book-open') ?></button>
         <button type="button" data-workspace-tooltip data-workspace-panel="places" aria-label="Nơi mua, thuê và chụp" aria-pressed="false"><?= $studioIcon('map-pin') ?></button>
     </div>
@@ -15,7 +15,7 @@
     <nav class="workspace-topnav" aria-label="Điều hướng V-Remix">
         <a href="index.php#stage">Khám phá</a>
         <span aria-current="page">Studio</span>
-        <button type="button" data-workspace-library>Bản phối của tôi</button>
+        <button type="button" data-workspace-collections disabled>Bộ sưu tập của tôi</button>
     </nav>
     <div class="workspace-utilities">
         <button type="button" id="workspaceFullscreen" aria-label="Mở toàn màn hình" title="Mở toàn màn hình"><?= $studioIcon('maximize') ?></button>

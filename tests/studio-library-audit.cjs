@@ -12,6 +12,7 @@ async function main() {
   const ids = Object.fromEntries(['studioExperience', 'studioLibrary', 'libraryItems', 'libraryStatus', 'libraryMore', 'libraryClose', 'clearStudioDraft', 'confirmClearStudioDraft', 'cancelClearStudioDraft', 'acceptClearStudioDraft'].map(k => [k, element()]));
   const opened = [], requests = [], trigger = element();
   ids.studioExperience.resultsApi = { open(look, edit) { opened.push({ look, edit }); } };
+  ids.studioExperience.collectionsApi = { async openLook(look) { opened.push({ look, edit: true }); }, async start() { throw new Error('blocked'); } };
   const document = { getElementById: id => ids[id], createElement: () => element(), querySelectorAll: () => [trigger], addEventListener() {} };
   const config = { auth: { authenticated: true }, lookEndpoint: 'look-api.php' };
   vm.runInNewContext(fs.readFileSync('assets/js/studio-library.js', 'utf8'), {
@@ -35,7 +36,7 @@ async function main() {
   await ids.clearStudioDraft.events.click();
   assert.equal(ids.confirmClearStudioDraft.hidden, false, 'deleting the cloud draft requires confirmation');
   await ids.acceptClearStudioDraft.events.click.call(ids.acceptClearStudioDraft);
-  assert.match(ids.libraryStatus.textContent, /Chưa xóa được/);
+  assert.match(ids.libraryStatus.textContent, /Chưa mở được bộ mới/);
   console.log('Studio library audit: stale-response suppression, unavailable media, independent editing and storage errors passed offline.');
 }
 main().catch(e => { console.error(e); process.exitCode = 1; });

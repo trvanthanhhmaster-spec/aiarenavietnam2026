@@ -62,7 +62,7 @@
       strip.appendChild(button);
     });
     compare.hidden = items.filter(function (item) { return item.image_url; }).length < 2;
-    visible(items.length > 0);
+    visible(items.length > 1);
   }
   async function load(append) {
     append = append === true;

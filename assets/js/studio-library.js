@@ -38,7 +38,7 @@
     const title = document.createElement('h3'); title.textContent = look.name;
     const date = document.createElement('p'); date.textContent = new Date(look.created_at).toLocaleDateString('vi-VN');
     const actions = document.createElement('div');
-    const openImage = button('Mở ảnh', () => { experience.resultsApi.open(look, false); dialog.close(); });
+    const openImage = button('Mở ảnh', async () => { await experience.collectionsApi.openLook(look); dialog.close(); });
     const mediaNote = document.createElement('p'); mediaNote.hidden = true;
     const unavailable = () => {
       image.hidden = true; openImage.disabled = true; mediaNote.hidden = false;
@@ -48,7 +48,7 @@
     if (!look.image_url) unavailable();
     image.onerror = unavailable;
     actions.append(openImage,
-      button('Chỉnh tiếp', () => { experience.resultsApi.open(look, true); dialog.close(); }));
+      button('Chỉnh tiếp', async () => { await experience.collectionsApi.openLook(look); dialog.close(); }));
     const edit = document.createElement('div'); edit.hidden = true;
     const name = document.createElement('input'); name.value = look.name; name.maxLength = 120; name.setAttribute('aria-label', 'Tên bản phối');
     edit.append(name, button('Lưu tên', async () => {
@@ -99,9 +99,9 @@
   document.getElementById('acceptClearStudioDraft')?.addEventListener('click', async function () {
     this.disabled = true;
     try {
-      await window.VRemixSession.clear(); status.textContent = 'Đã xóa bản nháp trong tài khoản. Bản phối đã lưu không bị xóa.';
+      await experience.collectionsApi.start(); status.textContent = 'Đã mở Studio mới. Các bộ sưu tập trước vẫn được giữ.';
       document.getElementById('confirmClearStudioDraft').hidden = true;
-    } catch (e) { status.textContent = 'Chưa xóa được bản nháp. ' + (e.message || 'Hãy thử lại khi kết nối ổn định.'); }
+    } catch (e) { status.textContent = 'Chưa mở được bộ mới. ' + (e.message || 'Hãy thử lại khi kết nối ổn định.'); }
     finally { this.disabled = false; }
   });
 })();

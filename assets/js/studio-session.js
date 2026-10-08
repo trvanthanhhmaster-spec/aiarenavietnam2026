@@ -43,7 +43,7 @@
   }
   function sanitize(value) {
     const result = JSON.parse(JSON.stringify(value));
-    for (const selection of [result.draft, result.selection]) {
+    for (const selection of [result.draft, result.selection, ...(result.collections || []).flatMap(item => [item.record?.draft, item.record?.selection])]) {
       for (const person of selection?.planning?.people || []) person.faceSupplied = false;
     }
     result.updatedAt = Date.now(); result.userId = config.auth.userId;
@@ -116,8 +116,10 @@
   }
   function serverRecord(record) {
     // No provider output blobs, signed URLs or face pixels are stored in the draft row.
-    return Object.fromEntries(['draft', 'selection', 'jobId', 'saveId', 'savedLookId', 'saveAfterLogin', 'guideStep']
+    const result = Object.fromEntries(['draft', 'selection', 'jobId', 'saveId', 'savedLookId', 'saveAfterLogin', 'guideStep', 'collectionId']
       .filter(k => record[k] !== undefined).map(k => [k, record[k]]));
+    if (record.collections) result.collections = record.collections.map(item => ({ id: item.id, name: item.name, updatedAt: item.updatedAt, record: serverRecord(item.record) }));
+    return result;
   }
   async function drain() {
     await read();

@@ -6,10 +6,10 @@
         <p id="libraryDraftStatus" role="status">Lựa chọn được tự lưu trong tài khoản sau khi đăng nhập.</p>
         <button type="button" id="continueStudioDraft" hidden>Tiếp tục bản nháp</button>
         <button type="button" id="retryStudioDraft" hidden>Thử đồng bộ lại</button>
-        <button type="button" id="clearStudioDraft">Xóa bản nháp trong tài khoản</button>
+        <button type="button" id="clearStudioDraft">Bắt đầu bộ sưu tập mới</button>
         <div id="confirmClearStudioDraft" hidden>
-            <p>Xóa bản nháp đang lưu trong tài khoản? Các bản phối đã lưu trong thư viện vẫn được giữ. Nếu chỉnh tiếp lựa chọn hiện tại, Studio sẽ lưu một bản nháp mới.</p>
-            <button type="button" id="acceptClearStudioDraft">Xác nhận xóa bản nháp</button>
+            <p>Giữ lại bộ đang mở và bắt đầu bộ sưu tập mới? Các lựa chọn và ảnh trước không bị xóa.</p>
+            <button type="button" id="acceptClearStudioDraft">Giữ lại và bắt đầu mới</button>
             <button type="button" id="cancelClearStudioDraft">Giữ lại</button>
         </div>
     </section>

@@ -59,6 +59,8 @@ try {
         $items[]=['id'=>$job['id'],'jobId'=>$job['id'],'lookId'=>$look['id']??null,'name'=>$look['name']??null,
             'selection'=>StudioHistory::selection($job['input']),'image_url'=>$image,'storage_path'=>$item['path']??null,
             'created_at'=>$job['created_at'],'saved'=>$look!==null,'client_save_id'=>$look['client_save_id']??null,
+            'rootJobId'=>isset($job['input']['history']) ? ($job['input']['history']['rootJobId']??null) : $job['id'],
+            'rootLookId'=>$job['input']['history']['rootLookId']??null,
             'parentJobId'=>$job['input']['history']['parentJobId']??null];
     }
     $respond(['items'=>$items,'scoped'=>($rootJob||$rootLook)?true:false,'hasMore'=>$more,'nextOffset'=>$offset+count($jobs)]);

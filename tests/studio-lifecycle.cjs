@@ -20,7 +20,7 @@ const session = fs.readFileSync('assets/js/studio-session.js', 'utf8');
 assert.match(session, /person.faceSupplied = false/);
 assert.match(session, /record.userId && record.userId !== config.auth.userId/);
 const nav = fs.readFileSync('includes/studio/workspace-navigation.php', 'utf8');
-assert.match(nav, /data-workspace-library>Bản phối của tôi/);
+assert.match(nav, /data-workspace-collections disabled>Bộ sưu tập của tôi/);
 const api = fs.readFileSync('look-api.php', 'utf8');
 assert.match(api, /verifyCsrf/);
 assert.match(api, /'user_id' => 'eq\.' \./);

@@ -26,6 +26,21 @@ final class StudioDraft
         if (!in_array($step, ['event', 'people', 'time', 'garment', 'review'], true)) throw new InvalidArgumentException('Bước bản nháp không hợp lệ.');
         $result['guideStep'] = $step;
         $result['saveAfterLogin'] = ($input['saveAfterLogin'] ?? false) === true;
+        if (isset($input['collectionId'])) {
+            if (!is_string($input['collectionId']) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $input['collectionId'])) throw new InvalidArgumentException('Bộ sưu tập không hợp lệ.');
+            $result['collectionId'] = $input['collectionId'];
+        }
+        if (isset($input['collections'])) {
+            if (!is_array($input['collections']) || count($input['collections']) > 100) throw new InvalidArgumentException('Danh sách bộ sưu tập quá lớn.');
+            $ids = []; $result['collections'] = [];
+            foreach ($input['collections'] as $item) {
+                $id = $item['id'] ?? '';
+                if (!is_string($id) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id) || isset($ids[$id]) || !is_array($item['record'] ?? null)) throw new InvalidArgumentException('Bộ sưu tập không hợp lệ.');
+                $ids[$id] = true;
+                $snapshot = $item['record']; unset($snapshot['collections'], $snapshot['collectionId']);
+                $result['collections'][] = ['id' => $id, 'name' => self::text($item['name'] ?? '', 120), 'updatedAt' => max(0, (int) ($item['updatedAt'] ?? 0)), 'record' => self::normalize($snapshot)];
+            }
+        }
         return $result;
     }
 

@@ -27,14 +27,27 @@ $owner = hash('sha256', (string) ($_SESSION['studio_generation_owner'] ?? ''));
 session_write_close();
 try {
     $client = new SupabaseAdminClient($url, $key);
-    $ownsJob = static function (string $id) use ($client, $userId, $owner): ?array {
-        $job = $client->select('generation_jobs', ['id' => 'eq.' . $id, 'select' => 'id,user_id,owner_session_hash,status,output', 'limit' => '1'])[0] ?? null;
+    $jobCache = []; $lookCache = [];
+    $ownsJob = static function (string $id) use ($client, $userId, $owner, &$jobCache): ?array {
+        $job = $jobCache[$id] ?? $client->select('generation_jobs', ['id' => 'eq.' . $id, 'select' => 'id,user_id,owner_session_hash,status,output', 'limit' => '1'])[0] ?? null;
+        if ($job) $jobCache[$id] = $job;
         return $job && ($job['user_id'] === $userId || ($job['user_id'] === null && !empty($job['owner_session_hash']) && hash_equals($job['owner_session_hash'], $owner))) ? $job : null;
     };
-    $ownsLook = static fn (string $id): ?array => $client->select('looks', ['id' => 'eq.' . $id, 'user_id' => 'eq.' . $userId, 'select' => '*', 'limit' => '1'])[0] ?? null;
+    $ownsLook = static function (string $id) use ($client, $userId, &$lookCache): ?array {
+        return $lookCache[$id] ?? $client->select('looks', ['id' => 'eq.' . $id, 'user_id' => 'eq.' . $userId, 'select' => '*', 'limit' => '1'])[0] ?? null;
+    };
+    $primeRefs = static function (?array $record) use ($client, $userId, &$jobCache, &$lookCache): void {
+        if (!$record || empty($record['collections'])) return;
+        $refs = array_merge([$record], array_column($record['collections'], 'record'));
+        $jobs = array_values(array_unique(array_filter(array_column($refs, 'jobId'))));
+        $looks = array_values(array_unique(array_filter(array_column($refs, 'savedLookId'))));
+        if ($jobs) foreach ($client->select('generation_jobs', ['id' => 'in.(' . implode(',', $jobs) . ')', 'select' => 'id,user_id,owner_session_hash,status,output']) as $job) $jobCache[$job['id']] = $job;
+        if ($looks) foreach ($client->select('looks', ['id' => 'in.(' . implode(',', $looks) . ')', 'user_id' => 'eq.' . $userId, 'select' => '*']) as $look) $lookCache[$look['id']] = $look;
+    };
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $row = $client->select('studio_drafts', ['user_id' => 'eq.' . $userId, 'select' => '*', 'limit' => '1'])[0] ?? null;
         $record = $row['payload'] ?? null;
+        $primeRefs($record);
         if ($record) {
             $record['updatedAt'] = (int) (strtotime($row['updated_at']) * 1000); $record['userId'] = $userId;
             $output = null;
@@ -56,18 +69,44 @@ try {
                 }
             }
             if ($output) $record['output'] = $output;
+            // Covers are refreshed from owned media, never from a client URL.
+            foreach ($record['collections'] ?? [] as $index => $collection) {
+                $snapshot = $collection['record'];
+                $job = !empty($snapshot['jobId']) ? $ownsJob($snapshot['jobId']) : null;
+                $look = !empty($snapshot['savedLookId']) ? $ownsLook($snapshot['savedLookId']) : null;
+                try {
+                    if ($job && $job['status'] === 'completed') $snapshot['output'] = (new StudioStorage($url, $key))->refreshOutput($job['output']);
+                    elseif ($look) {
+                        $image = !empty($look['storage_path']) ? (new StudioStorage($url, $key))->sign($look['storage_path']) : $look['image_url'];
+                        if ($image) $snapshot['output'] = ['lookbook' => ['items' => [['url' => $image, 'path' => $look['storage_path'] ?? null]]]];
+                    }
+                } catch (Throwable) { $snapshot['mediaUnavailable'] = true; }
+                $record['collections'][$index]['record'] = $snapshot;
+            }
         }
         $respond(['record' => $record, 'revision' => $row['revision'] ?? 0]);
     }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') $respond(['error' => 'Method không được hỗ trợ.'], 405);
     $raw = (string) file_get_contents('php://input');
-    if (strlen($raw) > 100000) $respond(['error' => 'Bản nháp quá lớn. Không lưu ảnh tham khảo trong bản nháp.'], 413);
+    if (strlen($raw) > 100000) $respond(['error' => 'Các bộ sưu tập đã vượt dung lượng lưu bản nháp. Chưa chuyển bộ; dữ liệu đã lưu trước đó vẫn được giữ.'], 413);
     $input = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
     if (!is_array($input) || !is_int($input['revision'] ?? null) || $input['revision'] < 0) $respond(['error' => 'Phiên bản bản nháp không hợp lệ.'], 422);
     $action = $input['action'] ?? '';
     if (!in_array($action, ['save', 'clear'], true)) $respond(['error' => 'Yêu cầu bản nháp không hợp lệ.'], 422);
     if ($action === 'save' && !is_array($input['record'] ?? null)) $respond(['error' => 'Thiếu bản nháp.'], 422);
     $record = $action === 'save' ? StudioDraft::normalize($input['record']) : null;
+    $primeRefs($record);
+    // Validate every archived reference too, so collections cannot expose another account's media.
+    foreach ($record['collections'] ?? [] as $collection) {
+        $snapshot = $collection['record'];
+        if (!empty($snapshot['jobId'])) {
+            $job = $ownsJob($snapshot['jobId']);
+            if (!$job) $respond(['error' => 'Phiên bản trong bộ sưu tập không thuộc tài khoản của bạn.'], 403);
+            if ($job['user_id'] === null && !$client->update('generation_jobs', ['id' => 'eq.' . $job['id'], 'user_id' => 'is.null', 'owner_session_hash' => 'eq.' . $owner], ['user_id' => $userId])) $respond(['error' => 'Phiên bản đã được gắn với tài khoản khác.'], 403);
+            $jobCache[$job['id']]['user_id'] = $userId;
+        }
+        if (!empty($snapshot['savedLookId']) && !$ownsLook($snapshot['savedLookId'])) $respond(['error' => 'Bản phối trong bộ sưu tập không thuộc tài khoản của bạn.'], 403);
+    }
     if (!empty($record['jobId'])) {
         $job = $ownsJob($record['jobId']);
         if (!$job) $respond(['error' => 'Ảnh không thuộc tài khoản hoặc phiên của bạn.'], 403);

@@ -120,6 +120,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <p class="studio-intro__note" id="projectContext" hidden></p>
                 </div>
             </div>
+            <button type="button" class="workspace-new-collection" id="newStudioCollection" disabled>＋ Bộ sưu tập mới</button>
             <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối" hidden>
                 <button type="button" class="studio-start-card" id="workspaceUpload">
                     <span class="studio-start-card__icon"><?= $studioIcon('upload') ?></span>
@@ -445,6 +446,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
     <?php require __DIR__ . '/includes/studio/library.php'; ?>
+    <?php require __DIR__ . '/includes/studio/collections.php'; ?>
     <dialog class="studio-auth-dialog" id="studioAuthDialog" aria-labelledby="studioAuthTitle">
         <button type="button" class="studio-auth-close" aria-label="Đóng đăng nhập" id="studioAuthClose">×</button>
         <h2 id="studioAuthTitle"><?= $authUser !== null ? 'Tài khoản của bạn' : 'Đăng nhập hoặc đăng ký' ?></h2>
@@ -456,11 +458,13 @@ require __DIR__ . '/includes/components/studio-icon.php';
     </script>
     <script src="assets/js/studio-planner.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner.js') ?>" defer></script>
     <script src="assets/js/studio-session.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-session.js') ?>" defer></script>
+    <script src="assets/js/studio-collections-model.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections-model.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
     <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>
     <script src="assets/js/studio-library.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-library.js') ?>" defer></script>
+    <script src="assets/js/studio-collections.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections.js') ?>" defer></script>
 </body>
 </html>
