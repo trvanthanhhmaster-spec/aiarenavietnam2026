@@ -342,12 +342,17 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <input id="inputImage" type="file" accept="image/jpeg,image/png,image/webp">
                         </label>
                         <input id="outputType" type="hidden" value="<?= $escape((string) ($catalog['generation']['default_output_type'] ?? 'image')) ?>">
-                        <div class="studio-variants__actions">
+                        <div class="studio-variants__actions studio-result-actions">
                             <button type="button" id="compareLooks" disabled>So sánh ảnh</button>
                             <button type="button" id="saveLook" disabled>Lưu bản phối</button>
                             <a class="result-download" id="resultDownload" href="#" download hidden>Tải ảnh <span aria-hidden="true">↓</span></a>
-                            <button type="button" id="downloadStory" hidden>Tải thẻ bản phối 9:16</button>
-                            <button type="button" id="deleteCurrentVersion" hidden>Xóa phiên bản</button>
+                            <details class="studio-result-more" id="studioResultMore" hidden>
+                                <summary aria-label="Thêm thao tác với bản phối" title="Thêm thao tác"><span aria-hidden="true">⋯</span></summary>
+                                <div class="studio-result-more__panel" aria-label="Thao tác bổ sung">
+                                    <button type="button" id="downloadStory" aria-label="Xuất thẻ chia sẻ 9:16" hidden><span>Xuất thẻ chia sẻ</span><small>Ảnh dọc · 9:16</small></button>
+                                    <button type="button" id="deleteCurrentVersion" hidden>Xóa phiên bản</button>
+                                </div>
+                            </details>
                             <button type="button" id="addVariant" aria-label="Thêm phụ kiện vào bản phối" hidden><?= $studioIcon('sparkles') ?><span>Thêm phụ kiện</span></button>
                             <button type="button" id="retryGeneration" hidden>Thử tạo lại</button>
                         </div>
@@ -473,6 +478,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-collection-store.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collection-store.js') ?>" defer></script>
     <script src="assets/js/studio-collections-model.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections-model.js') ?>" defer></script>
     <script src="assets/js/studio-loading.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-loading.js') ?>" defer></script>
+    <script src="assets/js/studio-result-actions.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-result-actions.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
