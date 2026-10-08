@@ -22,6 +22,7 @@ function collectionHttp(string $jar,string $route,?array $body=null,?string $csr
  curl_setopt_array($h,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_TIMEOUT=>35,CURLOPT_COOKIEFILE=>$jar,CURLOPT_COOKIEJAR=>$jar,CURLOPT_HTTPHEADER=>$headers]);
  if($body!==null) curl_setopt_array($h,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$form?http_build_query($body):json_encode($body)]);
  $raw=curl_exec($h);$status=(int)curl_getinfo($h,CURLINFO_RESPONSE_CODE);curl_close($h);
+ if($status===503) fwrite(STDERR,'Live endpoint unavailable: HTTP 503 '.($body===null?'GET ':'POST ').strtok($route,'?')."\n");
  return ['status'=>$status,'body'=>json_decode((string)$raw,true),'raw'=>$raw];
 }
 function collectionLogin(string $jar,array $user): array {
@@ -44,7 +45,7 @@ try {
  }
  $a=collectionLogin($jars[0],$users[0]);$b=collectionLogin($jars[1],$users[0]);$other=collectionLogin($jars[2],$users[1]);
  $initial=collectionHttp($jars[0],'studio-collections-api.php',null,$a['lookCsrf']);
- collectionCheck($initial['status']===200 && $initial['body']['items']===[] && !$initial['body']['hasAny'],'Fresh account must be empty');
+ collectionCheck($initial['status']===200 && $initial['body']['items']===[] && !$initial['body']['hasAny'],'Fresh account must be empty: HTTP '.$initial['status'].' '.json_encode($initial['body']));
  collectionCheck(collectionHttp($jars[0],'studio-collections-api.php',['items'=>[]])['status']===403,'Missing CSRF accepted');
  collectionCheck(collectionHttp($jars[0],'studio-collections-api.php',null,$a['lookCsrf'],false,$users[1]['id'])['status']===403,'Stale-account tab accepted');
  $ids=[collectionUuid(),collectionUuid()];
@@ -69,7 +70,8 @@ try {
  collectionCheck(collectionHttp($jars[2],'studio-history.php?collectionId='.$ids[0],null,$other['lookCsrf'])['status']===404,'Foreign collection history accepted');
  // A mixed batch is transactional: a late conflict must roll back earlier rows.
  $candidate=$items[1];$candidate['revision']=2;$candidate['name']='must-roll-back';
- collectionCheck(collectionHttp($jars[0],'studio-collections-api.php',['items'=>[$candidate,$items[0]]],$a['lookCsrf'])['status']===409,'Mixed batch conflict was accepted');
+ $batchConflict=collectionHttp($jars[0],'studio-collections-api.php',['items'=>[$candidate,$items[0]]],$a['lookCsrf']);
+ collectionCheck($batchConflict['status']===409,'Mixed batch rejection failed: HTTP '.$batchConflict['status'].' '.json_encode($batchConflict['body']));
  $unchanged=collectionRemote('GET','/rest/v1/studio_collections?id=eq.'.$ids[1].'&select=name,revision');
  collectionCheck($unchanged['body'][0]['name']==='QA B independent' && $unchanged['body'][0]['revision']===2,'Conflicting batch partially wrote another collection');
  // Synthetic completed jobs only; no provider calls. Attach an owned chain atomically.
@@ -105,7 +107,8 @@ try {
  collectionCheck(collectionHttp($jars[0],'generation-edge.php?jobId='.$jobIds[1],null,$a['lookCsrf'])['status']===404,'Deleted version read via gateway');
  collectionRemote('PATCH','/rest/v1/generation_jobs?id=eq.'.$jobIds[0],['owner_session_hash'=>$other['sessionScope']]);
  collectionCheck(collectionHttp($jars[2],'local-generate.php?jobId='.$jobIds[0],null,$other['lookCsrf'])['status']===404,'Session owner bypassed account ownership');
- collectionCheck(collectionHttp($jars[2],'generation-edge.php?jobId='.$jobIds[0],null,$other['lookCsrf'])['status']===404,'Gateway session owner bypassed account ownership');
+ $foreignGateway=collectionHttp($jars[2],'generation-edge.php?jobId='.$jobIds[0],null,$other['lookCsrf']);
+ collectionCheck($foreignGateway['status']===404,'Gateway ownership rejection failed: HTTP '.$foreignGateway['status'].' '.json_encode($foreignGateway['body']));
  $items[0]['record']=$hidden['body']['item']['record'];$items[0]['revision']=4;$items[0]['deleted']=true;
  collectionCheck(collectionHttp($jars[0],'studio-collections-api.php',['items'=>[$items[0]]],$a['lookCsrf'])['status']===200,'Collection deletion failed');
  $items[0]['deleted']=false;$items[0]['revision']=5;

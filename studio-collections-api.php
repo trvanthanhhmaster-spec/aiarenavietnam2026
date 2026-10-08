@@ -84,4 +84,13 @@ try {
  $respond(['items'=>array_map(static fn(array $r):array=>['id'=>$r['id'],'revision'=>(int)$r['revision'],'deleted'=>$r['deleted_at']!==null],$saved)]);
 }catch(JsonException){$respond(['error'=>'Dữ liệu JSON không hợp lệ.'],400);
 }catch(InvalidArgumentException $e){$respond(['error'=>$e->getMessage()],422);
-}catch(Throwable $e){if(str_contains($e->getMessage(),'STUDIO_COLLECTION_CONFLICT'))$respond(['error'=>'Bộ này đã đổi ở cửa sổ khác. Giữ bản đang chỉnh thành bộ riêng hoặc tải bản mới nhất.'],409);error_log('[VRemix] collections unavailable');$respond(['error'=>'Chưa lưu được bộ sưu tập. Lựa chọn trên thiết bị vẫn được giữ.'],503);}
+}catch(Throwable $e){
+ if(str_contains($e->getMessage(),'STUDIO_COLLECTION_CONFLICT'))$respond(['error'=>'Bộ này đã đổi ở cửa sổ khác. Giữ bản đang chỉnh thành bộ riêng hoặc tải bản mới nhất.'],409);
+ // Log only the failure category, never payloads, SQL values or credentials.
+ $reason='internal';
+ if(preg_match('/Supabase returned HTTP (\d{3})/', $e->getMessage(), $status)) $reason='upstream_http_'.$status[1];
+ elseif(str_contains($e->getMessage(),'request failed:')) $reason='upstream_transport_'.(int)$e->getCode();
+ error_log('[VRemix] collections unavailable: '.get_class($e).' '.$reason);
+ $message=$_SERVER['REQUEST_METHOD']==='GET'?'Chưa tải được bộ sưu tập.':'Chưa lưu được bộ sưu tập.';
+ $respond(['error'=>$message.' Lựa chọn trên thiết bị vẫn được giữ.'],503);
+}

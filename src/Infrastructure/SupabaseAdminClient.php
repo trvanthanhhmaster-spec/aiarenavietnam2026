@@ -94,19 +94,32 @@ final class SupabaseAdminClient
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_CONNECTTIMEOUT => min(8, $this->timeoutSeconds),
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
         ]);
         if ($body !== null) {
             curl_setopt($handle, CURLOPT_POSTFIELDS, json_encode(str_starts_with($table, 'rpc/') && $body === [] ? (object) [] : $body, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         }
 
-        $responseBody = curl_exec($handle);
-        $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
-        $error = curl_error($handle);
+        // Reads are safe to repeat. Writes may only reconnect after failed DNS,
+        // which means no connection/request existed; never replay ambiguous writes.
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $responseBody = curl_exec($handle);
+            $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+            $error = curl_error($handle);
+            $transportCode = curl_errno($handle);
+            $transportFailure = $responseBody === false || $error !== '';
+            $safeToRetry = $method === 'GET'
+                ? $transportFailure || in_array($status, [502, 503, 504], true)
+                : $transportFailure && $transportCode === CURLE_COULDNT_RESOLVE_HOST;
+            if (!$safeToRetry) {
+                break;
+            }
+        }
+        curl_close($handle);
 
         if ($responseBody === false || $error !== '') {
-            throw new RuntimeException('Supabase admin request failed: ' . $error);
+            throw new RuntimeException('Supabase admin request failed: ' . $error, $transportCode);
         }
         if ($status < 200 || $status >= 300) {
             $message = 'Supabase returned HTTP ' . $status . '.';

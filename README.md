@@ -198,9 +198,15 @@ Storage vĩnh viễn. Cửa sổ cũ không được hồi sinh ID đã xóa.
 từng bộ và ghi nguyên tử qua RPC service-only. Khi hai cửa sổ sửa cùng một
 bộ, Studio cho giữ thay đổi trên thiết bị thành bộ riêng hoặc tải bản mới nhất.
 Khôi phục cục bộ tách theo từng tab; signed URL và output không vào payload lưu.
+Client cơ sở dữ liệu thử lại tối đa một lần cho GET khi lỗi kết nối hoặc HTTP
+502/503/504. Ghi/RPC chỉ thử kết nối lại nếu DNS chưa tìm được host (curl 6,
+chưa có kết nối hay yêu cầu gửi đi); không gửi lại sau timeout/HTTP vì giao dịch
+có thể đã hoàn tất. Lỗi API ghi vào log theo loại và mã, không ghi payload hoặc
+thông tin xác thực.
 
 Kiểm thử: `node tests/studio-collection-store.cjs`,
 `node tests/studio-collections.cjs`,
+`php tests/supabase-admin-client.php`,
 `php tests/studio-collections-live.php --live` (tạo rồi xóa tài khoản QA riêng,
 không gọi AI). Dữ liệu tổng hợp trong kiểm thử không phải bằng chứng provider
 tạo ảnh thật. Sau migration cần đồng bộ PHP/JS/CSS vào XAMPP và triển khai Edge
