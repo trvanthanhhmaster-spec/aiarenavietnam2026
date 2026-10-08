@@ -39,6 +39,12 @@ assert.match(css, /flex-direction: column;\s*overflow-x: hidden; overflow-y: aut
   'long desktop lists scroll inside the side rail');
 assert.match(css, /\.studio-history-item img \{[^}]*object-fit: contain/,
   'landscape thumbnails must show the entire group');
+assert.match(css, /\.studio-history-item strong \{[^}]*background: transparent;[^}]*font-size: 11px/,
+  'version labels stay light without a white card footer');
+assert.match(css, /\.history-save-state:not\(\.is-saved\) \{ display: none;/,
+  'unsaved versions do not show decorative status dots');
+assert.match(css, /\.studio-history-item\.is-active \{ box-shadow: none;/,
+  'selected versions do not get nested outline frames');
 assert.match(css, /has-generated-output \.studio-workbench \{ height: auto;/,
   'generated content must remain in document flow above result information');
 assert.match(js, /resultDetails\.open\) \{ result.hidden = false; renderResultInfo\(\);/,
