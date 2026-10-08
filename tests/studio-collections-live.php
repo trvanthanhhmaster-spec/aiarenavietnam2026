@@ -6,6 +6,7 @@ require __DIR__.'/../src/Support/Env.php';
 require __DIR__.'/../src/Support/StudioDraft.php';
 App\Support\Env::load(__DIR__.'/../.env');
 $users=[];$jars=[];$accounts=[];$jobIds=[];
+$localDenied=getenv('VREMIX_TEST_LOCAL_DISABLED')==='1'?403:404;
 function collectionCheck(bool $ok,string $message): void {if(!$ok) throw new RuntimeException($message);}
 function collectionRemote(string $method,string $route,?array $body=null,?string $token=null): array {
  $key=(string)getenv($token?'SUPABASE_ANON_KEY':'SUPABASE_SERVICE_ROLE_KEY');
@@ -104,10 +105,10 @@ try {
  collectionCheck($hidden['status']===200 && $hidden['body']['item']['revision']===4 && $hidden['body']['item']['record']['jobId']===null,'Deleting current version failed');
  $history=collectionHttp($jars[0],'studio-history.php?collectionId='.$ids[0],null,$a['lookCsrf']);
  collectionCheck(count($history['body']['items'])===1,'Deleted version reappeared');
- collectionCheck(collectionHttp($jars[0],'local-generate.php?jobId='.$jobIds[1],null,$a['lookCsrf'])['status']===404,'Deleted version read via job endpoint');
+ collectionCheck(collectionHttp($jars[0],'local-generate.php?jobId='.$jobIds[1],null,$a['lookCsrf'])['status']===$localDenied,'Deleted version read via job endpoint');
  collectionCheck(collectionHttp($jars[0],'generation-edge.php?jobId='.$jobIds[1],null,$a['lookCsrf'])['status']===404,'Deleted version read via gateway');
  collectionRemote('PATCH','/rest/v1/generation_jobs?id=eq.'.$jobIds[0],['owner_session_hash'=>$other['sessionScope']]);
- collectionCheck(collectionHttp($jars[2],'local-generate.php?jobId='.$jobIds[0],null,$other['lookCsrf'])['status']===404,'Session owner bypassed account ownership');
+ collectionCheck(collectionHttp($jars[2],'local-generate.php?jobId='.$jobIds[0],null,$other['lookCsrf'])['status']===$localDenied,'Session owner bypassed account ownership');
  $foreignGateway=collectionHttp($jars[2],'generation-edge.php?jobId='.$jobIds[0],null,$other['lookCsrf']);
  collectionCheck($foreignGateway['status']===404,'Gateway ownership rejection failed: HTTP '.$foreignGateway['status'].' '.json_encode($foreignGateway['body']));
  $items[0]['record']=$hidden['body']['item']['record'];$items[0]['revision']=4;$items[0]['deleted']=true;

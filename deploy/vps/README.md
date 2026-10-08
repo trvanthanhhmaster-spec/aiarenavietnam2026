@@ -47,9 +47,13 @@ redirect allowlist before using OAuth or email confirmation from this domain.
    provider merely to prove deployment; label synthetic tests separately.
 
 For collection integration testing, use a disposable account and
-`VREMIX_TEST_BASE_URL=https://v-remix.vietnamsir.com` with
+`VREMIX_TEST_BASE_URL=https://v-remix.vietnamsir.com VREMIX_TEST_LOCAL_DISABLED=1` with
 `php tests/studio-collections-live.php --live`. The script cleans its own
-fixtures and must never use a real user's credentials.
+fixtures and must never use a real user's credentials. The production flag
+expects the Mac-only endpoint to be denied entirely (403); the public Edge
+gateway must still reject deleted/foreign jobs with 404, not merely any error.
+Run `php tests/vps-smoke.php --live` to verify TLS, cookie policy, assets,
+private file denial, authentication and range support without generating images.
 
 Rollback: point `current` atomically to the previous retained release, set its
 SHA in `release.env` and recreate **only** the `vremix-php` container. Restore
