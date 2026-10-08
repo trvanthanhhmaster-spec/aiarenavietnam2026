@@ -340,12 +340,11 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     </section>
 
                     <aside class="studio-history" id="studioHistory" aria-label="Lịch sử ảnh bản phối" hidden>
-                        <header><strong id="historyTitle">Phiên bản</strong><button type="button" id="historyRecent" aria-label="Xem ảnh gần đây" title="Xem tất cả ảnh gần đây">Ảnh khác</button></header>
+                        <header><strong id="historyTitle">Phiên bản</strong><button type="button" id="historyRecent" aria-label="Xem ảnh gần đây" title="Xem tất cả ảnh gần đây">Ảnh khác</button><button type="button" id="historyCompare" hidden>So sánh</button></header>
                         <p id="historyStatus" role="status"></p>
                         <button type="button" id="historyRetry" hidden>Thử tải lại</button>
                         <div id="historyItems" class="studio-history-strip"></div>
                         <button type="button" id="historyMore" hidden>Xem thêm</button>
-                        <button type="button" id="historyCompare" hidden>So sánh</button>
                         <div id="historyConfirm" hidden>
                             <p>Mở phiên bản này sẽ thay lựa chọn đang chỉnh. Ảnh đã tạo vẫn được giữ.</p>
                             <button type="button" id="historyAccept">Mở phiên bản</button>

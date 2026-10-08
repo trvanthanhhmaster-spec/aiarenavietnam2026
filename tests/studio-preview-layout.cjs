@@ -30,7 +30,13 @@ assert.match(css, /\.studio-preview-image \{[^}]*object-fit: contain/);
 assert.match(css, /has-history:not\(\.has-generated-output\) \.studio-plane \{\s*align-self: stretch;/,
   'history must not collapse the idle video frame to zero height');
 assert.match(css, /\.studio-history-strip \{[^}]*display: flex;[^}]*overflow-x: auto;[^}]*overflow-y: hidden/,
-  'long version lists scroll horizontally instead of growing the page');
+  'narrow screens use a horizontal scrolling version strip');
+assert.match(css, /@media \(min-width: 1024px\) \{[\s\S]*--history-rail-width:[\s\S]*grid-template-areas: '\. canvas' '\. status' '\. advanced'/,
+  'wide screens keep versions beside the preview');
+assert.match(css, /\.studio-history \{\s*grid-area: auto; position: absolute; inset: 7px auto 7px 7px;/,
+  'the desktop rail is bounded by the preview rather than the number of versions');
+assert.match(css, /flex-direction: column;\s*overflow-x: hidden; overflow-y: auto/,
+  'long desktop lists scroll inside the side rail');
 assert.match(css, /\.studio-history-item img \{[^}]*object-fit: contain/,
   'landscape thumbnails must show the entire group');
 assert.match(css, /has-generated-output \.studio-workbench \{ height: auto;/,
