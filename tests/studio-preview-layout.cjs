@@ -31,6 +31,10 @@ assert.match(css, /has-history:not\(\.has-generated-output\) \.studio-plane \{\s
   'history must not collapse the idle video frame to zero height');
 assert.match(css, /\.studio-history-strip \{[^}]*display: flex;[^}]*overflow-x: auto;[^}]*overflow-y: hidden/,
   'narrow screens use a horizontal scrolling version strip');
+assert.match(css, /\.studio-history-strip \{[^}]*scrollbar-width: none/,
+  'version strips retain scrolling without a visible scrollbar');
+assert.match(css, /\.studio-history-strip::-webkit-scrollbar \{ display: none; width: 0; height: 0;/,
+  'WebKit browsers also hide the overlay scrollbar');
 assert.match(css, /@media \(min-width: 1024px\) \{[\s\S]*--history-rail-width:[\s\S]*grid-template-areas: '\. canvas' '\. status' '\. advanced'/,
   'wide screens keep versions beside the preview');
 assert.match(css, /\.studio-history \{\s*grid-area: auto; position: absolute; inset: 7px auto 7px 7px;/,
