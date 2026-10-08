@@ -293,9 +293,11 @@ require __DIR__ . '/includes/components/studio-icon.php';
                                 <small id="plannerPreviewHint" hidden></small>
                                 <button type="button" class="workspace-start" data-workspace-start><span id="plannerPreviewAction">Chọn dịp mặc</span> <?= $studioIcon('chevron-right') ?></button>
                             </div>
-                            <div class="studio-preview-progress" id="previewGenerationStatus" hidden>
-                                <i aria-hidden="true"></i>
-                                <span id="previewGenerationMessage">Đang chuẩn bị bản phối.</span>
+                            <div class="studio-generation-loading" id="previewGenerationStatus" hidden>
+                                <video id="studioLoadingVideo" muted loop playsinline preload="none" poster="assets/media/studio-loading-poster.jpg" data-src="assets/media/studio-loading-loop.mp4" aria-hidden="true"></video>
+                                <span class="studio-sr-only" id="previewGenerationMessage">Đang chuẩn bị bản phối.</span>
+                                <span class="studio-loading-fallback" id="studioLoadingFallback" hidden>Đang tạo ảnh…</span>
+                                <button type="button" id="studioLoadingToggle" aria-label="Tạm dừng video chờ">Tạm dừng</button>
                             </div>
                         </div>
                         <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
@@ -470,6 +472,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-session.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-session.js') ?>" defer></script>
     <script src="assets/js/studio-collection-store.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collection-store.js') ?>" defer></script>
     <script src="assets/js/studio-collections-model.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections-model.js') ?>" defer></script>
+    <script src="assets/js/studio-loading.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-loading.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>

@@ -154,6 +154,24 @@ body.studio-page {
 .has-ai-preview.has-catalog-preview .workspace-preview-label .workspace-label-ai { display: none; }
 .has-ai-preview.has-catalog-preview .workspace-preview-label .workspace-label-catalog { display: inline; }
 .studio-preview-progress { z-index: 8; inset: auto 14px 14px; padding: 10px 12px; border-radius: 12px; background: rgb(255 255 255 / .95); color: #17171b; font-size: 12px; }
+.studio-generation-loading {
+  position: absolute; inset: 0; z-index: 8; overflow: hidden;
+  background: #efedf3; border-radius: inherit;
+}
+.studio-generation-loading video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.studio-generation-loading button {
+  position: absolute; right: 14px; bottom: 14px; min-height: 36px;
+  padding: 8px 12px; border: 1px solid rgb(255 255 255 / .4); border-radius: 10px;
+  background: rgb(23 23 27 / .65); color: #fff; font: inherit; font-size: 12px; cursor: pointer;
+}
+.studio-generation-loading button:hover { background: rgb(23 23 27 / .85); }
+.studio-generation-loading button:focus-visible { outline: 2px solid #fff; outline-offset: -4px; }
+.studio-loading-fallback {
+  position: absolute; inset: auto 0 20px; text-align: center; color: #17171b; font-size: 14px;
+}
+.studio-experience:is([data-generation-state='queued'], [data-generation-state='processing']) #previewEmpty,
+.studio-experience:is([data-generation-state='queued'], [data-generation-state='processing']) #studioCompare,
+.studio-experience:is([data-generation-state='queued'], [data-generation-state='processing']) #studioHotspots { display: none; }
 .studio-variants { grid-area: variants; display: flex; flex-direction: column; min-height: 0; padding: 0; gap: 7px; border: 0; background: none; box-shadow: none; }
 .studio-variants__title { padding: 4px 2px 2px; }
 .studio-variants__title > span { color: #64646f; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; }

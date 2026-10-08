@@ -1693,6 +1693,8 @@
     if (retry) retry.hidden = value !== 'failed';
     srStatus.textContent = message;
     studioStatus.textContent = message;
+    studioStatus.hidden = busy || !message;
+    window.VRemixLoading.setBusy(busy);
     if (previewGenerationStatus && previewGenerationMessage) {
       previewGenerationStatus.hidden = !(value === 'queued' || value === 'processing');
       previewGenerationStatus.classList.toggle('is-error', value === 'failed');

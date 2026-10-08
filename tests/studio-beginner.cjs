@@ -58,6 +58,7 @@ assert.equal(experience.studioGuide.labels.event, 'Đi biển · dịp tự nh�
 assert.equal(catalog.events.length, 1, 'custom input does not insert an approved catalog entry');
 
 const retry = element();
+context.window = { VRemixLoading: { setBusy() {} } };
 Object.assign(context, {
   resultState: element(), resultProgress: element(), srStatus: element(), studioStatus: element(),
   previewGenerationStatus: element(), previewGenerationMessage: element(),
@@ -68,10 +69,12 @@ vm.runInContext("setResultState('processing', 'Đang tạo ảnh');", context);
 assert.equal(experience.attributes['aria-busy'], 'true');
 assert.equal(retry.hidden, true);
 assert.equal(context.previewGenerationStatus.hidden, false);
+assert.equal(context.studioStatus.hidden, true, 'video replaces the long visible waiting message');
 vm.runInContext("setResultState('failed', 'Hãy thử lại sau');", context);
 assert.equal(experience.attributes['aria-busy'], 'false');
 assert.equal(retry.hidden, false);
 assert.equal(context.studioStatus.textContent, 'Hãy thử lại sau');
+assert.equal(context.studioStatus.hidden, false, 'errors remain visible');
 vm.runInContext("setResultState('completed', 'Đã có ảnh');", context);
 assert.equal(retry.hidden, true);
 
