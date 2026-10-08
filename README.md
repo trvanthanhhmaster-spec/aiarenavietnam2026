@@ -182,6 +182,30 @@ git -C /Applications/XAMPP/xamppfiles/htdocs/aiarenavietnam2026 pull --ff-only
 
 ## Kiểm tra nhanh
 
+### Bộ sưu tập Studio
+
+Studio dùng một danh sách **Bộ sưu tập của tôi**. Mỗi bộ có lựa chọn, ảnh đang
+xem và các phiên bản riêng; không nhập toàn bộ lịch sử ảnh khi mở danh sách.
+“＋ Bộ sưu tập mới” giữ bộ cũ và đưa Studio về bước Dịp mặc. Bộ trống chưa
+tạo một hàng mới; bộ có lựa chọn được tự lưu vào tài khoản. Ảnh mặt không được lưu.
+
+Migration `20261008120000_studio_collections.sql` chuyển dữ liệu cũ một lần,
+thêm bảng `studio_collections`, liên kết `generation_jobs.collection_id` và
+dấu xóa. Xóa bộ/phiên bản chỉ ẩn dữ liệu và bookmark liên quan; chưa xóa tệp
+Storage vĩnh viễn. Cửa sổ cũ không được hồi sinh ID đã xóa.
+
+`studio-collections-api.php` kiểm tra tài khoản + CSRF, dùng revision riêng
+từng bộ và ghi nguyên tử qua RPC service-only. Khi hai cửa sổ sửa cùng một
+bộ, Studio cho giữ thay đổi trên thiết bị thành bộ riêng hoặc tải bản mới nhất.
+Khôi phục cục bộ tách theo từng tab; signed URL và output không vào payload lưu.
+
+Kiểm thử: `node tests/studio-collection-store.cjs`,
+`node tests/studio-collections.cjs`,
+`php tests/studio-collections-live.php --live` (tạo rồi xóa tài khoản QA riêng,
+không gọi AI). Dữ liệu tổng hợp trong kiểm thử không phải bằng chứng provider
+tạo ảnh thật. Sau migration cần đồng bộ PHP/JS/CSS vào XAMPP và triển khai Edge
+Function nếu sử dụng đường tạo ảnh Edge.
+
 ```bash
 php -l index.php
 php -l studio.php

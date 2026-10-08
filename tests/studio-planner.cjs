@@ -52,7 +52,7 @@ const start = source.indexOf('  function selectionChanged()'), end = source.inde
 let submits = 0;
 vm.runInNewContext(source.slice(start, end) + '\nselectionChanged(); selectionChanged();', {
   saveLookButton: {}, compareLooksButton: {}, resultDownload: {}, currentLookbookItems: [], syncSubmitButton() {},
-  draftEdited: false, persistStudio() {},
+  draftEdited: false, currentResultSelection: null, persistStudio() {},
   generateLook() { submits++; }, setTimeout() { throw new Error('changes must not queue AI'); }
 });
 assert.equal(submits, 0);

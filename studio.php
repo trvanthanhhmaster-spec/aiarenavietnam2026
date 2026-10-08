@@ -22,6 +22,12 @@ $auth = new SupabaseAuth(
 );
 $auth->boot();
 $authUser = $auth->user();
+// Embedded auth returns must not boot a second syncing Studio instance.
+if (($_GET['authReturn'] ?? '') === '1') {
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><meta charset="utf-8"><title>Đã cập nhật tài khoản</title><p>Đang mở Studio…</p><script>if(window===window.top)location.replace("studio.php");</script>';
+    exit;
+}
 if (empty($_SESSION['studio_generation_owner'])) $_SESSION['studio_generation_owner'] = bin2hex(random_bytes(32));
 $authNext = 'studio.php' . (!empty($_SERVER['QUERY_STRING']) ? '?' . (string) $_SERVER['QUERY_STRING'] : '');
 $site = null;
@@ -80,6 +86,7 @@ $studioData = $catalog + [
     'basePoster' => $basePoster,
     'lookEndpoint' => 'look-api.php',
     'draftEndpoint' => 'studio-draft.php',
+    'collectionEndpoint' => 'studio-collections-api.php',
     'historyEndpoint' => 'studio-history.php',
     'lookCsrf' => $auth->csrfToken(),
     'sessionScope' => hash('sha256', $_SESSION['studio_generation_owner']),
@@ -121,6 +128,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                 </div>
             </div>
             <button type="button" class="workspace-new-collection" id="newStudioCollection" disabled>＋ Bộ sưu tập mới</button>
+            <p id="collectionActionStatus" role="alert" hidden></p>
             <section class="studio-quick-start" id="studioQuickStart" aria-label="Bắt đầu bản phối" hidden>
                 <button type="button" class="studio-start-card" id="workspaceUpload">
                     <span class="studio-start-card__icon"><?= $studioIcon('upload') ?></span>
@@ -321,7 +329,9 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <div class="studio-rail__copy">
                             <span class="studio-rail__status"><i></i><span id="studioStatus" hidden></span></span>
                             <small id="studioDraftStatus" role="status"></small>
-                            <button type="button" id="retryDraftSync" hidden>Thử đồng bộ bản nháp</button>
+                            <button type="button" id="retryDraftSync" hidden>Thử lưu lại</button>
+                            <button type="button" id="keepLocalCollection" hidden>Giữ bản trên thiết bị thành bộ riêng</button>
+                            <button type="button" id="loadServerCollections" hidden>Mở bản mới nhất</button>
                             <p id="selectionSummary" hidden></p>
                         </div>
                         <label class="studio-upload" for="inputImage" hidden>
@@ -335,6 +345,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <button type="button" id="saveLook" disabled>Lưu bản phối</button>
                             <a class="result-download" id="resultDownload" href="#" download hidden>Tải ảnh <span aria-hidden="true">↓</span></a>
                             <button type="button" id="downloadStory" hidden>Tải thẻ bản phối 9:16</button>
+                            <button type="button" id="deleteCurrentVersion" hidden>Xóa phiên bản</button>
                             <button type="button" id="addVariant" aria-label="Thêm phụ kiện vào bản phối" hidden><?= $studioIcon('sparkles') ?><span>Thêm phụ kiện</span></button>
                             <button type="button" id="retryGeneration" hidden>Thử tạo lại</button>
                         </div>
@@ -445,26 +456,25 @@ require __DIR__ . '/includes/components/studio-icon.php';
 
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
-    <?php require __DIR__ . '/includes/studio/library.php'; ?>
     <?php require __DIR__ . '/includes/studio/collections.php'; ?>
     <dialog class="studio-auth-dialog" id="studioAuthDialog" aria-labelledby="studioAuthTitle">
         <button type="button" class="studio-auth-close" aria-label="Đóng đăng nhập" id="studioAuthClose">×</button>
         <h2 id="studioAuthTitle"><?= $authUser !== null ? 'Tài khoản của bạn' : 'Đăng nhập hoặc đăng ký' ?></h2>
         <p><?= $authUser !== null ? 'Quản lý phiên đăng nhập V-Remix.' : 'Lưu bản phối và giữ những dáng Việt của riêng bạn.' ?></p>
-        <iframe id="studioAuthFrame" title="Đăng nhập V-Remix" data-src="<?= $escape($studioData['auth']['loginUrl'] . '&embed=1') ?>"></iframe>
+        <iframe id="studioAuthFrame" title="Đăng nhập V-Remix" data-src="auth.php?next=studio.php%3FauthReturn%3D1&amp;embed=1"></iframe>
     </dialog>
     <script>
         window.VREMIX_STUDIO = <?= json_encode($studioData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
     <script src="assets/js/studio-planner.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner.js') ?>" defer></script>
     <script src="assets/js/studio-session.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-session.js') ?>" defer></script>
+    <script src="assets/js/studio-collection-store.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collection-store.js') ?>" defer></script>
     <script src="assets/js/studio-collections-model.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections-model.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
     <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>
-    <script src="assets/js/studio-library.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-library.js') ?>" defer></script>
     <script src="assets/js/studio-collections.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections.js') ?>" defer></script>
 </body>
 </html>

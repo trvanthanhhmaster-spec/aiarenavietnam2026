@@ -147,6 +147,7 @@
   function schedule() { clearTimeout(timer); timer = setTimeout(() => { flushServer().catch(() => {}); }, 600); }
   window.VRemixSession = {
     read,
+    readGuest: function () { return cacheRead(legacyKey); },
     save(value) {
       const record = sanitize(value);
       cacheSave(record).catch(() => {});

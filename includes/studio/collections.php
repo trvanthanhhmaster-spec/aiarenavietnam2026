@@ -2,12 +2,11 @@
     <header><div><h2 id="collectionsTitle">Bộ sưu tập của tôi</h2></div><button type="button" id="collectionsClose" aria-label="Đóng bộ sưu tập">×</button></header>
     <p id="collectionsStatus" role="status"></p>
     <div class="studio-library-grid" id="collectionsItems"></div>
-    <button type="button" data-workspace-library>Bản phối đã lưu trước đây</button>
     <p class="library-privacy" id="collectionsPrivacy"></p>
 </dialog>
 <dialog class="studio-collection-confirm" id="collectionSwitchConfirm" aria-labelledby="collectionSwitchTitle">
     <h2 id="collectionSwitchTitle">Chuyển bộ sưu tập?</h2>
-    <p>Lựa chọn và ảnh hiện tại sẽ được giữ trong bộ cũ. Ảnh mặt tham khảo không được lưu; bạn cần thêm lại khi dùng tiếp.</p>
+    <p id="collectionSwitchDescription">Lựa chọn và ảnh hiện tại sẽ được giữ trong bộ cũ.</p>
     <p id="collectionSwitchError" role="alert" hidden></p>
     <div><button type="button" id="collectionSwitchCancel">Ở lại</button><button type="button" id="collectionSwitchAccept">Giữ lại và chuyển</button></div>
 </dialog>

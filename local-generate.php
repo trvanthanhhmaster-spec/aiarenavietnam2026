@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!preg_match('/^[0-9a-f-]{36}$/i', $value)) $respond(['error' => 'ID yêu cầu không hợp lệ.'], 400);
         $rows = $admin->select('generation_jobs', [$field => 'eq.' . $value, 'select' => '*', 'limit' => '1']);
         $found = $rows[0] ?? null;
-        if (!$found || ($found['owner_session_hash'] !== $owner && (!$user || $found['user_id'] !== $user['id']))) $respond(['error' => 'Không tìm thấy bản phối trong phiên này.'], 404);
+        if (!$found || !empty($found['deleted_at']) || !(($user && $found['user_id'] === $user['id']) || ($found['user_id'] === null && $found['owner_session_hash'] === $owner))) $respond(['error' => 'Không tìm thấy bản phối trong phiên này.'], 404);
         $respond(['jobId' => $found['id'], 'status' => $found['status'], 'error' => $found['error_message'],
             'output' => $found['status'] === 'completed' ? $storage->refreshOutput($found['output']) : []]);
     } catch (Throwable $error) { $respond(['error' => 'Không thể kiểm tra tiến trình.'], 503); }
@@ -75,6 +75,13 @@ try {
         $respond(['error' => 'Invalid request body.'], 400);
     }
     $requestId = (string) ($input['clientRequestId'] ?? '');
+    $collectionId = $input['collectionId'] ?? null;
+    if ($collectionId !== null) {
+        if (!StudioHistory::uuid($collectionId)) $respond(['error'=>'Bộ sưu tập không hợp lệ.'],422);
+        $collection = $admin->select('studio_collections',['id'=>'eq.'.$collectionId,'select'=>'user_id,deleted_at','limit'=>'1'])[0] ?? null;
+        if ($collection && (!$user || $collection['user_id'] !== $user['id'] || $collection['deleted_at'])) $respond(['error'=>'Bộ sưu tập không thuộc tài khoản đang mở.'],403);
+        if ($user && !$collection) $respond(['error'=>'Lưu bộ sưu tập trước khi tạo ảnh.'],422);
+    }
     if (!preg_match('/^[0-9a-f-]{36}$/i', $requestId)) {
         $respond(['error' => 'clientRequestId must be a UUID.'], 400);
     }
@@ -168,6 +175,8 @@ try {
         'p_owner' => $owner, 'p_input' => $safeInput]);
     $job = $reserved[0] ?? null;
     if (!$job) throw new RuntimeException('Không thể đăng ký lượt tạo ảnh.');
+    if (!empty($job['deleted_at']) || ($collectionId && !empty($job['collection_id']) && $job['collection_id'] !== $collectionId)) $respond(['error'=>'Yêu cầu này không còn thuộc bộ đang mở. Tải lại Studio trước khi tạo.'],409);
+    if ($collectionId && empty($job['collection_id'])) $admin->update('generation_jobs',['id'=>'eq.'.$job['id'],'collection_id'=>'is.null'],['collection_id'=>$collectionId]);
     if ($job['status'] !== 'queued') {
         $respond(['jobId' => $job['id'], 'status' => $job['status'], 'error' => $job['error_message'],
             'output' => $job['status'] === 'completed' ? $storage->refreshOutput($job['output']) : []]);

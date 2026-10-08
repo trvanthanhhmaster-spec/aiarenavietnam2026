@@ -25,6 +25,7 @@ const context = {
   window: { VREMIX_STUDIO: { historyEndpoint: '/history', lookCsrf: 'fixture' } },
   fetch: async (url, options) => { calls.push(url); assert.equal(options.headers['X-VRemix-CSRF'], 'fixture'); return { ok: !fail, json: async () => fail ? { error: 'Offline' } : { items: rows, scoped: url.includes('?'), hasMore: false } }; },
   Date, encodeURIComponent,
+  CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
 };
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(__dirname + '/../assets/js/studio-history.js', 'utf8'), context);

@@ -18,12 +18,18 @@ if ($_SERVER['REQUEST_METHOD']!=='GET') $respond(['error'=>'Method không đư�
 try {
     $client=new SupabaseAdminClient($url,$key); $storage=new StudioStorage($url,$key);
     $history=new StudioHistory($client,$storage,$user['id']??null,$owner);
+    $collection=null;
+    if(!empty($_GET['collectionId'])) {
+        if(!StudioHistory::uuid($_GET['collectionId'])) throw new InvalidArgumentException('Bộ sưu tập không hợp lệ.');
+        $collection=(string)$_GET['collectionId'];
+        if($user && !$client->select('studio_collections',['id'=>'eq.'.$collection,'user_id'=>'eq.'.$user['id'],'deleted_at'=>'is.null','select'=>'id','limit'=>'1'])) throw new InvalidArgumentException('Bộ này không còn tồn tại.');
+    }
     $rootJob=null; $rootLook=null;
-    if (!empty($_GET['jobId'])) {
+    if (!$collection && !empty($_GET['jobId'])) {
         $selected=$history->job((string)$_GET['jobId']);
         $rootJob=isset($selected['input']['history']) ? ($selected['input']['history']['rootJobId']??null) : $selected['id'];
         $rootLook=$selected['input']['history']['rootLookId']??null;
-    } elseif (!empty($_GET['lookId'])) {
+    } elseif (!$collection && !empty($_GET['lookId'])) {
         $look=$history->look((string)$_GET['lookId']);
         if (!empty($look['generation_job_id'])) {
             try {
@@ -35,15 +41,16 @@ try {
     }
     $offset=filter_var($_GET['offset']??0,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>100000]]);
     if($offset===false) throw new InvalidArgumentException('Trang lịch sử không hợp lệ.');
-    $filters=['status'=>'eq.completed','select'=>'id,input,output,created_at,user_id','order'=>'created_at.asc,id.asc','limit'=>'101','offset'=>(string)$offset];
+    $filters=['status'=>'eq.completed','deleted_at'=>'is.null','select'=>'id,input,output,created_at,user_id','order'=>'created_at.asc,id.asc','limit'=>'101','offset'=>(string)$offset];
     $filters['or']=$user ? '(user_id.eq.'.$user['id'].',and(user_id.is.null,owner_session_hash.eq.'.$owner.'))' : '(and(user_id.is.null,owner_session_hash.eq.'.$owner.'))';
-    if ($rootJob) $filters['and']='(or(id.eq.'.$rootJob.',input->history->>rootJobId.eq.'.$rootJob.'))';
+    if ($collection) $filters['collection_id']='eq.'.$collection;
+    elseif ($rootJob) $filters['and']='(or(id.eq.'.$rootJob.',input->history->>rootJobId.eq.'.$rootJob.'))';
     elseif ($rootLook) $filters['input->history->>rootLookId']='eq.'.$rootLook;
-    else $filters['order']='created_at.desc,id.desc';
+    elseif (!$collection) $filters['order']='created_at.desc,id.desc';
     $jobs=$client->select('generation_jobs',$filters);
     $more=count($jobs)>100; $jobs=array_slice($jobs,0,100);
-    if (!$rootJob && !$rootLook) $jobs=array_reverse($jobs);
-    $looks=$user ? $client->select('looks',['user_id'=>'eq.'.$user['id'],'select'=>'id,name,generation_job_id,client_save_id','order'=>'created_at.desc','limit'=>'1000']) : [];
+    if (!$collection && !$rootJob && !$rootLook) $jobs=array_reverse($jobs);
+    $looks=$user ? $client->select('looks',['user_id'=>'eq.'.$user['id'],'deleted_at'=>'is.null','select'=>'id,name,generation_job_id,client_save_id','order'=>'created_at.desc','limit'=>'1000']) : [];
     $saved=[]; foreach($looks as $look) if (!empty($look['generation_job_id'])) $saved[$look['generation_job_id']]=$look;
     $items=[];
     if ($rootLook && !$rootJob && $offset===0) {
@@ -63,6 +70,6 @@ try {
             'rootLookId'=>$job['input']['history']['rootLookId']??null,
             'parentJobId'=>$job['input']['history']['parentJobId']??null];
     }
-    $respond(['items'=>$items,'scoped'=>($rootJob||$rootLook)?true:false,'hasMore'=>$more,'nextOffset'=>$offset+count($jobs)]);
+    $respond(['items'=>$items,'scoped'=>($collection||$rootJob||$rootLook)?true:false,'hasMore'=>$more,'nextOffset'=>$offset+count($jobs)]);
 } catch(InvalidArgumentException $e) { $respond(['error'=>$e->getMessage()],404);
 } catch(Throwable) { $respond(['error'=>'Chưa mở được lịch sử phiên bản. Ảnh đang xem vẫn được giữ.'],503); }

@@ -11,6 +11,16 @@
   var confirm = document.getElementById('historyConfirm');
   var compare = document.getElementById('historyCompare');
   var more = document.getElementById('historyMore');
+  var removeCurrent = document.getElementById('deleteCurrentVersion');
+  function updateDelete() { if (removeCurrent) removeCurrent.hidden = !config.auth?.authenticated || !api.current().jobId; }
+  if (removeCurrent) removeCurrent.addEventListener('click', async function () {
+    if (api.current().pending || !api.current().jobId) return;
+    if (!window.confirm('Xóa phiên bản đang xem khỏi bộ sưu tập? Ảnh này cũng sẽ được bỏ khỏi bản phối đã lưu. Tệp ảnh chưa bị xóa vĩnh viễn.')) return;
+    removeCurrent.disabled = true;
+    try { await app.collectionsApi.removeVersion(api.current().jobId); updateDelete(); }
+    catch (e) { status.textContent = e.message; visible(true); }
+    finally { removeCurrent.disabled = false; }
+  });
   var items = [], scoped = false, serial = 0, pendingChoice = null, recent = false, nextOffset = 0;
   function currentId() {
     var value = api.current();
@@ -62,19 +72,22 @@
       strip.appendChild(button);
     });
     compare.hidden = items.filter(function (item) { return item.image_url; }).length < 2;
-    visible(items.length > 1);
+    visible(items.length > 1 || items.length > 0 && !api.current().jobId);
+    updateDelete();
   }
   async function load(append) {
     append = append === true;
     var request = ++serial, selected = api.current();
+    updateDelete();
     // A new project should not show unrelated older generations. Restore the
     // rail only for the result currently opened, or an explicit recent action.
-    if (!recent && !selected.jobId && !selected.lookId) {
+    if (!recent && !selected.jobId && !selected.lookId && !selected.hasCollection) {
       items = []; strip.replaceChildren(); visible(false);
       pendingChoice = null; confirm.hidden = true;
       return;
     }
-    var query = !recent && selected.lookId ? '?lookId=' + encodeURIComponent(selected.lookId)
+    var query = selected.collectionId ? '?collectionId=' + encodeURIComponent(selected.collectionId)
+      : !recent && selected.lookId ? '?lookId=' + encodeURIComponent(selected.lookId)
       : !recent && selected.jobId ? '?jobId=' + encodeURIComponent(selected.jobId) : '';
     if (append) query += (query ? '&' : '?') + 'offset=' + nextOffset;
     retry.hidden = true;
@@ -89,6 +102,7 @@
       scoped = Boolean(body.scoped); nextOffset = body.nextOffset || 0;
       more.hidden = !body.hasMore; more.disabled = false; status.textContent = '';
       render();
+      app.dispatchEvent(new CustomEvent('studio:version-count', { detail: { count: items.length, hasMore: body.hasMore, collectionId: selected.collectionId } }));
     } catch (error) {
       if (request !== serial) return;
       status.textContent = error.message; retry.hidden = false;

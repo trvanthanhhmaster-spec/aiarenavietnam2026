@@ -13,22 +13,30 @@
       if (meaningful(clean)) {
         var item = row();
         if (!item) { item = { id: active, name: '', record: {} }; items.push(item); }
-        item.name = label(clean.draft || clean.selection) || 'Bộ sưu tập mới';
-        item.record = clean; item.updatedAt = Date.now();
+        if (!item.name) item.name = label(clean.draft || clean.selection) || 'Bộ sưu tập mới';
+        if (JSON.stringify(item.record) !== JSON.stringify(clean)) item.updatedAt = Date.now();
+        item.record = clean;
       }
-      return Object.assign(clean, { collectionId: active, collections: clone(items) });
+      // The envelope must never be attached to the snapshot stored inside it.
+      return Object.assign({}, clean, { collectionId: active, collections: clone(items) });
     }
     return {
       ingest: function (record) {
         items = clone(record && record.collections || []); active = record && record.collectionId || uuid();
+        items.forEach(function (item) { delete item.record.collections; delete item.record.collectionId; });
         if (record && !record.collections) capture(record);
       },
       capture: capture,
-      list: function () { return clone(items).sort(function (a, b) { return b.updatedAt - a.updatedAt; }); },
+      list: function () { return clone(items).filter(function (item) { return !item.deleted; }).sort(function (a, b) { return b.updatedAt - a.updatedAt; }); },
       active: function () { return active; },
       start: function () { active = uuid(); return active; },
       get: function (id) { var item = items.find(function (item) { return item.id === id; }); return item ? clone(item) : null; },
       select: function (id) { if (!items.some(function (item) { return item.id === id; })) throw new Error('Không tìm thấy bộ sưu tập.'); active = id; },
+      remove: function (id) { var item = items.find(function (row) { return row.id === id; }); if (item) item.deleted = true; },
+      rename: function (id, name) { var item = items.find(function (row) { return row.id === id; }); if (item) item.name = name; },
+      hydrate: function (value) { var index = items.findIndex(function (row) { return row.id === value.id; }); if (index >= 0) items[index] = clone(value); },
+      replace: function (id, record, revision) { var item = items.find(function (row) { return row.id === id; }); if (item) { item.record = clone(record); item.revision = revision; item.updatedAt = Date.now(); if (item.count) item.count--; } },
+      setCount: function (id, count, more) { var item = items.find(function (row) { return row.id === id; }); if (item) { item.count = count; item.hasMore = more; } },
       importHistory: function (groups) {
         groups.forEach(function (group) {
           if (items.some(function (item) { return group.ids.indexOf(item.record.jobId || 'look:' + item.record.savedLookId) >= 0; })) return;

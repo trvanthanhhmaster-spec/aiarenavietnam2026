@@ -7,7 +7,9 @@
   trigger.setAttribute('aria-haspopup', 'dialog');
   const open = async () => {
     document.getElementById('studioExperience')?.resultsApi?.persist();
-    if (window.VRemixSession) await window.VRemixSession.flush();
+    // Account access must still work when saving is offline or in conflict.
+    // The session store keeps the failed snapshot in its recovery record.
+    if (window.VRemixSession) try { await window.VRemixSession.flush(); } catch (_) {}
     if (!frame.getAttribute('src')) frame.src = frame.dataset.src;
     if (!dialog.open) dialog.showModal();
   };
@@ -27,8 +29,7 @@
     try {
       const url = new URL(frame.contentWindow.location.href);
       if (url.pathname.endsWith('/studio.php')) {
-        if (window.VRemixSession) window.VRemixSession.flush().then(() => window.location.reload());
-        else window.location.reload();
+        window.location.reload();
         return;
       }
       const account = frame.contentDocument.querySelector('[data-account-name]');

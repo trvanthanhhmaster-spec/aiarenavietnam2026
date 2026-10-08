@@ -29,7 +29,7 @@ try {
         $client = new SupabaseAdminClient($url, $key);
         $rows = $client->select('generation_jobs', [($field === 'jobId' ? 'id' : 'client_request_id') => 'eq.' . $value, 'select' => '*', 'limit' => '1']);
         $job = $rows[0] ?? null;
-        if (!$job || ($job['owner_session_hash'] !== $owner && (!$user || $job['user_id'] !== $user['id']))) $respond(['error' => 'Không tìm thấy bản phối.'], 404);
+        if (!$job || !empty($job['deleted_at']) || !(($user && $job['user_id'] === $user['id']) || ($job['user_id'] === null && $job['owner_session_hash'] === $owner))) $respond(['error' => 'Không tìm thấy bản phối.'], 404);
         if ($job['provider'] === 'gemini-webapi-local') {
             $storage = new StudioStorage($url, $key);
             $respond(['jobId' => $job['id'], 'status' => $job['status'], 'error' => $job['error_message'], 'output' => $job['status'] === 'completed' ? $storage->refreshOutput($job['output']) : []]);

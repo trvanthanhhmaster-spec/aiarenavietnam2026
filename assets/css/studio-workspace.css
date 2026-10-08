@@ -545,6 +545,9 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 #customOccasionStatus::before { content: '✓'; flex: 0 0 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: #d8e8dc; font-size: 14px; }
 #plannerReviewPeople { padding: 8px 0; }
 .studio-toolbox[inert] { opacity: .7; }
+.collection-open:focus-visible, .collection-actions button:focus-visible { outline: 2px solid #17171b; outline-offset: 3px; }
+#deleteCurrentVersion { background: transparent; color: #756d78; border-color: transparent; }
+#deleteCurrentVersion:hover { color: #a33030; }
 #plannerGenerate:disabled { opacity: .5; cursor: wait; }
 .studio-customize { margin-top: 14px; }
 .studio-customize > summary { min-height: 54px; }
@@ -598,6 +601,17 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .collection-card > strong { padding-inline: 2px; font-size: 16px; font-weight: 500; }
 .collection-card > span { padding-inline: 2px; font-size: 12px; color: #77717f; }
 .collection-card:hover .collection-cover { outline: 1px solid #aaa2b4; }
+.studio-collections .collection-open { display: grid; gap: 8px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.collection-open strong { font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }
+.collection-open > span { font-size: 12px; color: #77717f; }
+.collection-actions { display: flex; gap: 14px; }
+.collection-actions button { padding: 4px 0; border: 0; background: transparent; color: #77717f; font: inherit; font-size: 12px; cursor: pointer; }
+.collection-card form { display: flex; gap: 8px; }
+.collection-card form[hidden] { display: none; }
+.collection-card input { min-width: 0; width: 100%; padding: 8px; border: 1px solid #ded9e4; border-radius: 8px; font: inherit; }
+.studio-collections { overflow: hidden; max-height: calc(100dvh - 48px); }
+#collectionsItems { max-height: calc(100dvh - 230px); overflow-y: auto; padding: 4px; }
+#collectionActionStatus { font-size: 13px; color: #a53737; margin: 0 0 16px; }
 .studio-collection-confirm { width: min(430px, calc(100vw - 32px)); border: 0; border-radius: 20px; padding: 24px; background: #fff; color: #17171b; }
 .studio-collection-confirm::backdrop { background: rgb(25 22 34 / .45); }
 .studio-collection-confirm h2 { margin: 0 0 12px; font-size: 22px; font-weight: 500; }

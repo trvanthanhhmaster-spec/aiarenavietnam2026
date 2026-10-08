@@ -13,7 +13,7 @@ final class StudioHistory
     {
         if (!self::uuid($id)) throw new InvalidArgumentException('Phiên bản không hợp lệ.');
         $job = $this->client->select('generation_jobs', ['id'=>'eq.'.$id,'select'=>'*','limit'=>'1'])[0] ?? null;
-        if (!$job || $job['status'] !== 'completed' || !($job['user_id'] === $this->userId && $this->userId !== null
+        if (!$job || !empty($job['deleted_at']) || $job['status'] !== 'completed' || !($job['user_id'] === $this->userId && $this->userId !== null
             || $job['user_id'] === null && !empty($job['owner_session_hash']) && hash_equals($job['owner_session_hash'], $this->owner))) {
             throw new InvalidArgumentException('Không tìm thấy phiên bản của bạn.');
         }
@@ -22,7 +22,7 @@ final class StudioHistory
     public function look(string $id): array
     {
         if (!$this->userId || !self::uuid($id)) throw new InvalidArgumentException('Bản phối không hợp lệ.');
-        $look = $this->client->select('looks', ['id'=>'eq.'.$id,'user_id'=>'eq.'.$this->userId,'select'=>'*','limit'=>'1'])[0] ?? null;
+        $look = $this->client->select('looks', ['id'=>'eq.'.$id,'user_id'=>'eq.'.$this->userId,'deleted_at'=>'is.null','select'=>'*','limit'=>'1'])[0] ?? null;
         if (!$look) throw new InvalidArgumentException('Không tìm thấy bản phối của bạn.');
         return $look;
     }

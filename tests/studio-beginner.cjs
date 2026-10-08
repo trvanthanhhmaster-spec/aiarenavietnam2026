@@ -90,6 +90,7 @@ Object.assign(context, {
   saveLookButton: element(), compareLooksButton: element(), resultDownload: element(),
   currentLookbookItems: [], syncSubmitButton() {},
   persistStudio() {}, draftEdited: false,
+  currentResultSelection: null,
   setStatus: message => { context.lastStatus = message; },
   window: { setTimeout(fn, ms) { pendingTimers.push({ fn, ms }); return pendingTimers.length; } }
 });

@@ -29,7 +29,7 @@ try {
     $storage = new StudioStorage((string) getenv('SUPABASE_URL'), (string) getenv('SUPABASE_SERVICE_ROLE_KEY'));
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $offset = max(0, min(10000, (int) ($_GET['offset'] ?? 0)));
-        $items = $client->select('looks', ['user_id' => 'eq.' . $userId, 'select' => '*',
+        $items = $client->select('looks', ['user_id' => 'eq.' . $userId, 'deleted_at'=>'is.null', 'select' => '*',
             'order' => 'created_at.desc,id.desc', 'limit' => '21', 'offset' => (string) $offset]);
         $more = count($items) > 20; $items = array_slice($items, 0, 20);
         foreach ($items as &$item) {
@@ -49,7 +49,7 @@ try {
         if (!$uuid($input['id'] ?? null)) $respond(['error' => 'Bản phối không hợp lệ.'], 422);
         $filters = ['id' => 'eq.' . $input['id'], 'user_id' => 'eq.' . $userId];
         if (!$client->select('looks', $filters + ['select' => 'id', 'limit' => '1'])) $respond(['error' => 'Không tìm thấy bản phối.'], 404);
-        if ($action === 'delete') $client->delete('looks', $filters);
+        if ($action === 'delete') $client->update('looks', $filters, ['deleted_at'=>gmdate(DATE_ATOM)]);
         else {
             $name = trim((string) ($input['name'] ?? ''));
             if (mb_strlen($name) < 1 || mb_strlen($name) > 120) $respond(['error' => 'Tên bản phối cần từ 1 đến 120 ký tự.'], 422);
@@ -59,8 +59,11 @@ try {
     }
     if ($action !== 'save' || !$uuid($input['saveId'] ?? null)) $respond(['error' => 'Yêu cầu lưu không hợp lệ.'], 422);
     // Recover a prior successful save without repeating uploads or database writes.
-    $existing = $client->select('looks', ['user_id' => 'eq.' . $userId, 'client_save_id' => 'eq.' . $input['saveId'], 'select' => 'id', 'limit' => '1']);
-    if ($existing) $respond(['saved' => true, 'lookId' => $existing[0]['id']]);
+    $existing = $client->select('looks', ['user_id' => 'eq.' . $userId, 'client_save_id' => 'eq.' . $input['saveId'], 'select' => 'id,deleted_at', 'limit' => '1']);
+    if ($existing) {
+        if (!empty($existing[0]['deleted_at'])) $respond(['error'=>'Bản đánh dấu này đã được xóa. Mở lại bộ sưu tập trước khi lưu.'],409);
+        $respond(['saved' => true, 'lookId' => $existing[0]['id']]);
+    }
     $selection = $input['selection'] ?? null;
     if (!is_array($selection)) $respond(['error' => 'Thiếu lựa chọn bản phối.'], 422);
     $selection['planning'] = StudioPlan::normalize($selection['planning'] ?? null);
@@ -68,8 +71,8 @@ try {
     if ($uuid($input['jobId'] ?? null)) {
         $rows = $client->select('generation_jobs', ['id' => 'eq.' . $input['jobId'], 'select' => '*', 'limit' => '1']);
         $job = $rows[0] ?? null;
-        if (!$job || $job['status'] !== 'completed'
-            || ($job['user_id'] !== $userId && (empty($job['owner_session_hash']) || !hash_equals($job['owner_session_hash'], $owner)))) {
+        if (!$job || !empty($job['deleted_at']) || $job['status'] !== 'completed'
+            || !($job['user_id'] === $userId || ($job['user_id'] === null && !empty($job['owner_session_hash']) && hash_equals($job['owner_session_hash'], $owner)))) {
             $respond(['error' => 'Kết quả tạo ảnh không thuộc tài khoản hoặc phiên của bạn.'], 403);
         }
     }

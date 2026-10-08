@@ -36,6 +36,7 @@ type LookRequest = {
   inputImage?: { mimeType: string; data: string };
   faceReferenceImage?: { mimeType: string; data: string };
   referenceJobId?: string;
+  collectionId?: string;
   referenceLookId?: string;
   history?: { rootJobId: string | null; rootLookId: string | null; parentJobId: string | null };
   editInstruction?: string;
@@ -333,6 +334,8 @@ async function createJob(input: LookRequest, promptVersionId: string, settings: 
   const rows = await response.json();
   const reserved = rows[0];
   if (!reserved?.id) throw new Error("Unable to register generation.");
+  if (reserved.deleted_at || (input.collectionId && reserved.collection_id && reserved.collection_id !== input.collectionId)) throw new Error('Generation does not belong to the active collection.');
+  if (input.collectionId) await rest(`generation_jobs?id=eq.${encodeURIComponent(reserved.id)}&collection_id=is.null`, { method: 'PATCH', body: JSON.stringify({ collection_id: input.collectionId }) });
   if (reserved.status !== "queued") return { id: reserved.id as string, existing: true };
   const claimed = await rest(`generation_jobs?id=eq.${encodeURIComponent(reserved.id)}&status=eq.queued`, {
     method: "PATCH", headers: { Prefer: "return=representation" },
@@ -359,7 +362,7 @@ async function updateJob(jobId: string, status: string, output: unknown, errorMe
 async function getJob(jobId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `id=eq.${encodeURIComponent(jobId)}&select=id,user_id,owner_session_hash,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
+    `id=eq.${encodeURIComponent(jobId)}&deleted_at=is.null&select=id,user_id,owner_session_hash,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
 }
@@ -367,7 +370,7 @@ async function getJob(jobId: string) {
 async function getJobByRequestId(requestId: string) {
   const rows = await selectCatalog(
     "generation_jobs",
-    `client_request_id=eq.${encodeURIComponent(requestId)}&select=id,user_id,owner_session_hash,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
+    `client_request_id=eq.${encodeURIComponent(requestId)}&deleted_at=is.null&select=id,user_id,owner_session_hash,client_request_id,status,output,estimated_cost_vnd,image_count,video_count,error_message,created_at,updated_at,completed_at&limit=1`,
   );
   return rows[0] || null;
 }
@@ -1001,7 +1004,7 @@ Deno.serve(async (request) => {
       const current = jobId
         ? await getJob(jobId)
         : await getJobByRequestId(requestId as string);
-      if (current && current.owner_session_hash !== owner && (!user || current.user_id !== user)) return json({ error: 'Job not found.' }, 404);
+      if (current && !((user && current.user_id === user) || (current.user_id === null && current.owner_session_hash === owner))) return json({ error: 'Job not found.' }, 404);
       const job = current ? await refreshVideoJob(current, settings) : null;
       if (job?.status === 'completed') {
         for (const item of job.output?.lookbook?.items || []) if (item.path) item.url = await signedUrl(item.path);
@@ -1020,6 +1023,12 @@ Deno.serve(async (request) => {
     return json({ error: "Invalid JSON request." }, 400);
   }
   if (!input || typeof input !== 'object' || Array.isArray(input)) return json({ error: 'Invalid request object.' }, 400);
+  if (input.collectionId) {
+    if (!isUuid(input.collectionId)) return json({ error: 'Invalid collection.' },400);
+    const rows = await selectCatalog('studio_collections',`id=eq.${input.collectionId}&select=user_id,deleted_at&limit=1`);
+    if (rows.length && (!user || rows[0].user_id !== user || rows[0].deleted_at)) return json({error:'Collection unavailable.'},403);
+    if (user && !rows.length) return json({error:'Save collection before generating.'},400);
+  }
 
   const generationType = input.generationType || "image";
   if (input.planning !== undefined) {

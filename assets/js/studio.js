@@ -100,6 +100,7 @@
   var saveAfterLogin = false;
   var draftEdited = false;
   var collectionReady = false, restoringCollection = false;
+  var collectionBusy = false, savingLook = false;
   var collections = window.VRemixCollections.create(createRequestId, function (selection) {
     return selection ? selectedEvent(selection.event, selection.planning).label || 'Bộ sưu tập mới' : '';
   });
@@ -150,6 +151,7 @@
     }
   };
   var blankState = Planner.clone(state);
+  blankState.event = '';
 
   function applyEventPreset(eventSlug, announce) {
     var event = lookup(catalog.events, eventSlug);
@@ -1065,16 +1067,26 @@
     });
   }
 
+  function samePlan(selection) {
+    function plan(value) { var copy = Planner.clone(value || {}); delete copy.activePerson; return copy; }
+    function stable(value) {
+      if (Array.isArray(value)) return value.map(stable);
+      if (value && typeof value === 'object') { var result = {}; Object.keys(value).sort().forEach(function (key) { result[key] = stable(value[key]); }); return result; }
+      return value;
+    }
+    return selection.event === state.event && JSON.stringify(stable(plan(selection.planning))) === JSON.stringify(stable(plan(planning)));
+  }
   function selectionChanged() {
     // Editing is never permission to consume a provider generation.
-    draftEdited = true;
+    draftEdited = !currentResultSelection || !samePlan(currentResultSelection);
     if (currentLookbookItems.length) setStatus('Lựa chọn đã đổi. Ảnh đang hiện là bản tạo trước; kiểm tra rồi tạo ảnh mới khi bạn muốn.');
     syncSubmitButton();
     persistStudio();
   }
 
   async function generateLook() {
-    if (generationPending) return;
+    if (generationPending || collectionBusy || savingLook) return;
+    if (['conflict','error'].includes(window.VRemixSession.status().state)) { setStatus('Giải quyết lỗi lưu bộ sưu tập trước khi tạo ảnh.'); return; }
     var unresolvedJob = readActiveJob();
     if (unresolvedJob) {
       setStatus('Đang kiểm tra yêu cầu trước để tránh tạo ảnh trùng.');
@@ -1084,6 +1096,9 @@
       setStatus('Hoàn tất bốn bước và kiểm tra thông tin trước khi tạo ảnh.');
       return;
     }
+    try { await persistStudio(); await window.VRemixSession.retry(); }
+    catch (e) { setStatus(e.message); return; }
+    if (generationPending || collectionBusy) return;
     requestFingerprint = selectionFingerprint();
     if (compareLayer) { compareLayer.hidden = true; compareLayer.classList.remove('is-expanded'); }
     if (compareLooksButton) compareLooksButton.textContent = 'So sánh ảnh';
@@ -1093,6 +1108,7 @@
 
     var requestId = createRequestId();
     var activeJob = {
+      collectionId: collections.active(),
       requestId: requestId,
       jobId: null,
       startedAt: Date.now(),
@@ -1119,6 +1135,7 @@
     generationPending = true;
     syncSubmitButton();
     var payload = {
+      collectionId: collections.active(),
       planning: Planner.clone(planning),
       clientRequestId: requestId,
       eventSlug: state.event,
@@ -1216,6 +1233,16 @@
   }
 
   async function resumeGeneration(activeJob) {
+    if (activeJob.collectionId && activeJob.collectionId !== collections.active()) {
+      var ownerCollection = collections.get(activeJob.collectionId);
+      if (ownerCollection && !ownerCollection.deleted) {
+        collections.select(activeJob.collectionId);
+        if (ownerCollection.record.draft) { restoreSelection(ownerCollection.record.draft); updateSummary('restore'); }
+      } else {
+        clearActiveJob();
+        setStatus('Bộ của yêu cầu trước không còn mở được. Yêu cầu không được tự tạo lại.'); return;
+      }
+    }
     if (generationPending) {
       showResult();
       return;
@@ -1242,7 +1269,7 @@
       currentResultSelection = Planner.clone(currentRequestSelection);
       currentResultJobId = completed.jobId || activeJob.jobId;
       resultSaveId = createRequestId(); savedLookId = null; persistStudio();
-      draftEdited = requestFingerprint !== selectionFingerprint();
+      draftEdited = !samePlan(currentResultSelection);
       notifyHistory();
       saveLookButton.textContent = 'Lưu bản phối';
       clearActiveJob();
@@ -1297,6 +1324,7 @@
       var body = await response.json();
       if (!response.ok) {
         if (response.status === 404 && !activeJob.jobId && attempt < 10) continue;
+        if (response.status === 404 && activeJob.jobId) clearActiveJob();
         throw new Error(body.error || 'Unable to read generation job.');
       }
       if (body.jobId && !activeJob.jobId) {
@@ -1356,8 +1384,8 @@
     lastOutputFingerprint = fingerprint;
     if (items.length) currentOutput = Planner.clone(output);
 
-    resultStory.textContent = output.story || resultStory.textContent;
-    resultGuardrail.textContent = output.guardrail || resultGuardrail.textContent;
+    resultStory.textContent = output.story || '';
+    resultGuardrail.textContent = output.guardrail || '';
     if (resultCulturalScore) {
       var score = Number(output.culturalScore);
       resultCulturalScore.textContent = output.culturalScore != null && Number.isFinite(score)
@@ -1365,7 +1393,7 @@
         : 'Chưa có dữ liệu';
       resultCulturalScore.classList.toggle('is-warning', Number.isFinite(score) && score < 85);
     }
-    resultGenZTip.textContent = output.genZTip || resultGenZTip.textContent;
+    resultGenZTip.textContent = output.genZTip || '';
 
     resultImages.innerHTML = '';
     resultImages.hidden = items.length === 0;
@@ -1725,6 +1753,7 @@
   }
 
   async function saveCurrentLook() {
+    if (collectionBusy || savingLook) return;
     if (!catalog.lookEndpoint || currentLookbookItems.length === 0 || !currentResultSelection) return;
     if (!catalog.auth || !catalog.auth.authenticated) {
       saveAfterLogin = true; persistStudio();
@@ -1739,6 +1768,8 @@
       return;
     }
     saveLookButton.disabled = true;
+    savingLook = true;
+    if (!resultSaveId) resultSaveId = createRequestId();
     saveLookButton.textContent = 'Đang lưu…';
     try {
       var response = await fetch(catalog.lookEndpoint, {
@@ -1771,7 +1802,7 @@
       saveLookButton.disabled = false;
       saveLookButton.textContent = 'Lưu bản phối';
       setStatus(error.message || 'Không thể lưu Look.');
-    }
+    } finally { savingLook = false; }
   }
 
   function compareCurrentLooks(versions) {
@@ -2085,13 +2116,37 @@
     }
     return record;
   }
+  async function collectionOperation(action) {
+    if (!collectionReady || collectionBusy || generationPending || savingLook || readActiveJob()) throw new Error('Đợi thao tác tạo hoặc lưu ảnh hoàn tất rồi chuyển bộ.');
+    collectionBusy = true;
+    var toolbox = document.querySelector('.studio-toolbox'); if (toolbox) toolbox.inert = true;
+    experience.dispatchEvent(new Event('studio:collections-busy'));
+    try { await persistStudio(); await window.VRemixSession.retry(); return await action(); }
+    finally { collectionBusy = false; restoringCollection = false; if (toolbox) toolbox.inert = window.VRemixSession.status().state === 'conflict'; experience.dispatchEvent(new Event('studio:collections-busy')); }
+  }
+  function displayCollection(id, record) {
+    restoringCollection = true;
+    collections.select(id); resetCollectionWorkspace();
+    if (record.draft) { restoreSelection(record.draft); updateSummary('restore'); }
+    currentResultSelection = record.selection; currentResultJobId = record.jobId;
+    savedLookId = record.savedLookId; resultSaveId = record.saveId; currentOutput = record.output || null;
+    if (record.output && record.selection) applyOutput(record.output);
+    saveLookButton.disabled = Boolean(savedLookId) || !currentLookbookItems.length;
+    saveLookButton.textContent = savedLookId ? 'Đã lưu bản phối' : 'Lưu bản phối';
+    experience.dispatchEvent(new CustomEvent('studio:restore-step', { detail: record.guideStep || 'event' }));
+    document.getElementById('occasionNote').value = planning.occasionNote || '';
+    draftEdited = Boolean(record.selection && !samePlan(record.selection));
+    restoringCollection = false;
+    if (record.mediaUnavailable) setStatus('Chưa tải được ảnh cũ. Lựa chọn của bộ vẫn được giữ.');
+  }
   experience.collectionsApi = {
     ready: function () { return collectionReady; },
+    busy: function () { return collectionBusy || savingLook || generationPending; },
     list: function () { return collections.list(); },
     active: function () { return collections.active(); },
     edited: function () { return draftEdited; },
     async openLook(look) {
-      if (draftEdited && !window.confirm('Giữ lại lựa chọn hiện tại và mở bộ sưu tập của bản phối này?')) return;
+      if (draftEdited && !window.confirm('Giữ lại lựa chọn hiện tại và mở bộ sưu tập của bản phối này?')) return false;
       if (!collectionReady || generationPending || readActiveJob()) throw new Error('Đợi yêu cầu tạo ảnh hoàn tất rồi chuyển bộ sưu tập.');
       await persistStudio(); await window.VRemixSession.retry();
       var chainIds = [look.generation_job_id];
@@ -2108,39 +2163,58 @@
         } }]);
         existing = collections.list().find(function (item) { return item.record.savedLookId === look.id; });
       }
-      return this.open(existing.id);
+      await this.open(existing.id);
+      experience.resultsApi.open(look, false);
+      return true;
     },
     async start() {
-      if (!collectionReady || generationPending || readActiveJob()) throw new Error('Đợi yêu cầu tạo ảnh hoàn tất rồi chuyển bộ sưu tập.');
-      await persistStudio(); await window.VRemixSession.retry();
-      restoringCollection = true;
-      collections.start(); resetCollectionWorkspace(); restoringCollection = false;
-      await persistStudio(); notifyHistory();
+      return collectionOperation(async function () {
+        restoringCollection = true;
+        collections.start(); resetCollectionWorkspace(); restoringCollection = false;
+        await persistStudio(); await window.VRemixSession.retry(); notifyHistory();
+      });
     },
     async open(id) {
-      if (!collectionReady || generationPending || readActiveJob()) throw new Error('Đợi yêu cầu tạo ảnh hoàn tất rồi chuyển bộ sưu tập.');
-      var item = collections.get(id); if (!item) throw new Error('Không tìm thấy bộ sưu tập.');
-      await persistStudio(); await window.VRemixSession.retry();
-      var record = await refreshCollection(item.record);
-      restoringCollection = true;
-      collections.select(id); resetCollectionWorkspace();
-      if (record.draft) { restoreSelection(record.draft); updateSummary('restore'); }
-      currentResultSelection = record.selection; currentResultJobId = record.jobId;
-      savedLookId = record.savedLookId; resultSaveId = record.saveId; currentOutput = record.output || null;
-      if (record.output && record.selection) applyOutput(record.output);
-      experience.dispatchEvent(new CustomEvent('studio:restore-step', { detail: record.guideStep || 'event' }));
-      document.getElementById('occasionNote').value = planning.occasionNote || '';
-      draftEdited = Boolean(record.selection && JSON.stringify(record.draft) !== JSON.stringify(record.selection));
-      restoringCollection = false;
-      await persistStudio(); notifyHistory();
-      if (record.mediaUnavailable) setStatus('Chưa tải được ảnh cũ. Lựa chọn và bộ sưu tập vẫn được giữ; thử mở lại khi kết nối ổn định.');
+      return collectionOperation(async function () {
+        var item = collections.get(id); if (!item || item.deleted) throw new Error('Bộ này đã bị xóa.');
+        if (window.VRemixSession.getCollection) { item = await window.VRemixSession.getCollection(id); collections.hydrate(item); }
+        var record = await refreshCollection(item.record);
+        displayCollection(id, record);
+        await persistStudio(); await window.VRemixSession.retry(); notifyHistory();
+      });
+    },
+    async remove(id) {
+      return collectionOperation(async function () {
+        var item = collections.get(id); if (!item) throw new Error('Không tìm thấy bộ.');
+        collections.remove(id);
+        if (id === collections.active()) { restoringCollection = true; collections.start(); resetCollectionWorkspace(); restoringCollection = false; }
+        await persistStudio(); await window.VRemixSession.retry(); notifyHistory();
+      });
+    },
+    async rename(id, name) {
+      if (!name.trim() || name.trim().length > 120) throw new Error('Tên bộ cần 1–120 ký tự.');
+      return collectionOperation(async function () { collections.rename(id,name.trim()); await persistStudio(); await window.VRemixSession.retry(); });
+    },
+    async removeVersion(jobId) {
+      if (!window.VRemixSession.deleteVersion) throw new Error('Đăng nhập để quản lý phiên bản trong tài khoản.');
+      return collectionOperation(async function () {
+        var id = collections.active();
+        var item = await window.VRemixSession.deleteVersion(id,jobId);
+        collections.replace(id,item.record,item.revision);
+        if (currentResultJobId === jobId) displayCollection(id,item.record);
+        try { collections.hydrate(await window.VRemixSession.getCollection(id)); } catch (_) { /* Deletion already succeeded; history can reload later. */ }
+        notifyHistory();
+      });
     },
     importHistory: function (groups) { collections.importHistory(groups); return persistStudio(); }
   };
+  experience.addEventListener('studio:version-count', function (event) {
+    collections.setCount(event.detail.collectionId,event.detail.count,event.detail.hasMore);
+  });
   experience.resultsApi = {
     isComparing: function () { return Boolean(compareLayer && !compareLayer.hidden); },
     closeCompare: function () { if (compareLayer && !compareLayer.hidden) compareCurrentLooks(); },
-    current: function () { return { jobId: currentResultJobId, lookId: savedLookId, pending: generationPending, edited: draftEdited }; },
+    current: function () { return { collectionId: collections.active(), hasCollection: Boolean(collections.get(collections.active())), jobId: currentResultJobId, lookId: savedLookId, pending: generationPending || collectionBusy || savingLook, edited: draftEdited }; },
     compare: compareCurrentLooks,
     open: function (look, edit) {
       if (generationPending) throw new Error('Hãy đợi bản phối đang tạo hoàn tất trước khi mở bản khác.');
@@ -2175,12 +2249,25 @@
     draftNotice.textContent = event.detail.message;
     draftNotice.hidden = !['error', 'conflict'].includes(event.detail.state);
     document.getElementById('retryDraftSync').hidden = event.detail.state !== 'error';
+    document.getElementById('keepLocalCollection').hidden = event.detail.state !== 'conflict';
+    document.getElementById('loadServerCollections').hidden = event.detail.state !== 'conflict';
+    var toolbox = document.querySelector('.studio-toolbox'); if (toolbox) toolbox.inert = event.detail.state === 'conflict' || collectionBusy;
+  });
+  document.getElementById('keepLocalCollection').addEventListener('click', async function () {
+    this.disabled = true;
+    try { await window.VRemixSession.forkLocal(); } catch(e) { setStatus(e.message); } finally { this.disabled = false; }
+  });
+  document.getElementById('loadServerCollections').addEventListener('click', function () {
+    if (window.confirm('Mở bản mới nhất? Chọn “Giữ bản trên thiết bị thành bộ riêng” trước nếu muốn giữ thay đổi chưa đồng bộ.')) window.VRemixSession.discardRecovery();
   });
   document.getElementById('retryDraftSync').addEventListener('click', function () {
     window.VRemixSession.retry().catch(function () { /* The sync status shows the error. */ });
   });
   experience.addEventListener('studio:guide-step', persistStudio);
+  var bootSucceeded = false, migrateGuest = false;
+  var initialToolbox = document.querySelector('.studio-toolbox'); if (initialToolbox) initialToolbox.inert = true;
   if (window.VRemixSession) window.VRemixSession.read().then(async function (record) {
+    bootSucceeded = true; migrateGuest = Boolean(record && (!record.collections || record.__migration));
     restoringCollection = true; collections.ingest(record);
     if (record && !draftEdited) {
       if (record.draft) {
@@ -2189,6 +2276,8 @@
         if (planning.count || state.event) setStatus('Đã khôi phục lựa chọn trước. Bạn có thể chỉnh hoặc kiểm tra rồi tạo ảnh; chưa tiêu lượt tạo.');
       }
       if (record.mediaUnavailable) setStatus('Đã mở lựa chọn của bản nháp. Ảnh cũ chưa tải được; bạn có thể chỉnh tiếp mà chưa cần tạo lại.');
+      currentResultSelection = record.selection || null; currentResultJobId = record.jobId || null;
+      resultSaveId = record.saveId || null; savedLookId = record.savedLookId || null;
       if (record.output && record.selection) {
         var output = record.output;
         if (record.jobId) {
@@ -2198,19 +2287,19 @@
           } catch (_) { /* Keep the last available result during an outage. */ }
         }
         if (draftEdited) return;
-        currentResultSelection = record.selection; currentResultJobId = record.jobId;
-        resultSaveId = record.saveId; savedLookId = record.savedLookId;
         applyOutput(output);
         notifyHistory();
         saveLookButton.disabled = Boolean(savedLookId); saveLookButton.textContent = savedLookId ? 'Đã lưu bản phối' : 'Lưu bản phối';
         setStatus('Đã khôi phục bản phối trước. Ảnh mặt tham khảo không được giữ; hãy thêm lại nếu muốn dùng cho ảnh mới.');
         if (record.saveAfterLogin && catalog.auth.authenticated) await saveCurrentLook();
       }
+      draftEdited = Boolean(record.selection && !samePlan(record.selection));
     }
     if (pendingJob) resumeGeneration(pendingJob);
-  }).finally(function () {
-    restoringCollection = false; collectionReady = true;
-    persistStudio(); experience.dispatchEvent(new Event('studio:collections-ready'));
+  }).catch(function (e) { setStatus(e.message || 'Chưa mở được bộ sưu tập. Tải lại trang khi kết nối ổn định.'); }).finally(function () {
+    restoringCollection = false; collectionReady = bootSucceeded;
+    if (initialToolbox) initialToolbox.inert = !bootSucceeded || window.VRemixSession.status().state === 'conflict';
+    if (migrateGuest) persistStudio(); experience.dispatchEvent(new Event('studio:collections-ready')); if (bootSucceeded) notifyHistory();
   });
   else if (pendingJob) resumeGeneration(pendingJob);
 })();
