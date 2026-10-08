@@ -274,7 +274,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <?php endif; ?>
                             <video id="studioMedia" class="studio-media" muted loop playsinline preload="metadata" aria-label="Không gian minh họa của Studio"<?= $basePoster !== '' ? ' poster="' . $escape($basePoster) . '"' : '' ?>></video>
                             <img id="studioPreviewImage" class="studio-preview-image" alt="Bản phối AI đang xem trước" hidden>
-                            <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
                             <div class="studio-media-placeholder" aria-hidden="true">
                                 <span class="studio-media-placeholder__orb"></span>
                                 <span class="studio-media-placeholder__line"></span>
@@ -290,6 +289,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                                 <span id="previewGenerationMessage">Đang chuẩn bị bản phối.</span>
                             </div>
                         </div>
+                        <div class="workspace-compare" id="studioCompare" hidden aria-label="So sánh hai bản phối"></div>
                         <div class="studio-hotspots" id="studioHotspots"></div>
                     </div>
 
@@ -413,7 +413,8 @@ require __DIR__ . '/includes/components/studio-icon.php';
         </section>
 
         <details class="workspace-output-details" id="outputDetails" hidden>
-        <summary>Xem thông tin và toàn bộ kết quả</summary>
+        <summary>Thông tin bản phối</summary>
+        <dl class="result-selection" id="resultSelectionInfo"></dl>
         <section class="studio-result" id="studioResult" hidden>
             <div class="studio-result__backdrop" aria-hidden="true"></div>
             <div class="studio-result__header">

@@ -29,4 +29,12 @@ assert.match(css, /aspect-ratio: var\(--studio-preview-ratio/);
 assert.match(css, /\.studio-preview-image \{[^}]*object-fit: contain/);
 assert.match(css, /has-history:not\(\.has-generated-output\) \.studio-plane \{\s*align-self: stretch;/,
   'history must not collapse the idle video frame to zero height');
+assert.match(css, /\.studio-history-strip \{[^}]*display: flex;[^}]*overflow-x: auto;[^}]*overflow-y: hidden/,
+  'long version lists scroll horizontally instead of growing the page');
+assert.match(css, /\.studio-history-item img \{[^}]*object-fit: contain/,
+  'landscape thumbnails must show the entire group');
+assert.match(css, /has-generated-output \.studio-workbench \{ height: auto;/,
+  'generated content must remain in document flow above result information');
+assert.match(js, /resultDetails\.open\) \{ result.hidden = false; renderResultInfo\(\);/,
+  'restored results reveal information when expanded');
 console.log('Studio preview layout: OK');

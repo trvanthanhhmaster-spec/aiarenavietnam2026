@@ -1078,7 +1078,7 @@
       return;
     }
     requestFingerprint = selectionFingerprint();
-    if (compareLayer) compareLayer.hidden = true;
+    if (compareLayer) { compareLayer.hidden = true; compareLayer.classList.remove('is-expanded'); }
     if (compareLooksButton) compareLooksButton.textContent = 'So sánh ảnh';
     showResult();
     setResultState('queued', 'Đang xếp hàng bản phối.');
@@ -1504,7 +1504,7 @@
   function selectPreviewAsset(index) {
     var item = currentLookbookItems[Number(index)];
     if (!item || !previewImage) return;
-    if (compareLayer) compareLayer.hidden = true;
+    if (compareLayer) { compareLayer.hidden = true; compareLayer.classList.remove('is-expanded'); }
     if (compareLooksButton) compareLooksButton.textContent = 'So sánh ảnh';
     previewImage.src = item.url;
     previewImage.hidden = false;
@@ -1773,9 +1773,10 @@
     if (compareLayer) {
       if (!explicit && !compareLayer.hidden) {
         compareLayer.hidden = true;
+        compareLayer.classList.remove('is-expanded');
         compareLooksButton.textContent = 'So sánh ảnh';
         experience.dispatchEvent(new Event('studio:compare-change'));
-        setStatus('Đã trở về bản xem trước.');
+        setStatus('');
         return;
       }
       if (compared.length < 2) return;
@@ -1783,9 +1784,23 @@
       var selected = compared.findIndex(function (item) { return item.active; });
       var choices = selected < 0 ? [0, 1] : [selected > 0 ? selected - 1 : 1, selected];
       var toolbar = document.createElement('div'); toolbar.className = 'workspace-compare-toolbar';
+      var pickers = [], updates = [];
       var close = document.createElement('button'); close.type = 'button'; close.textContent = 'Đóng so sánh';
       close.addEventListener('click', function () { compareCurrentLooks(); });
-      toolbar.appendChild(close); compareLayer.appendChild(toolbar);
+      var swap = document.createElement('button'); swap.type = 'button'; swap.textContent = 'Đổi bên ⇄';
+      swap.addEventListener('click', function () {
+        var value = pickers[0].value; pickers[0].value = pickers[1].value; pickers[1].value = value;
+        updates.forEach(function (update) { update(); });
+      });
+      var expand = document.createElement('button'); expand.type = 'button'; expand.textContent = 'Phóng to';
+      expand.setAttribute('aria-pressed', String(compareLayer.classList.contains('is-expanded')));
+      expand.addEventListener('click', function () {
+        var expanded = !compareLayer.classList.contains('is-expanded');
+        compareLayer.classList.toggle('is-expanded', expanded);
+        expand.textContent = expanded ? 'Thu nhỏ' : 'Phóng to';
+        expand.setAttribute('aria-pressed', String(expanded));
+      });
+      toolbar.appendChild(swap); toolbar.appendChild(expand); toolbar.appendChild(close); compareLayer.appendChild(toolbar);
       [0, 1].forEach(function (index) {
         var figure = document.createElement('figure');
         var label = document.createElement('label'); label.className = 'workspace-compare-picker';
@@ -1804,12 +1819,13 @@
           caption.textContent = image.alt;
         }
         select.addEventListener('change', update); update();
+        pickers.push(select); updates.push(update);
         figure.appendChild(label); figure.appendChild(image); figure.appendChild(caption); compareLayer.appendChild(figure);
       });
       compareLayer.hidden = false;
       compareLooksButton.textContent = 'Đóng so sánh';
       experience.dispatchEvent(new Event('studio:compare-change'));
-      setStatus('Đang so sánh hai bản phối trong khung xem trước.');
+      setStatus('');
       return;
     }
     showResult();
@@ -1832,6 +1848,45 @@
     closeDock(true);
   });
   resultClose.addEventListener('click', hideResult);
+  function renderResultInfo() {
+    var info = document.getElementById('resultSelectionInfo');
+    if (!info) return;
+    info.replaceChildren();
+    var snapshot = currentResultSelection;
+    if (!snapshot) return;
+    var plan = Planner.restore(snapshot);
+    var period = plan.period;
+    var time = period && (period.kind === 'unspecified' || typeof period.start === 'string' && typeof period.end === 'string')
+      ? Planner.periodLabel(period) : 'Chưa xác định';
+    var rows = [
+      ['Dịp mặc', selectedEvent(snapshot.event, plan).label],
+      ['Số người', plan.count ? plan.count + ' người' : ''],
+      ['Thời gian', time]
+    ];
+    (plan.people || []).forEach(function (person, index) {
+      var outfit = person.outfit || {};
+      var garment = lookup(catalog.garmentVariants, outfit.garmentVariant).name || lookup(catalog.garments, outfit.garment).name;
+      rows.push([person.name || 'Người ' + (index + 1), garment]);
+    });
+    rows.forEach(function (row) {
+      if (!row[1]) return;
+      var group = document.createElement('div'), term = document.createElement('dt'), value = document.createElement('dd');
+      term.textContent = row[0]; value.textContent = row[1]; group.append(term, value); info.appendChild(group);
+    });
+    [['resultStory', 'story'], ['resultGuardrail', 'guardrail'], ['resultGenZTip', 'genZTip']].forEach(function (entry) {
+      var node = document.getElementById(entry[0]);
+      var text = currentOutput && currentOutput[entry[1]];
+      node.parentElement.hidden = !text;
+      node.textContent = text || '';
+    });
+    // A generated score is not a verified cultural assessment.
+    if (resultCulturalScore) resultCulturalScore.parentElement.hidden = true;
+  }
+  var resultDetails = document.getElementById('outputDetails');
+  if (resultDetails) resultDetails.addEventListener('toggle', function () {
+    if (resultDetails.open) { result.hidden = false; renderResultInfo(); }
+  });
+  experience.addEventListener('studio:history-change', renderResultInfo);
   resultDownload.addEventListener('click', function (event) {
     if (resultDownload.getAttribute('aria-disabled') === 'true') {
       event.preventDefault();
@@ -1871,6 +1926,7 @@
   });
   window.addEventListener('keydown', function (event) {
     if (event.key !== 'Escape') return;
+    if (compareLayer && !compareLayer.hidden) { compareCurrentLooks(); return; }
     if (state.openMode) closeDock(true);
     else {
       var details = document.getElementById('outputDetails');
