@@ -18,3 +18,9 @@ Studio giữ nội dung của từng phiên bản, mô tả đúng lựa chọn 
 Kiểm thử offline gồm 28 tệp JavaScript, 24 bài Deno, các bộ kiểm tra PHP lựa chọn và lịch sử, cùng bốn bộ Python kiểm tra bridge. Các fixture đối chiếu bao gồm số người sai, thiếu trường, trùng người, chi tiết không được yêu cầu và phản hồi không hợp lệ. Bố cục thẻ được kiểm tra với 1, 2 và 12 người, không cắt ảnh nguồn.
 
 Một lượt AI thật mới chưa được chạy trong đợt sửa này. Độ chính xác của đối chiếu thị giác và điểm văn hóa vẫn cần kiểm thử bằng mẫu thực tế; AI phải trả chưa chắc chắn nếu chi tiết không nhìn rõ. Nguồn văn hóa cần thẩm định chuyên môn. Thời tiết thực tế, tự nhận diện địa phương, lễ hội, hòa hợp màu độc lập và chia sẻ liên kết công khai không được bổ sung trong đợt sửa lỗi này.
+
+## Triển khai và kiểm tra production
+
+VPS chạy release `fdd7c71`, hai container PHP và bridge không có vòng lặp khởi động lại. Edge `generate-look` phiên bản 54 đang ACTIVE. Secret, CSDL và thiết lập tài khoản provider được giữ nguyên. Việc chuyển release gặp lỗi thiếu tệp đích gắn `.env`, gây 502 tạm thời; bổ sung placeholder mode 000 đã khôi phục PHP và toàn bộ kiểm tra HTTPS sau đó qua.
+
+Kiểm tra live xác nhận cookie an toàn, chặn đường dẫn riêng tư, quyền bộ sưu tập, byte range video, bridge từ chối thiếu xác thực và gateway từ chối chữ ký sai trước tạo job. Trình duyệt production khôi phục bản có sẵn, hiển thị đúng Áo tấc đỏ son không thêm phụ kiện và nội dung từ catalog, không gán điểm văn hóa giả. Thẻ PNG 1080 × 1920 được tải thật từ ảnh cũ; kích thước 390px không có tràn ngang ở bảng thông tin kết quả. Không có lượt tạo ảnh AI mới trong các kiểm tra này.
