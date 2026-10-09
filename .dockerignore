@@ -2,5 +2,8 @@
 !deploy/
 !deploy/vps/
 !deploy/vps/Dockerfile
+!deploy/vps/Dockerfile.bridge
 !deploy/vps/php-fpm.conf
-
+!services/
+!services/gemini-webapi-bridge/
+!services/gemini-webapi-bridge/server.py
