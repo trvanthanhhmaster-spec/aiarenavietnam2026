@@ -23,7 +23,8 @@ không được chặn kết quả chính.
 
 Mở `http://localhost/aiarenavietnam2026/` khi Apache/PHP của XAMPP đang chạy.
 
-Trang chủ hiển thị nền trắng và chữ tối ngay khi mở, không chạy hiệu ứng loading.
+Trang chủ giữ ảnh dự phòng lấy từ khung mở đầu của video, nền tối và chữ trắng
+dễ đọc ngay khi mở. Không dùng lớp trắng che nền khi video đang tải hoặc lỗi.
 Chỉ video gốc được ưu tiên tải; các clip chuyển cảnh bắt đầu tải sau khi khung
 hình mở đầu đã được hiển thị. Giao diện cinematic được giữ nguyên khi media
 sẵn sàng. Dùng `?loader=preview` để xem trạng thái chờ trong 2,6 giây khi sửa

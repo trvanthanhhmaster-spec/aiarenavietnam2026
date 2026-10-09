@@ -23,6 +23,12 @@
   }
 
   var stage      = document.getElementById('stage');
+  var poster     = document.getElementById('explorePoster');
+  if (poster) {
+    poster.addEventListener('error', function () { poster.hidden = true; });
+    poster.addEventListener('load', function () { poster.hidden = false; });
+    if (poster.complete && !poster.naturalWidth) poster.hidden = true;
+  }
   var controller = document.getElementById('controller');
   var capsule    = document.getElementById('capsule');
   var cellLabel  = document.getElementById('cellLabel');
@@ -54,6 +60,7 @@
   var lastAttempt = null;   // for Retry
   var cleanups = [];
   var loadingRevealTimer = null;
+  var openingTimeout = null;
   var transitionWarmupStarted = false;
   var waitingLabelTimer = window.setTimeout(function () {
     if (!stage.classList.contains('media-ready')) stage.classList.add('media-waiting');
@@ -102,6 +109,10 @@
       v.addEventListener('error', function () {
         v.dataset.failed = '1';
         if (!locked) {
+          if (scene === 'base' && v === visibleEl) {
+            v.classList.remove('is-visible'); visibleEl = null;
+            stage.classList.remove('media-ready');
+          }
           playback = 'error'; publish();
           showError(copy('error_video_load'));
         }
@@ -397,19 +408,30 @@
     });
   }
   function revealOpeningFrame() {
+    if (!visibleEl || visibleEl.dataset.failed === '1') return;
+    window.clearTimeout(openingTimeout);
     stage.classList.add('media-ready');
     stage.classList.remove('media-waiting');
     window.clearTimeout(waitingLabelTimer);
     warmTransitionClips();
   }
+  function armOpeningTimeout() {
+    window.clearTimeout(openingTimeout);
+    openingTimeout = window.setTimeout(function () {
+      if (visibleEl || !BASE_CLIP || !video[BASE_CLIP]) return;
+      video[BASE_CLIP].forward.dataset.failed = '1';
+      playback = 'error'; publish(); refreshEnabled();
+      showError(copy('error_video_timeout', { label: BRANCHES[BASE_CLIP].label.toLocaleLowerCase('vi') }) || copy('error_video_load'));
+    }, FIRST_FRAME_TIMEOUT);
+  }
   function showBaseFrame() {
     if (visibleEl || !BASE_CLIP || !video[BASE_CLIP]) return;
     var v = video[BASE_CLIP].forward;
-    if (v.readyState < 2) return;
+    if (v.readyState < 2 || v.dataset.failed === '1') return;
     v.classList.add('is-visible');
     visibleEl = v;
     v.pause();
-    // The opening layer stays up until a decoded frame is actually visible.
+    // The native video poster stays visible until the decoded frame is painted.
     // Preview mode adds a short hold so the local design state can be inspected.
     if (LOADING_PREVIEW) {
       if (loadingRevealTimer !== null) return;
@@ -418,8 +440,8 @@
         loadingRevealTimer = null;
       }, LOADING_PREVIEW_DELAY);
     } else {
-      // Let the paused, decoded opening frame be composited before removing
-      // the white layer. No imposed loading duration for normal visits.
+      // Two paint turns settle the paused frame. The independent poster below
+      // it remains available even after this loading label is dismissed.
       requestAnimationFrame(function () { requestAnimationFrame(revealOpeningFrame); });
     }
     playback = 'ready'; publish(); refreshEnabled();
@@ -561,6 +583,7 @@
   retryBtn.addEventListener('click', function () {
     if (locked) return;
     clearError();
+    if (poster && poster.hidden) poster.src = poster.getAttribute('src');
     Object.keys(video).forEach(function (key) {
       ['forward', 'reverse'].forEach(function (dir) {
         var v = video[key][dir];
@@ -570,7 +593,7 @@
       });
     });
     if (lastAttempt) run(lastAttempt.btn, lastAttempt.dir, lastAttempt.hadFocus);
-    else { playback = 'loading'; publish(); showBaseFrame(); refreshEnabled(); }
+    else { playback = 'loading'; publish(); say(copy('status_loading')); armOpeningTimeout(); showBaseFrame(); refreshEnabled(); }
   });
 
   /* ---------------- the single transition routine ---------------- */
@@ -705,6 +728,7 @@
   moveCapsule(0);
   publish();
   refreshEnabled();
+  armOpeningTimeout();
   showBaseFrame();
   if (BASE_CLIP && video[BASE_CLIP]) {
     video[BASE_CLIP].forward.addEventListener('loadeddata', showBaseFrame);

@@ -22,14 +22,14 @@ function boot(search = '', cached = false) {
         toggle(name, on) { if (on) classes.add(name); else classes.delete(name); }
       },
       setAttribute() {}, removeAttribute() {}, appendChild() {}, pause() {},
-      load() { this.loads++; },
+      load() { this.loads++; this.readyState = 0; },
       addEventListener(name, callback) { (listeners[name] ||= []).push(callback); },
       removeEventListener() {},
       emit(name) { (listeners[name] || []).forEach(callback => callback()); }
     };
   }
   const ids = {};
-  ['stage', 'controller', 'capsule', 'cellLabel', 'status', 'notice',
+  ['stage', 'explorePoster', 'controller', 'capsule', 'cellLabel', 'status', 'notice',
     'noticeText', 'retryBtn', 'exploreStudio'].forEach(id => { ids[id] = element(); });
   const branches = { base: { label: 'Base', isBase: true }, other: { label: 'Other' } };
   const buttons = Object.keys(branches).map(key => {
@@ -107,4 +107,38 @@ failed.ids.retryBtn.emit('click');
 assert.equal(failed.ids['v-base-f'].loads, 1);
 failed.decode(); failed.frame(); failed.frame();
 assert.equal(failed.ids.stage.classList.contains('media-ready'), true);
-console.log('Homepage loading: slow, cached, preview, deferred clips, error and retry passed.');
+const timeout = boot();
+timeout.advance(12000);
+assert.equal(timeout.ids.stage.dataset.playback, 'error', 'opening cannot load forever');
+assert.equal(timeout.ids.notice.classList.contains('is-on'), true);
+timeout.ids.retryBtn.emit('click');
+assert.equal(timeout.ids['v-base-f'].loads, 1, 'timeout retry reloads the opening clip');
+timeout.decode(); timeout.frame(); timeout.frame();
+assert.equal(timeout.ids.stage.classList.contains('media-ready'), true);
+const presentedError = boot('', true);
+presentedError.frame(); presentedError.frame();
+presentedError.ids['v-base-f'].emit('error');
+assert.equal(presentedError.ids['v-base-f'].classList.contains('is-visible'), false, 'failed opening layer gives way to the independent poster');
+assert.equal(presentedError.ids.stage.classList.contains('media-ready'), false);
+presentedError.ids.retryBtn.emit('click');
+assert.equal(presentedError.ids['v-base-f'].loads, 1, 'visible media errors must not be excluded from retry');
+presentedError.decode(); presentedError.frame(); presentedError.frame();
+assert.equal(presentedError.ids.stage.classList.contains('media-ready'), true);
+const pendingPaint = boot('', true);
+pendingPaint.ids['v-base-f'].emit('error'); pendingPaint.frame(); pendingPaint.frame();
+assert.equal(pendingPaint.ids.stage.classList.contains('media-ready'), false, 'stale paint callbacks cannot dismiss failure state');
+pendingPaint.ids.explorePoster.emit('error');
+assert.equal(pendingPaint.ids.explorePoster.hidden,true,'failed image must not show a broken-image icon');
+pendingPaint.ids.explorePoster.emit('load');
+assert.equal(pendingPaint.ids.explorePoster.hidden,false);
+const css = fs.readFileSync('assets/css/app.css','utf8');
+assert.match(css, /\.stage\{[^}]*background:#1b2427; color:#fff;/);
+assert.match(css, /\.media-loading\{[^}]*background:transparent;/);
+assert.match(css, /\.stage::after\{[^}]*pointer-events:none;/);
+assert.ok(!css.includes('.stage:not(.media-ready){ color:#203039; }'));
+const markup = fs.readFileSync('includes/partials/media.php','utf8');
+assert.ok(markup.indexOf('class="media media-poster"') < markup.indexOf('<video'), 'poster stays below all video layers');
+assert.match(markup, /fetchpriority="high"/);
+assert.match(markup, /poster=/);
+assert.ok(fs.statSync('assets/media/explore-opening-poster.jpg').size < 250000, 'fallback stays lightweight');
+console.log('Homepage loading: cached/slow/preview, deferred clips, timeout, media errors before/after paint, safe retry and persistent poster contract passed.');
