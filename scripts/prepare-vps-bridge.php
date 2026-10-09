@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 // Secret payload goes ONLY through an SSH stdin pipe, never tool output or Git.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 umask(0077);
 $root = dirname(__DIR__);
 function envValues(string $path): array {

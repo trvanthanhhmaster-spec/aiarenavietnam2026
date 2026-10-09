@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 // Private payload: pipe directly to SSH stdin; never run to a terminal/log.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 try {
     $path = dirname(__DIR__) . '/services/gemini-webapi-bridge/.env';
     $values = [];
