@@ -9,3 +9,8 @@ Deno.test('stylist only accepts bounded text and approved recipes', () => {
   assert(advicePrompt(valid).includes('do not generate images'));
   assert(advicePrompt(valid).includes('untrusted data'));
 });
+Deno.test('daily probability cannot become an all-day rain assertion', () => {
+  const prompt = advicePrompt({forecast:{precipitationProbability:100}});
+  assert(prompt.includes('Precipitation probability is NOT rain duration'));
+  assert(prompt.includes('Daily totals and temperature ranges do not establish hourly conditions'));
+});

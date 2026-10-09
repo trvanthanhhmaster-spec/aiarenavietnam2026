@@ -1,8 +1,13 @@
-import { imageDimensions, parseImageAssessment } from './image-assessment.ts';
+import { imageDimensions, parseImageAssessment, reviewPrompt } from './image-assessment.ts';
 import { normalizePlan } from './studio-plan.ts';
 const plan = normalizePlan({version:1,count:2,shared:false,period:{kind:'unspecified'},people:[
   {id:1,outfit:{garment:'ao-tac',garmentVariant:'red'}},{id:2,outfit:{garment:'ao-tu-than',color:'green',scene:'temple'}}]});
 function assert(value: unknown) { if (!value) throw new Error('Assessment assertion'); }
+Deno.test('construction review cannot invent hidden seams from garment names', () => {
+  const prompt = reviewPrompt('ao-tac');
+  assert(prompt.includes('Do not claim to see five fabric panels'));
+  assert(prompt.includes('If an essential distinguishing feature is not visible, report uncertain'));
+});
 function fixture() { return {observedPeopleCount:2,people:[1,2].map(personId=>({personId,checks:{garment:'match',variant:'match',color:'match',pattern:'match',accessories:'match',scene:'match'}}))}; }
 Deno.test('vision status is derived from count and requested per-person checks',()=>{
   const value=fixture(); assert(parseImageAssessment(value,plan).status==='matched');

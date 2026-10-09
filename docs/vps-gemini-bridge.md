@@ -1,6 +1,14 @@
 # VPS Gemini bridge readiness and recovery — 2026-10-09
 
-## Current recovery: production image verified
+## Current Studio intelligence deployment — 2026-10-10
+
+PHP release `cd0941f` is active; the bridge image remains `2cedf30` (no credential refresh or bridge change). `generate-look` and the new `studio-advisor` Edge functions were deployed with independent, route-bound HMAC authentication. Nginx explicitly allows the new public PHP advice gateway; syntax validation and reload passed. Release/env and site-config backups are retained as `pre-cd0941f`; the previous application release remains available. Only this app's PHP container was recreated; unrelated VPS services were untouched.
+
+Live anonymous weather/consent/CSRF/private-route/media smoke passed. After the owner explicitly allowed one text advice plus one generated image with review, both completed. Job `fa5d8da6-174e-40da-bc79-f2519136ba76` produced one 1376 × 768 JPEG from the selected áo tấc sample. No face was uploaded, no user's draft or collection was changed, and no POST was retried. The source-reference and construction-review contracts were present. See [Studio intelligence verification boundaries](STUDIO_INTELLIGENCE.md) for limitations and the subsequent prompt-only hardening: no extra live AI request was authorized or made.
+
+All 30 JavaScript suites, relevant PHP tests/lints, 34 Deno tests and Edge type checks passed. Production browser rendering showed the new weather / stylist / lookbook section with no captured console warning/error. This verifies one sample flow, not universal cultural accuracy, all city festivals, or permanent provider uptime.
+
+## Previous recovery: production image verified (historical)
 
 Application and bridge release `d8c6c7f`; Edge `generate-look` version 53 ACTIVE.
 The previous seven failed jobs reported bridge HTTP 502. Authenticated private
