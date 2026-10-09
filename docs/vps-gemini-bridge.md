@@ -1,4 +1,45 @@
-# VPS Gemini bridge readiness — 2026-10-09
+# VPS Gemini bridge readiness and recovery — 2026-10-09
+
+## Current recovery: production image verified
+
+Application and bridge release `d8c6c7f`; Edge `generate-look` version 53 ACTIVE.
+The previous seven failed jobs reported bridge HTTP 502. Authenticated private
+health returned 503: the Web account session was no longer AVAILABLE, despite
+the container remaining running without restarts. This was not a Studio layout
+or collection error.
+
+The owner's previously authorized two-cookie transfer was refreshed privately
+from the configured local session, which initialized AVAILABLE. Only the two
+Google cookies in `/etc/vremix/bridge.env` changed; gateway and bridge keys were
+preserved. No entire profile, OAuth secret or Management token was transferred.
+Authenticated health returned 200 after the refresh and after deployment.
+
+Bridge now fails before generation when a renewed session is still unavailable;
+known failures carry allowlisted codes through Edge to friendly Studio messages.
+No raw provider output is persisted for bridge failures. Ambiguous timeouts are
+not automatically retried; temporary source references still get removed.
+
+After the owner explicitly authorized **one** real generation test in chat,
+`tests/vps-generation-once.php --live --allow-one-image` exercised the public
+anonymous PHP gateway, signed Edge request, bridge, generation and Storage.
+Job `d155779a-4f80-4d58-968c-700d34771e6c` completed with one real generated image,
+1376 × 768, verified by decoding Storage's HTTP-200 image response. No face image
+was uploaded and no collection/account was changed. The anonymous QA job and
+its generated asset remain as evidence; no user's earlier jobs were retried.
+
+20 Deno tests/check, all CJS suites, bridge group/framing/readiness tests, PHP
+lint/plan/HMAC tests and production gateway/TLS/private-route/media smoke tests
+passed. Edge still has `verify_jwt=false` paired with the independent HMAC guard;
+missing and tampered signatures remain rejected. Only this app's PHP and bridge
+containers were recreated; unrelated VPS services were untouched.
+
+This verifies the current one-person/no-face production path, not every outfit,
+multi-person identity preservation, cultural correctness, or guaranteed provider
+uptime. Web cookies still expire. Private manual renewal is an operational
+repair, not permanent production authentication; use an official provider API
+with provisioned quota/billing for durable credentials.
+
+## Initial deployment record (historical)
 
 Deployed application release: `0ab555d`; Supabase `generate-look` version 51,
 ACTIVE, retaining `verify_jwt=false` and enforcing the separate HMAC gateway.
@@ -39,7 +80,7 @@ were left untouched; only `vremix-php` was recreated for this application.
 - This site's Nginx configuration validated before reload. Secret file modes
   and loopback-only listening were checked without printing values.
 
-No real image generation was executed. Health does not prove that the Google
+At this initial deployment, no real image generation was executed. Health does not prove that the Google
 account can generate images, that its quota is available, or that provider
 output meets the requested canvas/identity requirements. Real generation still
 needs a separately authorized user action/test. Cookies may expire and are not
