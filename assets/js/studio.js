@@ -104,7 +104,7 @@
   var collections = window.VRemixCollections.create(createRequestId, function (selection) {
     return selection ? selectedEvent(selection.event, selection.planning).label || 'Bộ sưu tập mới' : '';
   });
-  function notifyHistory() { experience.dispatchEvent(new Event('studio:history-change')); }
+  function notifyHistory(selectionOnly) { experience.dispatchEvent(new CustomEvent('studio:history-change', { detail: { selectionOnly: selectionOnly === true } })); }
 
   function persistStudio() {
     if (!window.VRemixSession || !collectionReady || restoringCollection) return;
@@ -2241,8 +2241,9 @@
       if (look.image_url) { saveLookButton.disabled = Boolean(savedLookId); saveLookButton.textContent = savedLookId ? 'Đã lưu bản phối' : 'Lưu bản phối'; }
       setStatus(!look.image_url ? 'Đã mở lựa chọn cũ để chỉnh tiếp. Ảnh cũ không tải được; chỉ tạo ảnh mới khi bạn xác nhận.' : edit ? 'Đã mở phiên bản để chỉnh tiếp. Ảnh trước vẫn được giữ; chỉ tạo ảnh mới khi bạn xác nhận.' : 'Đang xem bản phối đã lưu. Lựa chọn đang chỉnh không bị thay đổi.');
       persistStudio();
-      notifyHistory();
-      document.querySelector('.studio-preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      notifyHistory(true);
+      var preview = document.querySelector('.studio-preview'), bounds = preview.getBoundingClientRect();
+      if (bounds.bottom <= 0 || bounds.top >= window.innerHeight) preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     persist: persistStudio
   };

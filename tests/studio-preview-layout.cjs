@@ -27,6 +27,12 @@ assert.match(css, /:not\(\.has-preview-variants\) \.studio-preview/);
 assert.match(css, /has-generated-output \.studio-preview \{\s*height: auto;\s*align-self: start;/);
 assert.match(css, /aspect-ratio: var\(--studio-preview-ratio/);
 assert.match(css, /\.studio-preview-image \{[^}]*object-fit: contain/);
+assert.match(css, /\.studio-preview-image \{[^}]*width: auto; height: auto; max-width: 100%; max-height: 100%;[^}]*border-radius: 16px/,
+  'round the actual fitted bitmap instead of a letterboxed image box, without cropping');
+assert.match(css, /\.studio-frame\.has-ai-preview \.studio-idle-poster \{ opacity: 0; \}/,
+  'fitted output margins must not reveal the unrelated idle poster behind the image');
+assert.match(js, /notifyHistory\(true\);[\s\S]*bounds\.bottom <= 0 \|\| bounds\.top >= window\.innerHeight/,
+  'version switching uses local history and does not scroll an already visible preview');
 assert.match(css, /has-history:not\(\.has-generated-output\) \.studio-plane \{\s*align-self: stretch;/,
   'history must not collapse the idle video frame to zero height');
 assert.match(css, /\.studio-history-strip \{[^}]*display: flex;[^}]*overflow-x: auto;[^}]*overflow-y: hidden/,

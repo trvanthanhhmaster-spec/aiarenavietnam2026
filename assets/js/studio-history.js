@@ -21,7 +21,7 @@
     catch (e) { status.textContent = e.message; visible(true); }
     finally { removeCurrent.disabled = false; }
   });
-  var items = [], scoped = false, serial = 0, pendingChoice = null, recent = false, nextOffset = 0;
+  var items = [], scoped = false, serial = 0, pendingChoice = null, recent = false, nextOffset = 0, loadedCollectionId = null;
   function currentId() {
     var value = api.current();
     var legacy = value.lookId && items.find(function (item) { return item.lookId === value.lookId && !item.jobId; });
@@ -29,6 +29,15 @@
   }
   function label(item, index) { return scoped ? 'Phiên bản ' + (index + 1) : item.name || 'Ảnh ' + (index + 1) + ' · ' + new Date(item.created_at).toLocaleDateString('vi-VN'); }
   function visible(value) { rail.hidden = !value; app.classList.toggle('has-history', value); }
+  function highlightSelection() {
+    Array.prototype.forEach.call(strip.children, function (button, index) {
+      var active = items[index] && items[index].id === currentId();
+      button.classList.toggle('is-active', Boolean(active));
+      button.setAttribute('aria-pressed', String(Boolean(active)));
+    });
+    compare.textContent = api.isComparing && api.isComparing() ? 'Đóng so sánh' : 'So sánh';
+    updateDelete();
+  }
   function open(item) {
     try {
       if (!item.image_url) throw new Error('Ảnh chưa tải được. Thử tải lại lịch sử; lựa chọn hiện tại vẫn được giữ.');
@@ -99,7 +108,7 @@
       if (!response.ok) throw new Error(body.error || 'Chưa tải được lịch sử ảnh.');
       if (append) items = scoped ? items.concat(body.items || []) : (body.items || []).concat(items);
       else items = body.items || [];
-      scoped = Boolean(body.scoped); nextOffset = body.nextOffset || 0;
+      scoped = Boolean(body.scoped); loadedCollectionId = selected.collectionId || null; nextOffset = body.nextOffset || 0;
       more.hidden = !body.hasMore; more.disabled = false; status.textContent = '';
       render();
       app.dispatchEvent(new CustomEvent('studio:version-count', { detail: { count: items.length, hasMore: body.hasMore, collectionId: selected.collectionId } }));
@@ -120,6 +129,17 @@
     api.compare(items.map(function (item, index) { return { url: item.image_url, label: label(item, index), active: item.id === currentId() }; }));
   });
   app.addEventListener('studio:compare-change', function () { compare.textContent = api.isComparing && api.isComparing() ? 'Đóng so sánh' : 'So sánh'; });
-  app.addEventListener('studio:history-change', function () { recent = false; load(); });
+  app.addEventListener('studio:history-change', function (event) {
+    recent = false;
+    if (event && event.detail && event.detail.selectionOnly && scoped
+        && loadedCollectionId === (api.current().collectionId || null)
+        && items.some(function (item) { return item.id === currentId(); })) {
+      // Choosing a known version is local. Do not wait for re-signing every
+      // image, replace cached URLs, or let an older fetch undo this choice.
+      ++serial; more.disabled = false; highlightSelection();
+      return;
+    }
+    load();
+  });
   load();
 })();
