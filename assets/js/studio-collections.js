@@ -5,7 +5,8 @@
   var status = document.getElementById('collectionsStatus'), confirm = document.getElementById('collectionSwitchConfirm');
   var error = document.getElementById('collectionSwitchError'), accept = document.getElementById('collectionSwitchAccept');
   var trigger, action, busy = false;
-  var controls = [document.getElementById('newStudioCollection')].concat(Array.from(document.querySelectorAll('[data-workspace-collections]')));
+  var newControls = [document.getElementById('newStudioCollection')].concat(Array.from(document.querySelectorAll('[data-workspace-new-collection]')));
+  var controls = newControls.concat(Array.from(document.querySelectorAll('[data-workspace-collections]')));
   function enable() { controls.forEach(function (button) { button.disabled = !api.ready() || busy || api.busy(); }); }
   app.addEventListener('studio:collections-ready', enable); app.addEventListener('studio:collections-busy', enable); enable();
   document.getElementById('collectionsPrivacy').textContent = config.auth.authenticated
@@ -70,7 +71,7 @@
     if (api.edited()) { action = fn; error.hidden = true; confirm.showModal(); }
     else execute(fn);
   }
-  document.getElementById('newStudioCollection').addEventListener('click', function () { transition(function () { return api.start(); }, this); });
+  newControls.forEach(function (button) { button.addEventListener('click', function () { transition(function () { return api.start(); }, this); }); });
   accept.addEventListener('click', function () { if (action) execute(action); });
   document.getElementById('collectionSwitchCancel').addEventListener('click', function () { confirm.close(); });
   confirm.addEventListener('cancel', function (e) { if (busy) e.preventDefault(); });

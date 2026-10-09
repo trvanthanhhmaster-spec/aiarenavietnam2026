@@ -28,3 +28,15 @@ replace the corresponding desktop sidebar icons for consistency. These are local
 SVG assets, with no new dependency. Desktop top navigation keeps its text.
 The shorter header has three 44px-high touch targets and retains full accessible
 names, titles, the current-page state and existing collection event hooks.
+
+## New collection in the mobile header
+
+Below 768px, a fourth, plus-only action sits beside the three navigation icons.
+The text action under the heading is hidden on mobile and stays unchanged on
+desktop. Both controls use the same collection-start handler, readiness and
+generation locks, unsaved-edit confirmation and error handling. The plus never
+uses the library-open handler. Four targets remain at least 44px at 320px.
+Verified in the rendered localhost page at 320/430px without horizontal overflow,
+and at 1280px with desktop text/navigation unchanged. All 22 JavaScript test
+scripts passed, including the new start-versus-library, confirmation, cancellation
+and generation-lock regression test. No real collections were changed for QA.

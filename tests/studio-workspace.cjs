@@ -15,6 +15,10 @@ assert.ok(navigation.includes("$studioIcon('folder-image')"), 'Collections uses 
 const workspaceCss = fs.readFileSync(path.join(__dirname, '../assets/css/studio-workspace.css'), 'utf8');
 assert.match(workspaceCss, /\.workspace-topnav__label\s*\{\s*display:\s*none;/, 'mobile navigation is icon-only with accessible names');
 assert.ok(navigation.includes('aria-label="Bộ sưu tập của tôi"'), 'collections action retains its accessible name and event hook');
+assert.match(navigation, /class="workspace-topnav__new" data-workspace-new-collection aria-label="Bộ sưu tập mới"[^>]*disabled>/, 'mobile new collection is a named, initially guarded header action');
+assert.match(workspaceCss, /\.workspace-topnav > \.workspace-topnav__new\s*\{\s*display:\s*none;/, 'desktop keeps its existing heading action');
+assert.match(workspaceCss, /\.workspace-heading > \.workspace-new-collection\s*\{\s*display:\s*none;/, 'mobile removes the redundant heading action');
+assert.match(workspaceCss, /repeat\(4, minmax\(44px, 1fr\)\)/, 'four mobile controls preserve 44px touch targets');
 assert.equal((navigation.match(/data-workspace-tooltip/g) || []).length, 6, 'all sidebar icons have named hover/focus hints');
 
 function element(classes = []) {

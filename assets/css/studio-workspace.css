@@ -85,6 +85,7 @@ body.studio-page {
 .workspace-topnav > [aria-current], .workspace-topnav > :hover { background: #17171b; color: white; box-shadow: inset 0 0 10px rgb(255 255 255 / .28); }
 .workspace-topnav > * > .workspace-icon,
 .workspace-profile__icon { display: none; }
+.workspace-topnav > .workspace-topnav__new { display: none; }
 .workspace-topnav > :focus-visible { outline: 2px solid var(--designer-accent); outline-offset: 3px; }
 .workspace-utilities > button { display: grid; place-items: center; width: 44px; height: 46px; border: 0; border-radius: 16px; background: none; }
 .workspace-utilities > button:hover { background: #e9e5ee; }
@@ -314,8 +315,11 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
   .workspace-sidebar { position: static; display: none; }
   .studio-masthead { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; height: 76px; min-height: 76px; gap: 8px; padding-inline: 0; }
   .workspace-logo { position: static; width: 44px; height: 44px; }
-  .workspace-topnav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); justify-self: center; width: min(100%, 164px); padding: 3px; gap: 4px; border-radius: 17px; box-shadow: none; }
+  .workspace-topnav { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); justify-self: center; width: min(100%, 196px); padding: 3px; gap: 2px; border-radius: 17px; box-shadow: none; }
   .workspace-topnav > * { display: grid; place-items: center; min-width: 0; min-height: 44px; height: 44px; padding: 0; border-radius: 13px; }
+  .workspace-topnav > .workspace-topnav__new { display: grid; }
+  .workspace-topnav__new > .workspace-icon { opacity: .8; }
+  .workspace-heading > .workspace-new-collection { display: none; }
   .workspace-topnav > * > .workspace-icon { display: block; width: 23px; height: 23px; }
   .workspace-topnav__label { display: none; }
   .workspace-topnav > [aria-current], .workspace-topnav > :hover { box-shadow: none; }

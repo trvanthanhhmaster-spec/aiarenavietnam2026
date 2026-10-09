@@ -16,6 +16,7 @@
         <a href="index.php#stage" aria-label="Khám phá" title="Khám phá"><?= $studioIcon('house') ?><span class="workspace-topnav__label">Khám phá</span></a>
         <span aria-current="page" aria-label="Studio" title="Studio"><?= $studioIcon('palette') ?><span class="workspace-topnav__label">Studio</span></span>
         <button type="button" data-workspace-collections aria-label="Bộ sưu tập của tôi" title="Bộ sưu tập của tôi" disabled><?= $studioIcon('folder-image') ?><span class="workspace-topnav__label">Bộ sưu tập của tôi</span></button>
+        <button type="button" class="workspace-topnav__new" data-workspace-new-collection aria-label="Bộ sưu tập mới" title="Bộ sưu tập mới" disabled><svg class="workspace-icon" aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     </nav>
     <div class="workspace-utilities">
         <button type="button" id="workspaceFullscreen" aria-label="Mở toàn màn hình" title="Mở toàn màn hình"><?= $studioIcon('maximize') ?></button>
