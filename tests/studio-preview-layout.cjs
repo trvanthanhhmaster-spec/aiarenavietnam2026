@@ -51,6 +51,8 @@ assert.match(css, /\.studio-history-item\.is-active \{ box-shadow: none;/,
   'selected versions do not get nested outline frames');
 assert.match(css, /has-generated-output \.studio-workbench \{ height: auto;/,
   'generated content must remain in document flow above result information');
+assert.match(css, /\.studio-toolbox, \.studio-insights \{[^}]*overflow-y: auto; overscroll-behavior: auto;/,
+  'catalog and information panels must pass boundary scrolling to the page, including non-overflowing generated layouts');
 assert.match(js, /resultDetails\.open\) \{ result.hidden = false; renderResultInfo\(\);/,
   'restored results reveal information when expanded');
 console.log('Studio preview layout: OK');
