@@ -10,13 +10,19 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import hmac
 import mimetypes
 import os
+import sys
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
 from gemini_webapi import GeminiClient
+from loguru import logger
+
+# Upstream diagnostics can include session details. Never emit them in this bridge.
+logger.remove()
 
 
 def load_dotenv(path: Path = Path(__file__).with_name(".env")) -> None:
@@ -103,8 +109,8 @@ def response(status: int, body: dict) -> bytes:
     ).encode("ascii") + payload
 
 
-async def read_request(reader: asyncio.StreamReader) -> tuple[str, dict[str, str], bytes]:
-    head = await reader.readuntil(b"\r\n\r\n")
+async def read_request(reader: asyncio.StreamReader, secret: str | None = None) -> tuple[str, dict[str, str], bytes]:
+    head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=10)
     lines = head.decode("iso-8859-1").split("\r\n")
     method, path, _ = lines[0].split(" ", 2)
     headers = {}
@@ -112,11 +118,15 @@ async def read_request(reader: asyncio.StreamReader) -> tuple[str, dict[str, str
         if ":" in line:
             key, value = line.split(":", 1)
             headers[key.lower()] = value.strip()
+    if secret is not None and not hmac.compare_digest(headers.get("x-vremix-bridge-secret", ""), secret):
+        raise PermissionError("Invalid bridge secret.")
+    if headers.get("transfer-encoding"):
+        raise ValueError("Unsupported request framing.")
     length = int(headers.get("content-length", "0"))
     # One previous composition + one optional face sheet, each bounded below.
     if length < 0 or length > 24_000_000:
         raise ValueError("Request body is too large.")
-    body = await reader.readexactly(length) if length else b""
+    body = await asyncio.wait_for(reader.readexactly(length), timeout=20) if length else b""
     return f"{method} {path}", headers, body
 
 
@@ -276,9 +286,9 @@ async def run() -> None:
 
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
-            request, headers, body = await read_request(reader)
+            request, headers, body = await read_request(reader, secret)
             method, path = request.split(" ", 1)
-            if headers.get("x-vremix-bridge-secret") != secret:
+            if not hmac.compare_digest(headers.get("x-vremix-bridge-secret", ""), secret):
                 writer.write(response(401, {"error": "Invalid bridge secret."}))
             elif method == "GET" and urlparse(path).path == "/health":
                 is_authenticated = client_is_authenticated(client)
@@ -294,6 +304,10 @@ async def run() -> None:
                     },
                 ))
             elif method == "POST" and urlparse(path).path == "/v1/images/generate":
+                if client_lock.locked():
+                    writer.write(response(429, {"error": "Bridge is busy. Retry explicitly later."}))
+                    await writer.drain()
+                    return
                 async with client_lock:
                     active_client = client
                     if not client_is_authenticated(active_client):
@@ -311,17 +325,24 @@ async def run() -> None:
                 writer.write(response(200, generated))
             else:
                 writer.write(response(404, {"error": "Not found."}))
-        except Exception as error:
-            writer.write(response(502, {"error": str(error)[:500]}))
-        try:
-            await writer.drain()
-        except (BrokenPipeError, ConnectionResetError):
-            pass
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except (BrokenPipeError, ConnectionResetError):
-            pass
+        except PermissionError:
+            writer.write(response(401, {"error": "Invalid bridge secret."}))
+        except (ValueError, asyncio.IncompleteReadError, asyncio.LimitOverrunError):
+            writer.write(response(400, {"error": "Invalid bridge request."}))
+        except Exception:
+            # Upstream exception strings may contain cookies, tokens, URLs or
+            # user prompts. Keep them out of HTTP bodies and production logs.
+            writer.write(response(502, {"error": "Gemini Web bridge unavailable. Check session readiness."}))
+        finally:
+            try:
+                await writer.drain()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
     server = await asyncio.start_server(handle, host, port)
     addresses = ", ".join(str(sock.getsockname()) for sock in server.sockets or [])
@@ -331,4 +352,8 @@ async def run() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except Exception:
+        print("Bridge startup failed. Check private session configuration and network access.", file=sys.stderr, flush=True)
+        sys.exit(1)

@@ -1,0 +1,18 @@
+services:
+  bridge:
+    image: vremix-bridge:${VREMIX_RELEASE:?Set release}
+    container_name: vremix-bridge
+    restart: "on-failure:3"
+    user: "10002:10002"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 128
+    ports: ["127.0.0.1:8791:8788"]
+    volumes: ["/etc/vremix/bridge.env:/app/.env:ro"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=96m,uid=10002,gid=10002,mode=0700"]
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}

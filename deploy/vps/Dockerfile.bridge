@@ -1,0 +1,10 @@
+FROM python:3.11-slim-bookworm@sha256:0a310eeecf4e1f5a0743f9a6520c90c88d089c903ca5fd283f501e3a805f5f89
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+# Match the pinned upstream used by the Mac bridge; browser-cookie sync is off.
+RUN pip install --no-cache-dir "gemini-webapi @ git+https://github.com/HanaokaYuzu/Gemini-API.git@8c5b1dcbf54ecf093551cc20bd25cef438190ba8"
+COPY services/gemini-webapi-bridge/server.py /app/server.py
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 HOME=/tmp
+USER 10002:10002
+CMD ["python", "server.py"]

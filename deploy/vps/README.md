@@ -21,9 +21,11 @@ Do not change unrelated virtual hosts, PHP pools, containers or firewall rules.
 
 Keep the same Supabase project and encryption key as the existing application.
 Override `SUPABASE_CACHE_FILE=/var/lib/vremix/cache/site-content.json` and
-`GEMINI_WEB_LOCAL_ENABLED=false` for this deployment. Do not copy Mac browser
-cookies or the Gemini Web bridge environment. Production uses the deployed
+`GEMINI_WEB_LOCAL_ENABLED=false` for this deployment. Production uses the deployed
 Supabase Edge gateway; provider configuration remains in Admin/Edge secrets.
+Only after explicit account-owner permission, provision the two Google session
+cookies into the separate `/etc/vremix/bridge.env` (UID 10002, mode 0600).
+Never copy an entire browser profile, CLI access token or application `.env`.
 Register `https://v-remix.vietnamsir.com/auth-callback.php` in Supabase Auth's
 redirect allowlist before using OAuth or email confirmation from this domain.
 
@@ -61,3 +63,34 @@ Rollback: point `current` atomically to the previous retained release, set its
 SHA in `release.env` and recreate **only** the `vremix-php` container. Restore
 only this site's backed-up Nginx config
 if needed, validate it before reloading Nginx. Keep runtime state and secrets.
+
+## Private Gemini Web bridge
+
+`Dockerfile.bridge` pins the upstream Gemini-API commit. `compose.bridge.yml`
+runs as UID 10002 with a read-only filesystem and bounded temporary storage;
+host port **127.0.0.1:8791** forwards to container port 8788. Host 8788 is
+already used by another service and must not be changed. HTTPS `/private-gemini`
+forwards only the two approved routes; every request requires a separate
+constant-time-verified bridge key. Access logs are disabled for these routes.
+
+`scripts/prepare-vps-bridge.php` emits credential JSON: run it **only through an
+SSH stdin pipe** into `provision-bridge-secrets.php` in a disposable root PHP
+container with `/etc/vremix` mounted at `/run/vremix`. Never run it directly in
+a terminal or a tool whose stdout is displayed. Private deployment keys are
+reused from the ignored mode-0600 `.env.bridge-vps`. Cookies never go to Edge.
+Set only the three values in root-private `edge-bridge.env` using Supabase CLI.
+Do not set all secrets from the application's `.env`.
+
+PHP and Edge must share `VREMIX_GATEWAY_SECRET`: method, URL query, exact body,
+owner and optional user ID are HMAC-signed with a three-minute clock window.
+Edge fails closed without a valid signature. Session, CSRF and ownership checks
+remain in PHP. Coordinate Edge deployment with the PHP release; an old PHP
+release cannot call the new signed gateway, so rollback requires restoring the
+paired Edge source as well, not weakening authentication.
+
+Run `php deploy/vps/verify-bridge.php --live` with `/run/vremix` mounted read-only
+to verify HTTPS, private auth, Google session readiness and signed Edge database
+reads. It never calls image generation. Only then select image provider `webapi`
+in Admin/shared runtime settings. Health readiness is not proof that the account
+can generate an image. Session cookies may expire; refresh privately and recreate
+only `vremix-bridge`. Do not repeatedly restart to bypass provider restrictions.

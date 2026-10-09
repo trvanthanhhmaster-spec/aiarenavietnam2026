@@ -3,6 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Support/StudioHistory.php';
+require __DIR__ . '/src/Support/EdgeGateway.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 require __DIR__ . '/src/Infrastructure/StudioStorage.php';
 use App\Support\Env;
@@ -53,13 +54,15 @@ try {
         }
         $body = json_encode($input, JSON_THROW_ON_ERROR);
     } else $respond(['error' => 'Method không được hỗ trợ.'], 405);
+    $signedHeaders = App\Support\EdgeGateway::headers((string) getenv('VREMIX_GATEWAY_SECRET'), $method, $query, $owner, $user['id'] ?? null, $body);
     $handle = curl_init($url . '/functions/v1/generate-look' . $query);
     curl_setopt_array($handle, [CURLOPT_CUSTOMREQUEST => $method, CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_TIMEOUT => 110,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $key,
-            'x-vremix-owner: ' . $owner, 'x-vremix-user: ' . ($user['id'] ?? '')]]);
+        CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json', 'Authorization: Bearer ' . $key,
+            'x-vremix-owner: ' . $owner, 'x-vremix-user: ' . ($user['id'] ?? '')], $signedHeaders)]);
     if ($body !== null) curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
     $result = curl_exec($handle); $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+    curl_close($handle);
     if (!is_string($result) || !$status) $respond(['error' => 'Kết nối bị gián đoạn. Yêu cầu có thể vẫn đang xử lý; hãy xem tiến trình trước khi tạo lại.'], 503);
     $decoded = json_decode($result, true, 512, JSON_THROW_ON_ERROR);
     $respond($decoded, $status);

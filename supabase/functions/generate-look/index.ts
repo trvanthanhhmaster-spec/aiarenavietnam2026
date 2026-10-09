@@ -3,6 +3,7 @@ import { fallbackCopy, fallbackImagePrompt } from "./fallback-copy.ts";
 import { buildImageRequest } from "./image-request.ts";
 import { buildVideoRequest, type VideoFirstFrame } from "./video-request.ts";
 import { normalizePlan, planPrompt, type StudioPlan } from "./studio-plan.ts";
+import { verifyGateway } from "./gateway-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -988,7 +989,9 @@ async function refreshVideoJob(job: Record<string, any>, settings: RuntimeSettin
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   // All browser requests enter through the session/CSRF-protected PHP gateway.
-  if (request.headers.get('Authorization') !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) return json({ error: 'Server gateway required.' }, 403);
+  // Validate the server gateway independently of the platform's injected legacy
+  // JWT representation. Never trust decoded JWT claims or caller headers alone.
+  if (!await verifyGateway(request, Deno.env.get('VREMIX_GATEWAY_SECRET'))) return json({ error: 'Server gateway required.' }, 403);
   const owner = request.headers.get('x-vremix-owner') || '';
   const user = request.headers.get('x-vremix-user') || null;
   if (!/^[a-f0-9]{64}$/.test(owner) || (user !== null && !isUuid(user))) return json({ error: 'Invalid caller.' }, 403);
