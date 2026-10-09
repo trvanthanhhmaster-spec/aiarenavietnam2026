@@ -10,7 +10,10 @@ assert.ok(!navigation.includes('workspace-wordmark'), 'header must not duplicate
 assert.ok(navigation.includes('workspace-sidebar__home'), 'home navigation remains available');
 assert.ok(navigation.includes('if ($authUser !== null)'), 'avatar is only rendered for authenticated users');
 assert.ok(navigation.includes('<strong>Đăng nhập</strong>') && navigation.includes('workspace-profile__icon'), 'guests have desktop login text and a named mobile account icon');
-assert.ok(navigation.includes('workspace-topnav__label--mobile'), 'mobile collections label stays short without changing its accessible name');
+assert.ok(navigation.includes("$studioIcon('palette')"), 'Studio uses a creative palette rather than settings sliders');
+assert.ok(navigation.includes("$studioIcon('folder-image')"), 'Collections uses a folder of images rather than loose image previews');
+const workspaceCss = fs.readFileSync(path.join(__dirname, '../assets/css/studio-workspace.css'), 'utf8');
+assert.match(workspaceCss, /\.workspace-topnav__label\s*\{\s*display:\s*none;/, 'mobile navigation is icon-only with accessible names');
 assert.ok(navigation.includes('aria-label="Bộ sưu tập của tôi"'), 'collections action retains its accessible name and event hook');
 assert.equal((navigation.match(/data-workspace-tooltip/g) || []).length, 6, 'all sidebar icons have named hover/focus hints');
 

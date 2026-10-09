@@ -19,3 +19,12 @@ The earlier private-env helper made the XAMPP environment unreadable to Apache.
 Its existing file mode/ACL is now preserved; the local file has read permission
 only for its owner plus the Apache `daemon` account, not world-readable access.
 Local Studio returned HTTP 200 after that repair. VPS secret modes are unchanged.
+
+## Icon-only revision
+
+At the user's request, mobile navigation now hides all visible text labels and
+uses a palette for Studio and an image folder for Collections. The same drawings
+replace the corresponding desktop sidebar icons for consistency. These are local
+SVG assets, with no new dependency. Desktop top navigation keeps its text.
+The shorter header has three 44px-high touch targets and retains full accessible
+names, titles, the current-page state and existing collection event hooks.

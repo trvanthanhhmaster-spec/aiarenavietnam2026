@@ -2,9 +2,9 @@
 <a class="studio-skip" href="#studioStage">Đi tới không gian phối</a>
 <nav class="workspace-sidebar" aria-label="Công cụ Studio">
     <div class="workspace-sidebar__tools">
-        <button type="button" class="is-active" data-workspace-tooltip data-workspace-panel="catalog" aria-label="Phối đồ" aria-pressed="true"><?= $studioIcon('sliders-horizontal') ?></button>
+        <button type="button" class="is-active" data-workspace-tooltip data-workspace-panel="catalog" aria-label="Phối đồ" aria-pressed="true"><?= $studioIcon('palette') ?></button>
         <button type="button" data-workspace-tooltip data-workspace-mode="garment" aria-label="Chọn trang phục"><?= $studioIcon('shirt') ?></button>
-        <button type="button" data-workspace-tooltip data-workspace-collections aria-label="Bộ sưu tập của tôi"><?= $studioIcon('images') ?></button>
+        <button type="button" data-workspace-tooltip data-workspace-collections aria-label="Bộ sưu tập của tôi"><?= $studioIcon('folder-image') ?></button>
         <button type="button" data-workspace-tooltip data-workspace-panel="heritage" aria-label="Về trang phục" aria-pressed="false"><?= $studioIcon('book-open') ?></button>
         <button type="button" data-workspace-tooltip data-workspace-panel="places" aria-label="Nơi mua, thuê và chụp" aria-pressed="false"><?= $studioIcon('map-pin') ?></button>
     </div>
@@ -14,8 +14,8 @@
     <a class="workspace-logo" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>"><img src="assets/images/v-remix-leaf-logo.png" alt="" width="1280" height="1280"></a>
     <nav class="workspace-topnav" aria-label="Điều hướng V-Remix">
         <a href="index.php#stage" aria-label="Khám phá" title="Khám phá"><?= $studioIcon('house') ?><span class="workspace-topnav__label">Khám phá</span></a>
-        <span aria-current="page" aria-label="Studio"><?= $studioIcon('sliders-horizontal') ?><span class="workspace-topnav__label">Studio</span></span>
-        <button type="button" data-workspace-collections aria-label="Bộ sưu tập của tôi" title="Bộ sưu tập của tôi" disabled><?= $studioIcon('images') ?><span class="workspace-topnav__label workspace-topnav__label--desktop">Bộ sưu tập của tôi</span><span class="workspace-topnav__label workspace-topnav__label--mobile" aria-hidden="true">Bộ sưu tập</span></button>
+        <span aria-current="page" aria-label="Studio" title="Studio"><?= $studioIcon('palette') ?><span class="workspace-topnav__label">Studio</span></span>
+        <button type="button" data-workspace-collections aria-label="Bộ sưu tập của tôi" title="Bộ sưu tập của tôi" disabled><?= $studioIcon('folder-image') ?><span class="workspace-topnav__label">Bộ sưu tập của tôi</span></button>
     </nav>
     <div class="workspace-utilities">
         <button type="button" id="workspaceFullscreen" aria-label="Mở toàn màn hình" title="Mở toàn màn hình"><?= $studioIcon('maximize') ?></button>
