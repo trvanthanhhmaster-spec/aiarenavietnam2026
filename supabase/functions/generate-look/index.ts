@@ -6,6 +6,8 @@ import { normalizePlan, planPrompt, type StudioPlan } from "./studio-plan.ts";
 import { verifyGateway } from "./gateway-auth.ts";
 import { providerError } from "./provider-error.ts";
 import { imageDimensions, parseImageAssessment, reviewPrompt, type ImageAssessment } from './image-assessment.ts';
+import { loadGarmentReferences, garmentReferenceInstructions, type GarmentReference } from './garment-references.ts';
+import { selectionCopy } from './selection-copy.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -449,28 +451,29 @@ function selectedCatalog(request: LookRequest, catalog: Record<string, any>) {
     rules: (catalog.rules || []).filter((rule: any) => !rule.context || rule.context === 'all' || rule.context === request.eventSlug) };
 }
 
-async function reviewImage(request: LookRequest, catalog: Record<string, any>, image: { bytes: string; mimeType: string }, settings: RuntimeSettings) {
+async function reviewImage(request: LookRequest, catalog: Record<string, any>, image: { bytes: string; mimeType: string }, settings: RuntimeSettings, garmentReferences: GarmentReference[] = []) {
   if (!request.planning) throw new Error('Review requires a normalized plan.');
   const selected = planPrompt(request.planning, catalog);
-  const prompt = reviewPrompt(selected.slice(selected.indexOf('\n') + 1) + '\nCatalog facts: ' + JSON.stringify(selectedCatalog(request, catalog)));
+  const prompt = reviewPrompt(selected.slice(selected.indexOf('\n') + 1) + '\nCatalog facts: ' + JSON.stringify(selectedCatalog(request, catalog)))
+    + '\nThe first attachment is the generated photograph to assess, not a sample. Compare garment construction with the final sample photographs.\n' + garmentReferenceInstructions(garmentReferences);
   let response: Response;
   if (settings.imageProvider === 'webapi') {
     const url = Deno.env.get('GEMINI_WEB_BRIDGE_URL')?.replace(/\/+$/, ''), secret = Deno.env.get('GEMINI_WEB_BRIDGE_SECRET');
     if (!url || !secret) throw new Error('Review bridge is not configured.');
     response = await fetch(`${url}/v1/images/generate`, { method: 'POST', signal: AbortSignal.timeout(45000),
       headers: { 'Content-Type':'application/json', 'x-vremix-bridge-secret':secret },
-      body: JSON.stringify({ operation:'review', prompt, sourceImage:{ mimeType:image.mimeType,data:image.bytes } }) });
+      body: JSON.stringify({ operation:'review', prompt, sourceImage:{ mimeType:image.mimeType,data:image.bytes }, garmentReferences }) });
   } else {
     const config = providerConfig(false, settings);
     response = await fetch(modelEndpoint(config, settings.textModel, 'generateContent'), { method:'POST', signal:AbortSignal.timeout(45000),
-      headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt},{inline_data:{mime_type:image.mimeType,data:image.bytes}}]}],
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt},{inline_data:{mime_type:image.mimeType,data:image.bytes}}, ...garmentReferences.map(r => ({inline_data:{mime_type:r.mimeType,data:r.data}}))]}],
         generationConfig:{responseMimeType:'application/json',temperature:0.1} }) });
   }
   if (!response.ok) throw await providerError(response, settings.imageProvider === 'webapi' ? 'Gemini Web bridge' : 'Gemini review');
   const body = await response.json();
   const text = settings.imageProvider === 'webapi' ? body.text : body?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('');
   if (typeof text !== 'string') throw new Error('Empty review.');
-  return { copy:parseGeminiCopy(text), assessment:parseImageAssessment(JSON.parse(text).imageAssessment, request.planning) };
+  return { copy:selectionCopy(parseGeminiCopy(text), request, catalog), assessment:parseImageAssessment(JSON.parse(text).imageAssessment, request.planning, true) };
 }
 
 async function generateImages(
@@ -479,6 +482,7 @@ async function generateImages(
   settings: RuntimeSettings,
   maximumVariants = settings.imageVariants,
   request?: LookRequest,
+  garmentReferences: GarmentReference[] = [],
 ): Promise<{ bytes: string; mimeType: string }[]> {
   const model = settings.imageModel;
   const variants = request?.planning ? [{ key: 'Look', label: 'complete group composition', scope: 'all specified people and their assigned outfits in one photo' }] : [
@@ -516,6 +520,7 @@ async function generateImages(
           operation: request?.editInstruction ? 'group-edit' : request?.planning ? 'group' : 'edit',
           sourceImage: source ? { mimeType: source.mimeType, data: source.data } : null,
           referenceImages: request?.faceReferenceImage ? [request.faceReferenceImage] : [],
+          garmentReferences,
         }),
       });
       if (response.ok) {
@@ -542,6 +547,7 @@ async function generateImages(
             operation: request?.editInstruction ? 'group-edit' : request?.planning ? 'group' : index === 0 && mode === "text-to-image" ? "base" : "edit",
             changeScope: request?.editInstruction || variant.scope,
             references: request?.faceReferenceImage ? [request.faceReferenceImage] : [],
+            garmentReferences,
           },
         )),
       });
@@ -780,7 +786,7 @@ async function processLook(
       ? Promise.resolve([{ slug: 'custom', label: input.planning.customOccasion, description: 'User preference only; not reviewed cultural knowledge. Do not claim this occasion or outfit suitability is culturally verified.', cultural_context: 'Dịp tự nhập; cần kiểm tra độ phù hợp.', review_status: 'user-input', preset: {} }])
       : selectCatalog("studio_events", `slug=eq.${encodeURIComponent(input.eventSlug || "")}&is_active=eq.true&select=slug,label,description,cultural_context,preset`),
     selectCatalog("studio_garments", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentSlug || "")}&`}is_active=eq.true&select=id,slug,name,category,description,origin_note,significance_note,image_url,prompt_descriptor,negative_descriptor`),
-    selectCatalog("studio_garment_variants", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentVariantSlug || "")}&`}is_active=eq.true&review_status=eq.published&select=id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,prompt_descriptor,negative_descriptor,source_url,source_provider`),
+    selectCatalog("studio_garment_variants", `${input.planning ? '' : `slug=eq.${encodeURIComponent(input.garmentVariantSlug || "")}&`}is_active=eq.true&review_status=eq.published&select=id,garment_id,slug,name,description,silhouette,material,pattern_notes,color_palette,image_url,thumbnail_url,prompt_descriptor,negative_descriptor,source_url,source_provider`),
     selectCatalog("studio_accessories", `${input.planning ? '' : input.accessorySlugs?.length ? `slug=in.(${input.accessorySlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&select=id,slug,name,description,prompt_descriptor`),
     selectCatalog("studio_accessory_variants", `${input.planning ? '' : input.accessoryVariantSlugs?.length ? `slug=in.(${input.accessoryVariantSlugs.map(encodeURIComponent).join(",")})&` : "slug=eq.__none__&"}is_active=eq.true&review_status=eq.published&select=id,accessory_id,slug,name,description,material,color_palette,image_url,prompt_descriptor,source_url,source_provider`),
     selectCatalog("studio_options", "is_active=eq.true&select=option_type,slug,label,value,prompt_hint"),
@@ -809,13 +815,20 @@ async function processLook(
   };
   // Resolve every person's approved selection before calling any AI provider.
   const groupPrompt = input.planning ? planPrompt(input.planning, catalog) : '';
+  // Resolve binary samples server-side, before any quota-consuming provider call.
+  let garmentReferences: GarmentReference[] = [];
+  if (input.planning) {
+    try { garmentReferences = await loadGarmentReferences(input.planning, catalog, serviceConfig().url, fetch,
+      Deno.env.get('VREMIX_CATALOG_ORIGIN') || 'https://v-remix.vietnamsir.com'); }
+    catch { throw new Error('CATALOG_REFERENCE_UNAVAILABLE: Selected garment sample could not be loaded. No image provider was called.'); }
+  }
   let copy: Awaited<ReturnType<typeof askGemini>> | ReturnType<typeof fallbackCopy>;
   let copySource: "gemini" | "catalog-fallback" = "gemini";
   let copyWarning: string | undefined;
   try {
     // Web provider reviews the generated image and writes copy in ONE later text call.
     // Do not call an unrelated official API key before image generation.
-    if (settings.imageProvider === 'webapi' && input.planning) {
+    if (input.planning) {
       copy = fallbackCopy(input, catalog); copySource = 'catalog-fallback';
     } else copy = await askGemini(input, catalog, promptVersion, settings);
   } catch (error) {
@@ -827,7 +840,7 @@ async function processLook(
       ? `Gemini copy fallback: ${error.message}`
       : "Gemini copy fallback was used.";
   }
-  const imagePrompt = input.planning ? groupPrompt + `\nEvent: ${JSON.stringify(event[0])}` : copy.imagePrompt || fallbackImagePrompt(input, catalog);
+  const imagePrompt = input.planning ? groupPrompt + `\nEvent: ${JSON.stringify(event[0])}\n` + garmentReferenceInstructions(garmentReferences) : copy.imagePrompt || fallbackImagePrompt(input, catalog);
   const generationType = input.generationType || "image";
   let assets: GeneratedAsset[] = [];
   let imageSource: "gemini" | "catalog-fallback" = "gemini";
@@ -835,6 +848,7 @@ async function processLook(
   let videoFirstFrame: VideoFirstFrame | undefined;
   let videoFrames: Array<{ bytes: string; mimeType: string }> = [];
   let imageAssessment: ImageAssessment = {status:'not-assessed',source:'not-assessed'};
+  let reviewStatus = 'not-requested';
   if (generationType === "image" || generationType === "video" || generationType === "both") {
     try {
       const generated = await generateImages(
@@ -843,16 +857,20 @@ async function processLook(
         settings,
         input.planning ? 1 : 5,
         input,
+        garmentReferences,
       );
       assets = await storeLookbook(job.id, generated);
       if (input.planning && generated[0]) {
         try {
-          const review = await reviewImage(input, catalog, generated[0], settings);
+          const review = await reviewImage(input, catalog, generated[0], settings, garmentReferences);
           copy = review.copy; copySource = 'gemini'; copyWarning = undefined;
           imageAssessment = review.assessment;
-        } catch {
+          reviewStatus = 'completed';
+        } catch (error) {
           // Keep the usable image. Never replay a generation or fabricate a pass/score.
           imageAssessment = {status:'not-assessed',source:'not-assessed'};
+          const message = error instanceof Error ? error.message : '';
+          reviewStatus = /HTTP 403/.test(message) ? 'provider-forbidden' : /PROVIDER_SESSION_EXPIRED/.test(message) ? 'provider-session-expired' : 'unavailable';
         }
       }
       videoFrames = generated;
@@ -889,6 +907,9 @@ async function processLook(
     ...(copyWarning ? { copyWarning } : {}),
     imageSource,
     imageAssessment,
+    reviewStatus,
+    ...(input.planning ? { garmentReferences: { status: garmentReferences.length ? 'attached' : 'unavailable',
+      items: garmentReferences.map(({data: _data, mimeType: _mime, ...mapping}) => mapping) }, copyPolicy: 'selected-catalog-only' } : {}),
     ...(imageWarning ? { imageWarning } : {}),
     promptVersion: { id: promptVersion.id, version: promptVersion.version, model: promptVersion.model },
     imagePrompt,

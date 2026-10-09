@@ -17,7 +17,7 @@ async def test():
     for data, expected in [
         (b'POST / HTTP/1.0\r\nContent-Length: 20000000\r\n\r\n', PermissionError),
         (b'POST / HTTP/1.0\r\nx-vremix-bridge-secret: wrong\r\n\r\n', PermissionError),
-        (b'POST / HTTP/1.0\r\nx-vremix-bridge-secret: fixture-secret\r\nContent-Length: 24000001\r\n\r\n', ValueError),
+        (b'POST / HTTP/1.0\r\nx-vremix-bridge-secret: fixture-secret\r\nContent-Length: 32000001\r\n\r\n', ValueError),
         (b'POST / HTTP/1.0\r\nx-vremix-bridge-secret: fixture-secret\r\nTransfer-Encoding: chunked\r\n\r\n', ValueError),
         (b'POST / HTTP/1.0\r\nx-vremix-bridge-secret: fixture-secret\r\nContent-Length: 4\r\n\r\n{}', asyncio.IncompleteReadError),
     ]:

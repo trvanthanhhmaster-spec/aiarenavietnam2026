@@ -3,7 +3,7 @@ import { normalizePlan } from './studio-plan.ts';
 const plan = normalizePlan({version:1,count:2,shared:false,period:{kind:'unspecified'},people:[
   {id:1,outfit:{garment:'ao-tac',garmentVariant:'red'}},{id:2,outfit:{garment:'ao-tu-than',color:'green',scene:'temple'}}]});
 function assert(value: unknown) { if (!value) throw new Error('Assessment assertion'); }
-function fixture() { return {observedPeopleCount:2,people:[1,2].map(personId=>({personId,checks:{garment:'match',variant:'match',color:'match',pattern:'not-requested',accessories:'match',scene:'match'}}))}; }
+function fixture() { return {observedPeopleCount:2,people:[1,2].map(personId=>({personId,checks:{garment:'match',variant:'match',color:'match',pattern:'match',accessories:'match',scene:'match'}}))}; }
 Deno.test('vision status is derived from count and requested per-person checks',()=>{
   const value=fixture(); assert(parseImageAssessment(value,plan).status==='matched');
   value.people[1].checks.color='mismatch'; assert(parseImageAssessment(value,plan).status==='mismatch');
@@ -18,6 +18,7 @@ Deno.test('missing or duplicate assignment cannot certify an image',()=>{
 Deno.test('unrequested choices are not evaluated; variant color still must be checked',()=>{
   const value=fixture(); value.people[0].checks.scene='mismatch';
   assert(parseImageAssessment(value,plan).status==='matched');
+  assert(parseImageAssessment(value,plan,true).status==='mismatch');
   value.people[0].checks.color='uncertain';assert(parseImageAssessment(value,plan).status==='uncertain');
 });
 Deno.test('dimensions reflect image bytes rather than requested resolution',()=>{

@@ -16,7 +16,7 @@ for(const count of [null,1,2,5,12,2,1]) {
   for(const b of buttons) assert.equal(b.attributes['aria-pressed'],String(Number(b.dataset.personCount)===count));
 }
 const main=fs.readFileSync('assets/js/studio.js','utf8');
-const changedStart=main.indexOf('  function selectionChanged()'),changedEnd=main.indexOf('  async function generateLook()',changedStart);
+const changedStart=main.indexOf('  function selectionChanged()'),changedEnd=main.indexOf('  async function generateLook(',changedStart);
 let message;
 const changed={draftEdited:false,currentResultSelection:{},currentLookbookItems:[{}],samePlan:()=>true,setStatus:m=>message=m,syncSubmitButton(){},persistStudio(){}};
 vm.createContext(changed);vm.runInContext(main.slice(changedStart,changedEnd),changed);

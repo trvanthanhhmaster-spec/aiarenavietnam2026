@@ -357,12 +357,14 @@ require __DIR__ . '/includes/components/studio-icon.php';
                             <details class="studio-result-more" id="studioResultMore" hidden>
                                 <summary aria-label="Thêm thao tác với bản phối" title="Thêm thao tác"><span aria-hidden="true">⋯</span></summary>
                                 <div class="studio-result-more__panel" aria-label="Thao tác bổ sung">
-                                    <button type="button" id="downloadStory" aria-label="Xuất thẻ chia sẻ 9:16" hidden><span>Xuất thẻ chia sẻ</span><small>Ảnh dọc · 9:16</small></button>
+                                    <button type="button" id="downloadStory" aria-label="Xuất thẻ chia sẻ 9:16" hidden><span>Xuất thẻ chia sẻ</span><small>Khung 9:16 · giữ nguyên ảnh gốc</small></button>
+                                    <button type="button" id="generatePortrait" hidden><span>Tạo ảnh dọc 9:16</span><small>AI tạo phiên bản mới · 1 lượt</small></button>
                                     <button type="button" id="deleteCurrentVersion" hidden>Xóa phiên bản</button>
                                 </div>
                             </details>
                             <button type="button" id="addVariant" aria-label="Thêm phụ kiện vào bản phối" hidden><?= $studioIcon('sparkles') ?><span>Thêm phụ kiện</span></button>
                             <button type="button" id="retryGeneration" hidden>Thử tạo lại</button>
+                            <button type="button" id="repairGeneration" hidden>Sửa chi tiết chưa khớp</button>
                         </div>
                     </section>
 
@@ -443,6 +445,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <dl class="result-selection" id="resultSelectionInfo"></dl>
         <p class="studio-result-note" id="resultVerification" role="status">Ảnh chưa được AI đối chiếu với lựa chọn.</p>
         <p class="studio-result-note" id="resultCopySource"></p>
+        <p class="studio-result-note" id="resultReferenceSource"></p>
         <section class="studio-result" id="studioResult" hidden>
             <div class="studio-result__backdrop" aria-hidden="true"></div>
             <div class="studio-result__header">

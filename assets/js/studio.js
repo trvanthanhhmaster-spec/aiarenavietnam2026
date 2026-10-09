@@ -846,6 +846,11 @@
         sourceLink.textContent = source.title + ' ↗';
         passportSource.replaceChildren(sourceLink);
       }
+      var sourceNote = document.createElement('small');
+      sourceNote.textContent = source && /commons\.wikimedia\.org\/wiki\/File:/i.test(source.source_url || '')
+        ? 'Tư liệu hình ảnh: dùng đối chiếu dáng áo, không đủ để chứng minh nhận định lịch sử.'
+        : 'Nguồn tham khảo cần được đối chiếu theo từng nhận định; không phải chứng nhận phục dựng.';
+      passportSource.appendChild(sourceNote);
     }
     if (passportVisual) {
       var passportImage = catalogImageUrl(garmentVariant) || catalogImageUrl(garment);
@@ -1114,7 +1119,8 @@
     persistStudio();
   }
 
-  async function generateLook() {
+  async function generateLook(options) {
+    options = options || {};
     if (generationPending || collectionBusy || savingLook) return;
     if (['conflict','error','auth'].includes(window.VRemixSession.status().state)) { setStatus('Giải quyết lỗi lưu bộ sưu tập trước khi tạo ảnh.'); return; }
     var unresolvedJob = readActiveJob();
@@ -1122,7 +1128,7 @@
       setStatus('Đang kiểm tra yêu cầu trước để tránh tạo ảnh trùng.');
       return resumeGeneration(unresolvedJob);
     }
-    if (experience.dataset.guideStep !== 'review' || Planner.missing(planning, state.event) !== 'review') {
+    if ((!options.repair && !options.portrait && experience.dataset.guideStep !== 'review') || Planner.missing(planning, state.event) !== 'review') {
       setStatus('Hoàn tất bốn bước và kiểm tra thông tin trước khi tạo ảnh.');
       return;
     }
@@ -1188,6 +1194,14 @@
       generationMode: state.mode
     };
 
+    if (options.repair === true) {
+      payload.repairRequested = true; payload.aspectRatio = currentResultSelection.aspectRatio || '16:9';
+      currentRequestSelection.aspectRatio = payload.aspectRatio;
+    }
+    if (options.portrait === true) {
+      payload.portraitRequested = true; payload.aspectRatio = '9:16';
+      currentRequestSelection.aspectRatio = '9:16';
+    }
     // Representative catalog fields always belong to Person 1, not the last tab.
     var primary = payload.planning.people[0].outfit;
     Object.assign(payload, { garmentSlug: primary.garment, garmentVariantSlug: primary.garmentVariant,
@@ -1235,12 +1249,12 @@
       }
       terminalFailure = true; // A finished request with no image cannot be resumed.
       requireImageOutput(completed.output);
+      currentResultSelection = Planner.clone(currentRequestSelection);
       applyOutput(completed.output || {});
       clearActiveJob();
       generationPending = false;
       syncSubmitButton();
       setResultState('completed', resultMessage(completed.output || {}));
-      currentResultSelection = Planner.clone(currentRequestSelection);
       currentResultJobId = completed.jobId || activeJob.jobId;
       resultSaveId = createRequestId(); savedLookId = null;
       draftEdited = requestFingerprint !== selectionFingerprint();
@@ -1295,8 +1309,8 @@
       }
       clearActiveJob();
       requireImageOutput(completed.output);
-      applyOutput(completed.output || {});
       currentResultSelection = Planner.clone(currentRequestSelection);
+      applyOutput(completed.output || {});
       currentResultJobId = completed.jobId || activeJob.jobId;
       resultSaveId = createRequestId(); savedLookId = null; persistStudio();
       draftEdited = !samePlan(currentResultSelection);
@@ -1317,6 +1331,9 @@
 
   function humanizeGenerationError(message) {
     var text = String(message || '');
+    if (/CATALOG_REFERENCE_UNAVAILABLE/.test(text)) {
+      return 'Ảnh mẫu trang phục chưa tải được. Chưa gọi AI tạo ảnh; hãy chọn mẫu khác hoặc báo quản trị viên kiểm tra ảnh mẫu.';
+    }
     if (/PROVIDER_SESSION_EXPIRED|(?:Gemini|bridge).*session.*(?:expired|unauthenticated)/i.test(text)) {
       return 'Dịch vụ tạo ảnh cần được quản trị viên kết nối lại. Báo quản trị viên để khôi phục, sau đó thử lại.';
     }
@@ -1376,9 +1393,7 @@
         activeJob.jobId = body.jobId;
         saveActiveJob(activeJob);
       }
-      if (body.output && body.status === 'completed') {
-        applyOutput(body.output);
-      }
+      // The caller binds the finished output to its submit snapshot before rendering.
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
       setResultState('processing', body.output && body.output.lookbook && body.output.lookbook.items && body.output.lookbook.items.length
         ? 'Ảnh đã sẵn sàng; video đang được hoàn thiện.'
@@ -1397,10 +1412,12 @@
       return 'Các bản phối đã sẵn sàng; một số ảnh đang dùng bản gốc làm dự phòng.';
     }
     if (output.imageAssessment && output.imageAssessment.status === 'mismatch') {
-      return 'AI nhận thấy chi tiết chưa khớp lựa chọn. Ảnh vẫn được giữ; xem thông tin bản phối trước khi dùng hoặc tạo lại.';
+      return 'AI nhận thấy chi tiết chưa khớp lựa chọn. Xem thông tin bản phối hoặc bấm “Sửa chi tiết chưa khớp” để tạo phiên bản sửa.';
     }
     if (output.copySource === 'catalog-fallback') {
-      return 'Ảnh đã sẵn sàng; phần giới thiệu dùng lựa chọn và dữ liệu catalog. Chưa xác minh ảnh khớp mọi chi tiết.';
+      return output.reviewStatus === 'provider-forbidden' || output.reviewStatus === 'provider-session-expired'
+        ? 'Ảnh đã sẵn sàng nhưng dịch vụ đánh giá cần quản trị viên kiểm tra quyền truy cập. Chưa có điểm văn hóa hoặc kết luận ảnh khớp.'
+        : 'Ảnh đã sẵn sàng; phần giới thiệu dùng lựa chọn và dữ liệu catalog. Chưa xác minh ảnh khớp mọi chi tiết.';
     }
     return 'Ảnh bản phối đã sẵn sàng. Bạn có thể lưu, tải hoặc sửa lựa chọn để tạo ảnh khác.';
   }
@@ -1762,6 +1779,10 @@
     if (busy) media.pause();
     var retry = document.getElementById('retryGeneration');
     if (retry) retry.hidden = value !== 'failed';
+    ['repairGeneration','generatePortrait'].forEach(function (id) {
+      var button = document.getElementById(id);
+      if (button) button.disabled = busy || draftEdited;
+    });
     srStatus.textContent = message;
     studioStatus.textContent = message;
     studioStatus.hidden = busy || !message;
@@ -1954,6 +1975,16 @@
   if (retryGenerationButton) retryGenerationButton.addEventListener('click', function () {
     generateLook();
   });
+  var repairGenerationButton = document.getElementById('repairGeneration');
+  if (repairGenerationButton) repairGenerationButton.addEventListener('click', function () {
+    if (!currentResultSelection || !samePlan(currentResultSelection)) { setStatus('Lựa chọn đã đổi. Hãy tạo phiên bản mới hoặc mở bản này để chỉnh tiếp.'); return; }
+    if (window.confirm('Sửa các chi tiết AI đánh giá chưa khớp bằng một lượt tạo ảnh mới? Ảnh cũ vẫn được giữ.')) generateLook({repair:true});
+  });
+  var portraitGenerationButton = document.getElementById('generatePortrait');
+  if (portraitGenerationButton) portraitGenerationButton.addEventListener('click', function () {
+    if (!currentResultSelection || !samePlan(currentResultSelection)) { setStatus('Mở bản phối này để chỉnh tiếp trước khi tạo ảnh dọc.'); return; }
+    if (window.confirm('Tạo một phiên bản ảnh AI dọc 9:16 bằng một lượt mới? Đây không phải thao tác tải thẻ.')) generateLook({portrait:true});
+  });
 
   dockClose.addEventListener('click', function () {
     closeDock(true);
@@ -1978,6 +2009,10 @@
       node.textContent = text || '';
     });
     var assessment = currentOutput && currentOutput.imageAssessment;
+    var repairButton = document.getElementById('repairGeneration');
+    if (repairButton) { repairButton.hidden = !assessment || assessment.status !== 'mismatch'; repairButton.disabled = generationPending || !samePlan(currentResultSelection); }
+    var portraitButton = document.getElementById('generatePortrait');
+    if (portraitButton) { portraitButton.hidden = !currentLookbookItems.length; portraitButton.disabled = generationPending || !samePlan(currentResultSelection); }
     var statusText = {matched:'AI chưa thấy sai lệch rõ khi đối chiếu ảnh; chưa phải thẩm định văn hóa.',mismatch:'AI nhận thấy chi tiết chưa khớp. Hãy đối chiếu ảnh với lựa chọn bên trên.',uncertain:'AI chưa xác định được một số chi tiết. Bạn cần kiểm tra ảnh.', 'not-assessed':'Ảnh chưa được AI đối chiếu với lựa chọn.'};
     var verification = document.getElementById('resultVerification');
     if (verification) {
@@ -1990,7 +2025,10 @@
       verification.textContent = (statusText[assessment && assessment.status] || statusText['not-assessed']) + (findings.length ? ' ' + findings.join('. ') + '.' : '');
     }
     var provenance = document.getElementById('resultCopySource');
-    if (provenance) provenance.textContent = currentOutput && currentOutput.copySource === 'gemini' ? 'Nội dung gợi ý AI · cần đối chiếu nguồn văn hóa' : currentOutput && currentOutput.copySource === 'catalog-fallback' ? 'Nội dung từ lựa chọn và catalog · không phải đánh giá ảnh' : 'Phiên bản cũ · chưa có thông tin nguồn nội dung';
+    if (provenance) provenance.textContent = currentOutput && currentOutput.copyPolicy === 'selected-catalog-only' ? 'Mô tả từ lựa chọn và catalog · đánh giá ảnh/điểm là gợi ý AI, không phải thẩm định văn hóa' : currentOutput && currentOutput.copySource === 'gemini' ? 'Nội dung gợi ý AI · cần đối chiếu nguồn văn hóa' : currentOutput && currentOutput.copySource === 'catalog-fallback' ? 'Nội dung từ lựa chọn và catalog · không phải đánh giá ảnh' : 'Phiên bản cũ · chưa có thông tin nguồn nội dung';
+    var referenceSource = document.getElementById('resultReferenceSource');
+    if (referenceSource) referenceSource.textContent = currentOutput && currentOutput.garmentReferences && currentOutput.garmentReferences.status === 'attached'
+      ? 'Đã gửi ảnh mẫu trang phục cho AI tham chiếu; không bảo đảm mọi chi tiết được tái hiện chính xác.' : 'Phiên bản này chưa có xác nhận đã gửi ảnh mẫu trang phục cho AI.';
     var score = currentOutput && currentOutput.culturalScore;
     var assessed = currentOutput && currentOutput.culturalScoreSource === 'gemini-selection-assessment' && typeof score === 'number' && Number.isFinite(score) && score >= 0 && score <= 100;
     if (resultCulturalScore) {
@@ -2003,6 +2041,7 @@
     if (resultDetails.open) { result.hidden = false; renderResultInfo(); }
   });
   experience.addEventListener('studio:history-change', renderResultInfo);
+  experience.addEventListener('studio:selection', renderResultInfo);
   resultDownload.addEventListener('click', function (event) {
     if (resultDownload.getAttribute('aria-disabled') === 'true') {
       event.preventDefault();
@@ -2036,7 +2075,7 @@
   document.getElementById('downloadStory').addEventListener('click', async function () {
     if (!currentLookbookItems.length || this.disabled) return;
     this.disabled = true;
-    try { await downloadLookbookComposite(currentLookbookItems); setStatus('Đã tải thẻ bản phối 1080 × 1920.'); }
+    try { await downloadLookbookComposite(currentLookbookItems); setStatus('Đã tải thẻ bản phối 1080 × 1920; giữ nguyên ảnh gốc, không phải ảnh AI tạo mới theo tỷ lệ dọc.'); }
     catch (error) { setStatus(error.message || 'Không thể xuất thẻ bản phối. Ảnh gốc vẫn được giữ.'); }
     finally { this.disabled = false; }
   });

@@ -5,7 +5,7 @@ const source = fs.readFileSync('assets/js/studio.js', 'utf8');
 function extract(start, end) { return source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start))); }
 const controls = { saveLookButton: { disabled: false }, compareLooksButton: { disabled: false }, resultDownload: { hidden: false } };
 const context = { ...controls, currentLookbookItems: [{ url: 'old-result' }], currentResultSelection: null, draftEdited: false, syncSubmitButton() {}, persistStudio() {}, setStatus() {} };
-vm.runInNewContext(extract('  function selectionChanged()', '  async function generateLook()') + '\nselectionChanged();', context);
+vm.runInNewContext(extract('  function selectionChanged()', '  async function generateLook(') + '\nselectionChanged();', context);
 assert.equal(controls.saveLookButton.disabled, false, 'editing does not prevent saving the previous result');
 assert.equal(controls.resultDownload.hidden, false, 'editing does not prevent downloading the previous result');
 const show = { result: {}, document: { body: { style: {} } }, currentLookbookItems: [{ url: 'old-result' }], syncSubmitButton() {} };

@@ -42,3 +42,12 @@ const custom=Planner.create();Planner.setCount(custom,1);custom.period=Planner.p
 const repaired=context.safeCatalogCopy({copySource:'catalog-fallback',story:'Sneaker Tote not selected',culturalScore:100},{event:'custom',planning:custom});
 assert.match(repaired.story,/Đỏ son/);assert.ok(!repaired.story.includes('Sneaker'));assert.equal(repaired.culturalScore,null);
 console.log('Studio result information: snapshot rows, legacy looks, safe dates and absent content passed.');
+ids.repairGeneration=node();ids.generatePortrait=node();ids.resultReferenceSource=node();
+context.generationPending=false;context.draftEdited=false;context.currentLookbookItems=[{url:'/fixture'}];context.samePlan=()=>true;
+context.currentOutput={copyPolicy:'selected-catalog-only',copySource:'gemini',garmentReferences:{status:'attached'},imageAssessment:{status:'mismatch'}};
+context.renderResultInfo();
+assert.equal(ids.repairGeneration.hidden,false);assert.equal(ids.repairGeneration.disabled,false);
+assert.equal(ids.generatePortrait.hidden,false);assert.match(ids.resultReferenceSource.textContent,/Đã gửi ảnh mẫu/);
+assert.match(ids.resultCopySource.textContent,/Mô tả từ lựa chọn/);
+context.samePlan=()=>false;context.renderResultInfo();assert.equal(ids.repairGeneration.disabled,true);
+context.currentOutput.imageAssessment.status='uncertain';context.renderResultInfo();assert.equal(ids.repairGeneration.hidden,true,'uncertainty alone must not trigger paid repair');

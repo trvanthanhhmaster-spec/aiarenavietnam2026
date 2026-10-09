@@ -173,8 +173,8 @@ async def read_request(reader: asyncio.StreamReader, secret: str | None = None) 
     if headers.get("transfer-encoding"):
         raise ValueError("Unsupported request framing.")
     length = int(headers.get("content-length", "0"))
-    # One previous composition + one optional face sheet, each bounded below.
-    if length < 0 or length > 24_000_000:
+    # Previous composition + face sheet + bounded server-resolved garment photos.
+    if length < 0 or length > 32_000_000:
         raise ValueError("Request body is too large.")
     body = await asyncio.wait_for(reader.readexactly(length), timeout=20) if length else b""
     return f"{method} {path}", headers, body
@@ -201,6 +201,22 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     if not isinstance(references, list) or len(references) > 1:
         raise ValueError("At most one additional face reference sheet is allowed.")
     attachments.extend(references)
+    garments = payload.get("garmentReferences") or []
+    if not isinstance(garments, list) or len(garments) > 12:
+        raise ValueError("At most twelve garment references are allowed.")
+    garment_size = 0
+    for garment in garments:
+        if not isinstance(garment, dict) or not isinstance(garment.get("data"), str):
+            raise ValueError("Invalid garment reference.")
+        if len(garment["data"]) > 2_666_672:
+            raise ValueError("Garment reference is too large.")
+        decoded_size = len(base64.b64decode(garment["data"], validate=True))
+        if decoded_size > 2_000_000:
+            raise ValueError("Garment reference is too large.")
+        garment_size += decoded_size
+    if garment_size > 6_000_000:
+        raise ValueError("Garment reference set is too large.")
+    attachments.extend(garments)
     for attachment in attachments:
         if not isinstance(attachment, dict) or attachment.get("mimeType") not in ["image/png", "image/jpeg", "image/webp"]:
             raise ValueError("Invalid image attachment.")
@@ -223,9 +239,9 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     scope = str(payload.get("changeScope") or "preserve the source subject and composition")
     instruction = (
         f"The first attachment is the previous photograph to edit. Approved edit scope: {scope}. "
-        "Preserve unchanged identities, faces, clothes, camera and composition. "
+        "Preserve unchanged identities, faces, clothes, camera and composition unless the approved scope changes the scene or framing. "
         "If the people count changes, add/remove only the required people. "
-        "Additional attachments are numbered face references only; never reproduce their labels or layout. "
+        "Additional attachments are numbered face references only, except the final garment samples identified below; never reproduce their labels or layout. "
         if payload.get("operation") == "group-edit" else
         "Create ONE new group photograph as specified in the plan. "
         "The attached image, if any, is a numbered face reference sheet, NOT the output composition. "
@@ -241,6 +257,13 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     )
     if payload.get("operation") == "review":
         full_prompt = "Return JSON text only. Do not generate images or search the web.\n\n" + prompt
+    if garments:
+        full_prompt += (
+            f"\nThe final {len(garments)} attachments are garment samples, NOT numbered face sheets. "
+            "Use only their garment structure for the mapped people. Never copy sample faces, "
+            "backgrounds or unselected accessories. Explicit plan color/pattern overrides take priority. "
+            "When reviewing, compare the FIRST photograph with these final samples."
+        )
     try:
         try:
             output = await asyncio.wait_for(

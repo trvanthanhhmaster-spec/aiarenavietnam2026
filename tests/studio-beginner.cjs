@@ -61,6 +61,7 @@ const retry = element();
 context.window = { VRemixLoading: { setBusy() {} } };
 Object.assign(context, {
   resultState: element(), resultProgress: element(), srStatus: element(), studioStatus: element(),
+  draftEdited: false,
   previewGenerationStatus: element(), previewGenerationMessage: element(),
   document: { getElementById: id => id === 'retryGeneration' ? retry : element() }
 });

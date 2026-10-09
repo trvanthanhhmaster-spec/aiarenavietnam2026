@@ -48,7 +48,7 @@ assert.ok(source.includes('currentResultSelection = Planner.clone(currentRequest
 assert.ok(source.includes('selection: currentResultSelection'), 'saving uses confirmed selection, not mutable controls');
 assert.ok(source.includes("experience.dataset.guideStep !== 'review'"));
 assert.ok(!source.includes('framePlan: {'), 'new Studio never sends legacy A-E generation plans');
-const start = source.indexOf('  function selectionChanged()'), end = source.indexOf('  async function generateLook()', start);
+const start = source.indexOf('  function selectionChanged()'), end = source.indexOf('  async function generateLook(', start);
 let submits = 0;
 vm.runInNewContext(source.slice(start, end) + '\nselectionChanged(); selectionChanged();', {
   saveLookButton: {}, compareLooksButton: {}, resultDownload: {}, currentLookbookItems: [], syncSubmitButton() {},

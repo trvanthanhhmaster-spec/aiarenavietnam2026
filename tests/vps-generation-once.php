@@ -20,6 +20,9 @@ try {
     $garment = null;
     foreach ($config['garments'] ?? [] as $item) if ($item['slug'] === 'ao-tac') $garment = $item;
     if (!$garment) throw new RuntimeException('Approved test garment unavailable.');
+    $variant = null;
+    foreach ($config['garmentVariants'] ?? [] as $item) if ($item['garment_id'] === $garment['id']) { $variant = $item; break; }
+    if (!$variant) throw new RuntimeException('Approved concrete sample unavailable.');
     $uuid = bin2hex(random_bytes(16));
     $uuid = substr($uuid, 0, 8) . '-' . substr($uuid, 8, 4) . '-4' . substr($uuid, 13, 3) . '-8' . substr($uuid, 17, 3) . '-' . substr($uuid, 20);
     $payload = ['clientRequestId' => $uuid, 'eventSlug' => 'custom', 'generationType' => 'image',
@@ -27,7 +30,7 @@ try {
             'occasionNote' => 'One fictional adult wearing áo tấc in a courtyard. Technical QA only. No real person likeness.',
             'period' => ['kind' => 'unspecified', 'start' => '', 'end' => ''],
             'people' => [['id' => 1, 'name' => '', 'gender' => '', 'faceSupplied' => false,
-                'outfit' => ['garment' => $garment['slug'], 'garmentVariant' => '', 'accessories' => []]]]]];
+                'outfit' => ['garment' => $garment['slug'], 'garmentVariant' => $variant['slug'], 'accessories' => []]]]]];
     echo "Submitting ONE authorized image through public Studio gateway; no faces or collections.\n";
     [$status, $raw] = onceRequest($h, $base . '/generation-edge.php', $payload, $config['lookCsrf']);
     $job = json_decode($raw, true) ?: [];
@@ -51,9 +54,20 @@ try {
     $bytes = curl_exec($asset); $assetStatus = curl_getinfo($asset, CURLINFO_RESPONSE_CODE); curl_close($asset);
     $size = is_string($bytes) ? @getimagesizefromstring($bytes) : false;
     if ($assetStatus !== 200 || !$size || $size[0] < 256 || $size[1] < 256) throw new RuntimeException('Generated storage image could not be decoded.');
-    echo json_encode(['status' => 'completed', 'jobId' => $job['jobId'], 'imageCount' => 1,
+    if (($output['garmentReferences']['status'] ?? '') !== 'attached' || count($output['garmentReferences']['items'] ?? []) !== 1) throw new RuntimeException('Real garment sample was not attached.');
+    if (($output['copyPolicy'] ?? '') !== 'selected-catalog-only' || !str_contains($output['story'] ?? '', 'không thêm phụ kiện')) throw new RuntimeException('Selected-only copy contract failed.');
+    $evidence = ['status' => 'completed', 'jobId' => $job['jobId'], 'imageCount' => 1,
         'width' => $size[0], 'height' => $size[1], 'storageHttp' => $assetStatus,
-        'facesUploaded' => 0, 'collectionChanges' => 0], JSON_THROW_ON_ERROR) . "\n";
+        'facesUploaded' => 0, 'collectionChanges' => 0, 'garmentReferences'=>'attached', 'referenceCount'=>1,
+        'reviewStatus'=>$output['reviewStatus'] ?? 'unavailable', 'assessment'=>$output['imageAssessment'] ?? null,
+        'culturalScore'=>$output['culturalScore'] ?? null, 'copyPolicy'=>$output['copyPolicy']];
+    if (in_array('--save-artifacts', $argv, true)) {
+        $destination = dirname(__DIR__).'/artifacts/reference-generation-qa';
+        if (!is_dir($destination)) mkdir($destination,0700,true);
+        file_put_contents($destination.'/generated-image.png', $bytes);
+        file_put_contents($destination.'/evidence.json', json_encode($evidence,JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    }
+    echo json_encode($evidence, JSON_THROW_ON_ERROR) . "\n";
 } catch (Throwable $error) {
     fwrite(STDERR, $error instanceof RuntimeException ? $error->getMessage() . "\n" : "One-image check failed; no private response printed.\n"); exit(1);
 } finally { curl_close($h); }

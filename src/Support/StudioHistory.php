@@ -54,9 +54,23 @@ final class StudioHistory
                 }
             }
             unset($input['referenceJobId']);
-            $old = ['planning'=>$look['selection']['planning'] ?? null, 'eventSlug'=>$look['selection']['event'] ?? ''];
+            $old = ['planning'=>$look['selection']['planning'] ?? null, 'eventSlug'=>$look['selection']['event'] ?? '', 'aspectRatio'=>$look['selection']['aspectRatio'] ?? '16:9'];
             $image = ['url'=>$look['image_url'],'path'=>$look['storage_path'] ?? null];
             $input['history'] = ['rootJobId'=>null,'rootLookId'=>$look['id'],'parentJobId'=>null];
+        }
+        $repair = ($input['repairRequested'] ?? false) === true;
+        if ($repair) {
+            if (!isset($job)) throw new InvalidArgumentException('Phiên bản này chưa có đánh giá để sửa chi tiết.');
+            $targets = self::repairTargets($job['output']['imageAssessment'] ?? [], $old['planning'] ?? []);
+            if (!$targets) throw new InvalidArgumentException('Chưa có chi tiết sai lệch đã được AI đối chiếu.');
+            $oldPlan = StudioPlan::normalize($old['planning'] ?? null); $newPlan = StudioPlan::normalize($input['planning'] ?? null);
+            // The old photo retains its faces; private upload bytes are not restored with drafts.
+            foreach ($oldPlan['people'] as &$person) $person['faceSupplied'] = false; unset($person);
+            foreach ($newPlan['people'] as &$person) $person['faceSupplied'] = false; unset($person);
+            if (($old['eventSlug'] ?? '') !== ($input['eventSlug'] ?? '') || $oldPlan !== $newPlan) {
+                throw new InvalidArgumentException('Lựa chọn đã đổi. Hãy tạo phiên bản mới thay vì sửa theo đánh giá cũ.');
+            }
+            $input['aspectRatio'] = $old['aspectRatio'] ?? '16:9';
         }
         $before = $old['planning'] ?? null; $after = $input['planning'] ?? null;
         $eventChanged = ($old['eventSlug'] ?? '') !== ($input['eventSlug'] ?? '')
@@ -69,7 +83,23 @@ final class StudioHistory
             : 'Preserve the background because the event and scene choices are unchanged.';
         $input['editInstruction'] = "Edit the supplied previous version, NOT a fresh random composition. Preserve unchanged identities, faces, hair and garment/accessory details. Apply every changed choice, including removal of accessories and explicit color/pattern overrides. Keep pose and camera where possible without conflicting with the requested scene or people count. {$background} A person-count change may add/remove people while preserving the existing people where possible. Do not reproduce text, panels or reference-sheet labels.\n"
             . json_encode(['previousEvent'=>$old['eventSlug'] ?? '', 'requestedEvent'=>$input['eventSlug'] ?? '', 'previousPlan'=>$before,'requestedPlan'=>$after], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        if ($repair) $input['editInstruction'] .= "\nTARGETED REPAIR: correct ONLY the listed mismatches to the requested plan and attached garment samples. Preserve matched and uncertain fields; do not guess at uncertain details. A scene mismatch overrides the earlier background-preservation instruction. No extra styling accessories. Targets: " . json_encode($targets, JSON_THROW_ON_ERROR);
+        if (($input['aspectRatio'] ?? '') !== ($old['aspectRatio'] ?? '16:9')) $input['editInstruction'] .= "\nReframe to the requested aspect ratio with all main subjects fully visible. Extend the background where needed, not a horizontal image pasted into a vertical card. Do not preserve conflicting old framing.";
         return $this->storage->imageData($image);
+    }
+    public static function repairTargets(array $assessment, array $plan): array
+    {
+        if (($assessment['status'] ?? '') !== 'mismatch') return [];
+        $targets = [];
+        if (is_int($assessment['observedPeopleCount'] ?? null) && $assessment['observedPeopleCount'] !== ($plan['count'] ?? null)) $targets['peopleCount'] = $plan['count'];
+        foreach ($assessment['people'] ?? [] as $person) {
+            $id = $person['personId'] ?? null;
+            if (!is_int($id) || $id < 1 || $id > ($plan['count'] ?? 0)) continue;
+            foreach (['garment','variant','color','pattern','style','accessories','scene'] as $field) {
+                if (($person['checks'][$field] ?? '') === 'mismatch') $targets['people'][$id][] = $field;
+            }
+        }
+        return $targets;
     }
     public static function selection(array $input): array
     {
@@ -84,6 +114,11 @@ final class StudioHistory
         $safe = [];
         foreach (['story','guardrail','genZTip'] as $key) if (is_string($output[$key] ?? null)) $safe[$key] = mb_substr($output[$key], 0, 12000);
         foreach (['copySource','culturalScoreSource','imageSource'] as $key) if (is_string($output[$key] ?? null)) $safe[$key] = mb_substr($output[$key], 0, 80);
+        if (($output['copyPolicy'] ?? '') === 'selected-catalog-only') $safe['copyPolicy'] = 'selected-catalog-only';
+        if (in_array($output['reviewStatus'] ?? '', ['completed','provider-forbidden','provider-session-expired','unavailable','not-requested'], true)) $safe['reviewStatus'] = $output['reviewStatus'];
+        if (in_array($output['garmentReferences']['status'] ?? '', ['attached','unavailable'], true)) {
+            $safe['garmentReferences'] = ['status'=>$output['garmentReferences']['status'], 'count'=>min(12,max(0,(int)($output['garmentReferences']['count'] ?? count($output['garmentReferences']['items'] ?? []))))];
+        }
         $score = $output['culturalScore'] ?? null;
         if (is_numeric($score) && (float)$score >= 0 && (float)$score <= 100) $safe['culturalScore'] = (float)$score;
         if (is_array($output['imageAssessment'] ?? null)) {

@@ -5,10 +5,10 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const Planner = require('../assets/js/studio-planner.js');
 const source = fs.readFileSync('assets/js/studio.js', 'utf8');
-const start = source.indexOf('  async function generateLook()');
+const start = source.indexOf('  async function generateLook(');
 const end = source.indexOf('  async function resumeGeneration(', start);
 assert.ok(start >= 0 && end > start);
-async function check(count) {
+async function check(count, action = {}) {
   const plan = Planner.create(); Planner.setCount(plan, count); plan.shared = false;
   plan.period = Planner.period('unspecified');
   plan.people.forEach((p, i) => { p.outfit = Planner.outfit({ garment: i % 2 ? 'ao-tu-than' : 'ao-tac',
@@ -26,9 +26,9 @@ async function check(count) {
     createRequestId: () => '00000000-0000-4000-8000-000000000001', collections: { active: () => null },
     catalog: { events: [{ slug: 'ceremony', preset: { weather: 'static weather', season: 'static season' } }], generationEndpoint: '/fixture' },
     lookup: (rows, slug) => rows.find(row => row.slug === slug) || {}, syncSubmitButton() {},
-    savedLookId: null, currentResultJobId: null, buildFaceReferences: async () => null,
+    savedLookId: null, currentResultJobId: action.repair || action.portrait ? 'owned-job' : null, currentResultSelection:{aspectRatio:'9:16'}, buildFaceReferences: async () => null,
     saveActiveJob: value => { storedJob = structuredClone(value); }, clearActiveJob() {},
-    requireImageOutput() {}, applyOutput() {}, resultMessage: () => 'fixture only', notifyHistory() {},
+    requireImageOutput() {}, applyOutput() { assert.deepEqual(JSON.parse(JSON.stringify(context.currentResultSelection.planning)), expected, 'render must already use the new submit snapshot, not the previous result'); }, resultMessage: () => 'fixture only', notifyHistory() {},
     saveLookButton: {}, currentLookbookItems: [], setStatus() {},
     fetch: async (url, options) => {
       posts++; payload = JSON.parse(options.body);
@@ -38,7 +38,7 @@ async function check(count) {
     }
   };
   vm.createContext(context); vm.runInContext(source.slice(start, end), context);
-  await context.generateLook();
+  await context.generateLook(action);
   assert.equal(posts, 1, 'exactly one explicit request');
   assert.deepEqual(payload.planning, expected, 'all per-person choices survive the real submit handler');
   for (const [key, name] of Object.entries({ garment: 'garmentSlug', garmentVariant: 'garmentVariantSlug', color: 'colorSlug', pattern: 'patternSlug', style: 'styleSlug', scene: 'sceneSlug', accessories: 'accessorySlugs', accessoryVariants: 'accessoryVariantSlugs' })) {
@@ -48,8 +48,13 @@ async function check(count) {
   assert.equal(payload.generationType, 'image'); assert.equal(payload.inputImage, null);
   assert.deepEqual(JSON.parse(JSON.stringify(context.currentResultSelection.planning)), expected);
   assert.deepEqual(storedJob.selection.planning, expected);
+  assert.equal(payload.repairRequested, action.repair ? true : undefined);
+  assert.equal(payload.portraitRequested, action.portrait ? true : undefined);
+  assert.equal(payload.aspectRatio, action.repair || action.portrait ? '9:16' : '16:9');
+  assert.equal(context.currentResultSelection.aspectRatio, payload.aspectRatio);
 }
 (async () => {
   for (const count of [1, 2, 12]) await check(count);
+  await check(2,{repair:true}); await check(2,{portrait:true});
   console.log('Real submit handler: 1/2/12 people, per-person garment/variant/color/pattern/style/scene/accessories, Person-1 summary, immutable result and one explicit POST passed offline. Pixels NOT assessed.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

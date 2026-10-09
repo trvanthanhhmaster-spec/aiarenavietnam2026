@@ -3,6 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Support/StudioHistory.php';
+require __DIR__ . '/src/Support/StudioPlan.php';
 require __DIR__ . '/src/Support/EdgeGateway.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 require __DIR__ . '/src/Infrastructure/StudioStorage.php';
@@ -43,7 +44,9 @@ try {
         $client = new SupabaseAdminClient($url, $key);
         $settings = $client->select('studio_generation_settings', ['id' => 'eq.1', 'select' => 'canvas_aspect_ratio,target_resolution', 'limit' => '1']);
         if (empty($settings[0])) throw new RuntimeException('Cấu hình tạo ảnh chưa sẵn sàng.');
-        $input['aspectRatio'] = $settings[0]['canvas_aspect_ratio']; $input['targetResolution'] = $settings[0]['target_resolution'];
+        $input['aspectRatio'] = ($input['portraitRequested'] ?? false) === true ? '9:16' : $settings[0]['canvas_aspect_ratio']; $input['targetResolution'] = $settings[0]['target_resolution'];
+        if (isset($input['repairRequested']) && !is_bool($input['repairRequested'])) throw new InvalidArgumentException('Yêu cầu sửa chi tiết không hợp lệ.');
+        if (($input['repairRequested'] ?? false) && empty($input['referenceJobId']) && empty($input['referenceLookId'])) throw new InvalidArgumentException('Cần chọn phiên bản đã được đánh giá để sửa.');
         $input['generationType'] = 'image';
         unset($input['faceReferenceImage']);
         $reference = (new StudioHistory($client, new StudioStorage($url, $key), $user['id'] ?? null, $owner))->reference($input);
