@@ -143,7 +143,7 @@ assert.equal(ids.guideGarmentValue.textContent, 'Mẫu đã duyệt');
 assert.equal(ids.guideCustomize.hidden, false);
 visit('garment');
 assert.equal(guideCards[3].hidden, false);
-assert.equal(ids.garmentVariantSection.hidden, true, 'one default child does not require a redundant decision');
+assert.equal(ids.garmentVariantSection.hidden, false, 'even one sample exposes its actual photo and pattern, without requiring a second decision');
 selection({ event: 'db-event', people: 1, time: true, garment: 'another-garment' }, 'garment', 3);
 assert.equal(ids.studioExperience.dataset.guideStep, 'garment');
 assert.equal(ids.garmentVariantSection.hidden, false, 'multiple concrete samples stay visible until user is done');

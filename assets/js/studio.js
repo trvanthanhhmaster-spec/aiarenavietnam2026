@@ -2,6 +2,7 @@
   'use strict';
 
   var catalog = window.VREMIX_STUDIO || {};
+  var CatalogChoices = window.VRemixCatalogChoices;
   var experience = document.getElementById('studioExperience');
   var form = document.getElementById('studioForm');
   var frame = document.querySelector('.studio-frame');
@@ -331,10 +332,7 @@
   }
 
   function variantsForGarment() {
-    var garment = lookup(catalog.garments, state.garment);
-    return (catalog.garmentVariants || []).filter(function (item) {
-      return item.garment_id === garment.id;
-    });
+    return CatalogChoices.samples(catalog, state.garment);
   }
 
   function variantsForAccessories() {
@@ -462,9 +460,9 @@
     } else if (modeId === 'garment') {
       dockContent.innerHTML = optionList(catalog.garments, 'garment', state.garment, false);
     } else if (modeId === 'color') {
-      dockContent.innerHTML = optionList(catalog.colors, 'color', state.color, false, true);
+      dockContent.innerHTML = '<button type="button" class="studio-reference-reset" data-option-kind="color" data-option-value="">Theo mẫu áo</button>' + optionList(CatalogChoices.colors(catalog, state.garment, state.color), 'color', state.color, false, true);
     } else if (modeId === 'pattern') {
-      dockContent.innerHTML = optionList(catalog.patterns, 'pattern', state.pattern, false);
+      dockContent.innerHTML = '<p class="studio-catalog-card__note">Họa tiết đi cùng mẫu của đúng loại áo, không dùng chung một danh sách cho mọi trang phục.</p>' + garmentSampleCards();
     } else if (modeId === 'scene') {
       dockContent.innerHTML = optionList(catalog.scenes, 'scene', state.scene, false);
     } else if (modeId === 'accessory') {
@@ -485,7 +483,7 @@
     return (items || []).map(function (item) {
       var slug = String(item.slug || '');
       var selected = multiple ? selectedValue.indexOf(slug) !== -1 : selectedValue === slug;
-      var name = item.label || item.name || slug;
+      var name = (item.label || item.name || slug) + (item.legacyOverride ? ' · biến tấu đang giữ' : '');
       var detail = item.description || item.category || item.origin_note || '';
       var imageUrl = catalogImageUrl(item);
       var media = imageUrl
@@ -509,6 +507,9 @@
     var value = String(item.thumbnail_url || item.image_url || '').trim();
     if (/^https?:\/\//i.test(value)) return value;
     if (/^assets\/media\/catalog\/[a-z0-9._/-]+$/i.test(value)) return value;
+    // These place photographs and their licenses ship with the catalog. Do
+    // not apply the old generic textile illustrations to garment patterns.
+    if (!value && (catalog.scenes || []).indexOf(item) !== -1) return CatalogChoices.sceneImage(item.slug);
     return '';
   }
 
@@ -550,7 +551,7 @@
     return availableItems.map(function (item, index) {
       var slug = String(item.slug || '');
       var selected = multiple ? selectedValue.indexOf(slug) !== -1 : selectedValue === slug;
-      var name = item.label || item.name || slug;
+      var name = (item.label || item.name || slug) + (item.legacyOverride ? ' · biến tấu đang giữ' : '');
       var imageUrl = catalogImageUrl(item);
       var image = imageUrl
         ? '<img src="' + escapeHtml(imageUrl) + '" alt="Ảnh tham khảo ' + escapeHtml(name) + '" loading="lazy">'
@@ -577,8 +578,7 @@
         return normalize((item.label + ' ' + (item.description || '')).toLocaleLowerCase('vi')).includes(normalize(query));
       }), selected: state.event, multiple: false, limit: 100 },
       { kind: 'garment', items: catalog.garments, selected: state.garment, multiple: false, limit: 4 },
-      { kind: 'color', items: catalog.colors, selected: state.color, multiple: false, limit: 7 },
-      { kind: 'pattern', items: catalog.patterns, selected: state.pattern, multiple: false, limit: 4 },
+      { kind: 'color', items: CatalogChoices.colors(catalog, state.garment, state.color), selected: state.color, multiple: false, limit: 100 },
       { kind: 'accessory', items: catalog.accessories, selected: state.accessories, multiple: true, limit: 5 },
       { kind: 'style', items: catalog.styles, selected: state.style, multiple: false, limit: 4 },
       { kind: 'scene', items: catalog.scenes, selected: state.scene, multiple: false, limit: 5 }
@@ -608,6 +608,16 @@
         });
       }
     });
+    var legacyPatternSection = document.getElementById('legacyPatternSection');
+    if (legacyPatternSection) legacyPatternSection.hidden = !state.pattern;
+    if (catalogPanels.pattern) catalogPanels.pattern.textContent = state.pattern
+      ? (lookup(catalog.patterns, state.pattern).label || state.pattern) + ' · Lựa chọn từ bản phối trước, không phải mẫu thực tế đã xác minh của loại áo này.' : '';
+    var sampleColor = document.getElementById('useSampleColor');
+    if (sampleColor) sampleColor.setAttribute('aria-pressed', String(!state.color));
+    var sceneSummary = document.getElementById('catalogSceneSummary');
+    if (sceneSummary) sceneSummary.textContent = lookup(catalog.scenes, state.scene).label || 'Theo dịp mặc';
+    var occasionScene = document.getElementById('useOccasionScene');
+    if (occasionScene) occasionScene.setAttribute('aria-pressed', String(!state.scene));
     renderVariantPanels();
   }
 
@@ -615,7 +625,9 @@
     return items.map(function (item) {
       var imageUrl = catalogImageUrl(item);
       var meta = [item.material, item.pattern_notes].filter(Boolean).join(' · ');
-      return '<button type="button" class="studio-variant-card' +
+      var palette = (Array.isArray(item.color_palette) ? item.color_palette : []).map(function (slug) { return lookup(catalog.colors, slug).label; }).filter(Boolean).join(' · ');
+      var source = CatalogChoices.sourceUrl(item.source_url);
+      return '<div class="studio-reference-sample"><button type="button" class="studio-variant-card' +
         (selected.indexOf(item.slug) !== -1 ? ' is-selected' : '') +
         '" data-catalog-kind="' + escapeHtml(kind) + '" data-option-value="' + escapeHtml(item.slug) +
         '" aria-pressed="' + String(selected.indexOf(item.slug) !== -1) + '">' +
@@ -623,16 +635,30 @@
         (imageUrl ? '<img src="' + escapeHtml(imageUrl) + '" alt="Mẫu ' + escapeHtml(item.name) + '" loading="lazy">' : '') +
         '</span><span class="studio-variant-card__copy"><strong>' + escapeHtml(item.name) + '</strong>' +
         (meta ? '<small>' + escapeHtml(meta) + '</small>' : '') +
-        '<small class="studio-variant-card__source">' + escapeHtml(item.source_provider === 'wikimedia' ? 'Wikimedia · đã duyệt' : 'Nguồn biên tập') +
-        '</small></span></button>';
+        (palette ? '<small>Màu gợi ý: ' + escapeHtml(palette) + '</small>' : '') +
+        '<small class="studio-variant-card__source">' + escapeHtml(item.source_provider === 'wikimedia' ? 'Nguồn Wikimedia · mẫu đã duyệt' : 'Mẫu biên tập') +
+        '</small></span></button>' + (source ? '<a class="studio-reference-source" href="' + escapeHtml(source) + '" target="_blank" rel="noopener noreferrer">Xem nguồn ảnh ↗</a>' : '') + '</div>';
     }).join('');
+  }
+
+  function garmentSampleCards() {
+    var items = variantsForGarment();
+    return items.length ? variantCards(items, 'garmentVariant', [state.garmentVariant])
+      : '<p class="studio-catalog-empty">Chưa có mẫu màu và họa tiết được duyệt cho loại áo này. Vẫn có thể phối theo dáng áo; không tự thêm mẫu không rõ nguồn.</p>';
   }
 
   function renderVariantPanels() {
     var garmentVariants = variantsForGarment();
     if (garmentVariantSection && garmentVariantGrid) {
-      garmentVariantSection.hidden = experience.dataset.guideStep !== 'garment' || !state.garment || garmentVariants.length < 2;
-      garmentVariantGrid.innerHTML = variantCards(garmentVariants, 'garmentVariant', [state.garmentVariant]);
+      garmentVariantSection.hidden = experience.dataset.guideStep !== 'garment' || !state.garment;
+      garmentVariantGrid.innerHTML = garmentSampleCards();
+      var sampleTitle = document.getElementById('catalogGarmentVariantTitle');
+      if (sampleTitle) sampleTitle.textContent = 'Mẫu ' + (lookup(catalog.garments, state.garment).name || 'màu và họa tiết');
+      var research = document.getElementById('catalogGarmentResearch');
+      if (research) {
+        research.hidden = !(catalog.auth && catalog.auth.isAdmin);
+        research.href = 'catalog-search.php?type=garment&q=' + encodeURIComponent(lookup(catalog.garments, state.garment).name || '') + '&parent=' + encodeURIComponent(lookup(catalog.garments, state.garment).id || '');
+      }
       if (garmentVariantCount) garmentVariantCount.textContent = garmentVariants.length + ' mẫu';
       bindCatalogImageFallback(garmentVariantGrid);
     }
@@ -649,7 +675,7 @@
     if (generationPending) { setStatus('Đang tạo ảnh theo thông tin đã xác nhận. Bạn có thể sửa khi ảnh hoàn tất.'); return; }
     if (kind !== 'event' && (!planning.count || !planning.period)) return;
     if (kind === 'garmentVariant') {
-      state.garmentVariant = value;
+      if (!CatalogChoices.selectSample(state, catalog, value)) return;
     } else if (kind === 'accessoryVariant') {
       var selectedVariant = lookup(catalog.accessoryVariants, value);
       state.accessoryVariants = state.accessoryVariants.filter(function (slug) {
@@ -661,6 +687,10 @@
       if (position === -1) state.accessories.push(value);
       else state.accessories.splice(position, 1);
     } else {
+      if (kind === 'garment' && state.garment !== value) {
+        state.color = '';
+        state.pattern = '';
+      }
       state[kind] = value;
       if (kind === 'event') {
         planning.customOccasion = '';

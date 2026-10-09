@@ -93,6 +93,7 @@ $studioData = $catalog + [
     'sessionScope' => hash('sha256', $_SESSION['studio_generation_owner']),
     'auth' => [
         'authenticated' => $authUser !== null,
+        'isAdmin' => $authUser !== null && $auth->isAdmin(),
         'userId' => (string) ($authUser['id'] ?? ''),
         'loginUrl' => 'auth.php?next=' . rawurlencode(SupabaseAuth::safeNext($authNext)),
         'email' => (string) ($authUser['email'] ?? ''),
@@ -170,13 +171,14 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <section class="studio-catalog-card studio-catalog-card--variant" id="garmentVariantSection" aria-labelledby="catalogGarmentVariantTitle" hidden>
                         <div class="studio-catalog-card__head">
                             <div>
-                                <span class="studio-catalog-card__step">Tiếp theo</span>
-                                <h2 id="catalogGarmentVariantTitle">Chọn mẫu cụ thể</h2>
+                                <span class="studio-catalog-card__step">Ảnh tham khảo có nguồn</span>
+                                <h2 id="catalogGarmentVariantTitle">Mẫu màu và họa tiết</h2>
                             </div>
                             <span class="studio-catalog-card__count" id="garmentVariantCount"></span>
                         </div>
-                        <p class="studio-catalog-card__note">Mỗi mẫu có ảnh, chất liệu và họa tiết riêng để bạn xem trước rõ hơn.</p>
+                        <p class="studio-catalog-card__note">Ảnh tham khảo có nguồn. Màu và họa tiết là mô tả biên tập; xem nguồn để đối chiếu.</p>
                         <div class="studio-variant-grid" id="catalogGarmentVariants"></div>
+                        <a class="studio-reference-import" id="catalogGarmentResearch" href="catalog-search.php" hidden>Tìm thêm mẫu có nguồn trong Admin ↗</a>
                     </section>
                     <section class="guide-review" id="guideReview" aria-labelledby="guideReviewTitle" hidden>
                         <span class="guide-eyebrow">Lựa chọn của bạn</span>
@@ -195,24 +197,26 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     </div>
 
                     <details class="studio-customize" id="guideCustomize" hidden>
-                        <summary><strong>Thêm nét riêng cho người đang chọn</strong><small>Phụ kiện, màu sắc, phong cách và nơi chụp · tuỳ chọn</small></summary>
+                        <summary><strong>Thêm nét riêng cho người đang chọn</strong><small>Phụ kiện, biến tấu màu và phong cách · tùy chọn</small></summary>
                     <section class="studio-catalog-card studio-catalog-card--style" aria-labelledby="catalogStyleTitle">
                         <div class="studio-catalog-card__head"><h2 id="catalogStyleTitle">Phong cách bạn thích</h2><button type="button" data-mode="style">Xem tất cả ›</button></div>
                         <div class="studio-catalog-grid studio-catalog-grid--style" id="catalogStyles"></div>
                     </section>
                     <section class="studio-catalog-card studio-catalog-card--color" aria-labelledby="catalogColorTitle">
                         <div class="studio-catalog-card__head">
-                            <h2 id="catalogColorTitle">Màu bạn thích</h2>
-                            <button type="button" data-mode="color">Xem tất cả <span aria-hidden="true">›</span></button>
+                            <h2 id="catalogColorTitle">Biến tấu màu</h2>
+                            <button type="button" data-mode="color">Xem màu <span aria-hidden="true">›</span></button>
                         </div>
+                        <p class="studio-catalog-card__note">Màu gợi ý theo loại áo, không phải mẫu sản phẩm đã xác minh. Không biến tấu để giữ màu của mẫu áo.</p>
+                        <button class="studio-reference-reset" type="button" data-catalog-kind="color" data-option-value="" id="useSampleColor">Theo mẫu áo</button>
                         <div class="studio-catalog-grid studio-catalog-grid--color" id="catalogColors"></div>
                     </section>
-                    <section class="studio-catalog-card studio-catalog-card--pattern" aria-labelledby="catalogPatternTitle">
+                    <section class="studio-catalog-card studio-catalog-card--pattern" id="legacyPatternSection" aria-labelledby="catalogPatternTitle" hidden>
                         <div class="studio-catalog-card__head">
-                            <h2 id="catalogPatternTitle">Họa tiết</h2>
-                            <button type="button" data-mode="pattern">Xem tất cả <span aria-hidden="true">›</span></button>
+                            <h2 id="catalogPatternTitle">Biến tấu họa tiết đang giữ</h2>
                         </div>
-                        <div class="studio-catalog-grid studio-catalog-grid--pattern" id="catalogPatterns"></div>
+                        <p class="studio-catalog-card__note" id="catalogPatterns"></p>
+                        <button class="studio-reference-reset" type="button" data-catalog-kind="pattern" data-option-value="">Dùng họa tiết của mẫu áo</button>
                     </section>
                     <section class="studio-catalog-card studio-catalog-card--accessory" aria-labelledby="catalogAccessoryTitle">
                         <div class="studio-catalog-card__head">
@@ -231,13 +235,12 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         </div>
                         <div class="studio-variant-grid studio-variant-grid--accessory" id="catalogAccessoryVariants"></div>
                     </section>
-                    <section class="studio-catalog-card studio-catalog-card--scene" aria-labelledby="catalogSceneTitle">
-                        <div class="studio-catalog-card__head">
-                            <h2 id="catalogSceneTitle">Chọn nơi xuất hiện</h2>
-                            <button type="button" data-mode="scene">Xem tất cả <span aria-hidden="true">›</span></button>
-                        </div>
+                    <details class="studio-scene-customize">
+                        <summary><span><strong>Đổi nền ảnh</strong><small id="catalogSceneSummary">Theo dịp mặc</small></span><span aria-hidden="true">›</span></summary>
+                        <p class="studio-catalog-card__note">Không cần chọn lại bối cảnh. Chỉ đổi khi muốn nền khác với dịp mặc; nền này dùng chung cho cả nhóm.</p>
+                        <button class="studio-reference-reset" type="button" data-catalog-kind="scene" data-option-value="" id="useOccasionScene">Theo dịp mặc</button>
                         <div class="studio-catalog-grid studio-catalog-grid--scene" id="catalogScenes"></div>
-                    </section>
+                    </details>
                     </details>
 
                     <nav class="studio-tool-list" aria-label="Các lớp phối đồ">
@@ -487,6 +490,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-loading.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-loading.js') ?>" defer></script>
     <script src="assets/js/studio-result-actions.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-result-actions.js') ?>" defer></script>
     <script src="assets/js/studio-lookbook-card.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-lookbook-card.js') ?>" defer></script>
+    <script src="assets/js/studio-catalog-choices.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-catalog-choices.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>

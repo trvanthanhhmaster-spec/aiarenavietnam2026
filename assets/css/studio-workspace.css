@@ -614,6 +614,28 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .studio-customize > summary { min-height: 54px; }
 .studio-customize > summary strong { font-size: 13px; }
 .studio-customize > summary small { font-size: 12px; }
+.studio-reference-sample { min-width: 0; }
+#garmentVariantSection > .studio-catalog-card__note, .studio-customize .studio-catalog-card__note { font-size: 12px; line-height: 1.7; margin-bottom: 14px; }
+.studio-reference-sample > .studio-variant-card { width: 100%; grid-template-columns: 94px minmax(0, 1fr); padding: 9px; border-radius: 14px; gap: 12px; }
+.studio-reference-sample .studio-variant-card__media { min-height: 112px; border-radius: 9px; }
+.studio-reference-sample .studio-variant-card__copy { gap: 7px; }
+.studio-reference-sample .studio-variant-card__copy strong { font-family: inherit; line-height: 1.5; }
+.studio-reference-sample .studio-variant-card__copy small { font-size: 12px; line-height: 1.6; }
+.studio-reference-sample .studio-variant-card__source { font-size: 10px !important; letter-spacing: 0; text-transform: none; }
+.studio-reference-source, .studio-reference-import { display: inline-block; margin: 8px 0 6px; color: #595a66; font-size: 12px; line-height: 1.6; text-underline-offset: 3px; }
+.studio-reference-source { margin-left: 10px; }
+.studio-reference-import[hidden] { display: none; }
+.studio-reference-reset { min-height: 42px; padding: 8px 12px; margin: 0 0 12px; border: 1px solid #dcd9e3; border-radius: 12px; background: #fff; color: #35353e; font: inherit; font-size: 12px; }
+.studio-reference-reset[aria-pressed="true"] { border-color: #43434b; background: #efedf3; }
+.studio-reference-reset:focus-visible, .studio-reference-source:focus-visible, .studio-reference-import:focus-visible { outline: 2px solid #17171b; outline-offset: 3px; }
+.studio-scene-customize { margin-top: 0; padding: 0 14px 14px; border-top: 1px solid #e5dfe5; }
+.studio-scene-customize > summary { display: flex; min-height: 68px; gap: 16px; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; }
+.studio-scene-customize > summary::-webkit-details-marker { display: none; }
+.studio-scene-customize > summary > span:first-child { display: grid; gap: 5px; }
+.studio-scene-customize > summary strong { font-size: 13px; font-weight: 600; }
+.studio-scene-customize > summary small { font-size: 12px; color: #64646f; }
+.studio-scene-customize[open] > summary > span:last-child { transform: rotate(90deg); }
+.studio-scene-customize > summary:focus-visible { outline: 2px solid #17171b; outline-offset: 2px; }
 .studio-rail__status { font-size: 13px; line-height: 1.6; }
 .studio-preview__empty small { font-size: 13px; max-width: 38ch; }
 .studio-variants__actions button, .studio-variants__actions .result-download {

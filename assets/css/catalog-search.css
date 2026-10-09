@@ -40,6 +40,8 @@
 }
 .catalog-search-form label,
 .catalog-source-card__action label { display: grid; gap: 8px; }
+.catalog-search-form > p { margin: 0; color: var(--admin-muted); font-size: 13px; line-height: 1.7; }
+.catalog-search-form button:disabled { opacity: .45; cursor: not-allowed; }
 .catalog-search-form label > span,
 .catalog-source-card__action label > span {
   color: var(--admin-muted);

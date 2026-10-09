@@ -76,7 +76,7 @@
     document.getElementById('guideTimeValue').textContent = guide.labels.time || 'Chưa chọn';
     var activeOutfit = guide.planning && guide.planning.people[guide.planning.activePerson - 1];
     document.getElementById('guideCustomize').hidden = guideStep !== 'garment' || !activeOutfit || !activeOutfit.outfit.garment;
-    document.getElementById('garmentVariantSection').hidden = guideStep !== 'garment' || guide.variantCount < 2;
+    document.getElementById('garmentVariantSection').hidden = guideStep !== 'garment' || !activeOutfit || !activeOutfit.outfit.garment;
     guideNavigation.hidden = guideStep === 'review';
     guideBack.hidden = guideStep === 'event';
     var active = guide.planning && guide.planning.people[guide.planning.activePerson - 1];

@@ -4,8 +4,12 @@ declare(strict_types=1);
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
+require __DIR__ . '/src/Infrastructure/WikimediaCatalog.php';
+require __DIR__ . '/src/Infrastructure/CatalogResearch.php';
 
 use App\Infrastructure\SupabaseAdminClient;
+use App\Infrastructure\WikimediaCatalog;
+use App\Infrastructure\CatalogResearch;
 use App\Support\Env;
 use App\Support\SupabaseAuth;
 
@@ -55,16 +59,25 @@ $accessories = $client->select('studio_accessories', [
 $message = '';
 $error = '';
 $results = [];
-$query = trim((string) ($_GET['q'] ?? ''));
-$entityType = in_array($_GET['type'] ?? '', ['garment', 'accessory'], true)
-    ? (string) $_GET['type']
+$query = trim((string) ($_POST['q'] ?? $_GET['q'] ?? ''));
+$entityType = in_array($_POST['type'] ?? $_GET['type'] ?? '', ['garment', 'accessory'], true)
+    ? (string) ($_POST['type'] ?? $_GET['type'])
     : 'garment';
+$selectedParent = (string) ($_POST['parent_id'] ?? $_GET['parent'] ?? '');
+$sources = new WikimediaCatalog();
+// Dedicated server-only mount, never provider cookies or credentials in HTML.
+Env::load('/run/vremix/catalog-research.env');
+$research = new CatalogResearch((string) getenv('VREMIX_CATALOG_BRIDGE_URL'), (string) getenv('VREMIX_CATALOG_BRIDGE_SECRET'));
+$researchRequested = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'research';
+$cacheKey = hash('sha256', $entityType . '|' . $query . '|' . $selectedParent);
+$researchFiltered = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!$auth->verifyCsrf((string) ($_POST['csrf'] ?? ''))) {
             throw new RuntimeException('Phiên quản trị đã hết hạn. Hãy tải lại trang.');
         }
+        if (!$researchRequested) {
         $entityType = in_array($_POST['type'] ?? '', ['garment', 'accessory'], true)
             ? (string) $_POST['type']
             : '';
@@ -99,6 +112,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($title === '' || $externalId === '') {
             throw new RuntimeException('Nguồn thiếu tên hoặc ID Wikimedia.');
         }
+        // Re-read authoritative metadata. A form cannot substitute another
+        // file URL/license/description while retaining a trusted provider host.
+        $candidate = $sources->file($externalId);
+        $title = $candidate['title']; $description = $candidate['description'];
+        $creator = $candidate['creator']; $license = $candidate['license'];
+        $sourceUrl = $candidate['source_url']; $imageUrl = $candidate['image_url']; $thumbnailUrl = $candidate['thumbnail_url'];
+        if ($license === '') throw new RuntimeException('Nguồn chưa có giấy phép rõ ràng. Hãy kiểm tra trước khi nhập.');
 
         $sourceRows = $client->insert('cultural_sources', [
             'title' => 'Wikimedia: ' . $title,
@@ -138,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
         }
         $message = 'Đã nhập “' . $title . '” làm bản nháp. Hãy mở mục Mẫu catalog để biên tập và xuất bản.';
+        }
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
     }
@@ -148,60 +169,34 @@ if ($query !== '') {
         if (mb_strlen($query) < 2 || mb_strlen($query) > 100) {
             throw new RuntimeException('Từ khoá cần từ 2 đến 100 ký tự.');
         }
-        $endpoint = 'https://commons.wikimedia.org/w/api.php?' . http_build_query([
-            'action' => 'query',
-            'generator' => 'search',
-            'gsrsearch' => '"' . str_replace('"', '', $query) . '"',
-            'gsrnamespace' => '6',
-            'gsrlimit' => '18',
-            'prop' => 'imageinfo',
-            'iiprop' => 'url|mime|extmetadata',
-            'iiurlwidth' => '720',
-            'format' => 'json',
-            'formatversion' => '2',
-            'origin' => '*',
-        ], '', '&', PHP_QUERY_RFC3986);
-        $handle = curl_init($endpoint);
-        if ($handle === false) {
-            throw new RuntimeException('Không thể khởi tạo tìm kiếm Wikimedia.');
-        }
-        curl_setopt_array($handle, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 18,
-            CURLOPT_USERAGENT => 'V-Remix-Audition/1.0 (catalog curator)',
-        ]);
-        $body = curl_exec($handle);
-        $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
-        if (!is_string($body) || $status !== 200) {
-            throw new RuntimeException('Wikimedia tạm thời không phản hồi.');
-        }
-        $payload = json_decode($body, true, 128, JSON_THROW_ON_ERROR);
-        foreach ((array) ($payload['query']['pages'] ?? []) as $page) {
-            $info = $page['imageinfo'][0] ?? null;
-            if (!is_array($info)) {
-                continue;
-            }
-            if (!str_starts_with((string) ($info['mime'] ?? ''), 'image/')) {
-                continue;
-            }
-            $metadata = is_array($info['extmetadata'] ?? null) ? $info['extmetadata'] : [];
-            $meta = static fn (string $key): string => (string) ($metadata[$key]['value'] ?? '');
-            $pageId = (string) ($page['pageid'] ?? '');
-            $results[] = [
-                'external_id' => $pageId,
-                'title' => preg_replace('/^File:/', '', (string) ($page['title'] ?? '')),
-                'description' => $plainText($meta('ImageDescription')),
-                'creator' => $plainText($meta('Artist')),
-                'license' => $plainText($meta('LicenseShortName')),
-                'license_url' => (string) ($metadata['LicenseUrl']['value'] ?? ''),
-                'image_url' => (string) ($info['url'] ?? ''),
-                'thumbnail_url' => (string) ($info['thumburl'] ?? $info['url'] ?? ''),
-                'source_url' => 'https://commons.wikimedia.org/?curid=' . rawurlencode($pageId),
-            ];
-        }
+        $results = $sources->search($query);
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
+    }
+}
+// No AI work on GET, no automatic retries, and cached ranking for an hour.
+if ($error === '' && $query !== '') {
+    $cached = $_SESSION['catalog_research_cache'] ?? null;
+    if (($researchRequested || ($_GET['all'] ?? '') !== '1') && is_array($cached) && ($cached['key'] ?? '') === $cacheKey && ($cached['at'] ?? 0) > time() - 3600) {
+        $results = $cached['rows'];
+        $researchFiltered = true;
+        if ($message === '') $message = 'Đang dùng kết quả AI đã lưu tạm; không gọi lại provider. Kiểm tra ảnh và nguồn trước khi nhập nháp.';
+    } elseif ($researchRequested) {
+        try {
+            if (!$auth->verifyCsrf((string) ($_POST['csrf'] ?? ''))) throw new RuntimeException('Phiên quản trị đã hết hạn. Hãy tải lại trang.');
+            $parent = null;
+            foreach ($entityType === 'garment' ? $garments : $accessories as $row) if ($row['id'] === $selectedParent) $parent = $row;
+            if ($parent === null) throw new RuntimeException('Chọn đúng loại áo hoặc phụ kiện để AI lọc tư liệu.');
+            if (($_SESSION['catalog_research_at'] ?? 0) > time() - 60) throw new RuntimeException('Hãy chờ một phút trước lượt AI tiếp theo.');
+            if (!$research->ready()) throw new RuntimeException('Kết nối AI tìm tư liệu chưa được cấu hình. Vẫn có thể nhập nguồn thủ công.');
+            $_SESSION['catalog_research_at'] = time();
+            $results = $research->rank($parent['name'], $results);
+            $researchFiltered = true;
+            $_SESSION['catalog_research_cache'] = ['key' => $cacheKey, 'at' => time(), 'rows' => $results];
+            $message = 'AI đã lọc theo mô tả nguồn, chưa kiểm chứng chi tiết trong ảnh. Nhập mẫu làm nháp, biên tập màu/họa tiết rồi xuất bản để Studio dùng lại.';
+        } catch (Throwable $exception) {
+            $error = $exception instanceof RuntimeException ? $exception->getMessage() : 'Không đọc được kết quả AI. Không tự gọi lại; nguồn thủ công vẫn được giữ.';
+        }
     }
 }
 ?>
@@ -231,11 +226,26 @@ if ($query !== '') {
     </section>
     <?php if ($message !== ''): ?><p class="admin-alert"><?= $escape($message) ?></p><?php endif; ?>
     <?php if ($error !== ''): ?><p class="admin-alert admin-alert--error"><?= $escape($error) ?></p><?php endif; ?>
+    <?php if ($researchFiltered): ?><p><a href="catalog-search.php?<?= $escape(http_build_query(['q'=>$query,'type'=>$entityType,'parent'=>$selectedParent,'all'=>'1'])) ?>">Xem toàn bộ nguồn, không lọc AI ↗</a></p><?php endif; ?>
     <form class="catalog-search-form" method="get">
         <label><span>Tìm loại trang phục, họa tiết hoặc phụ kiện</span><input type="search" name="q" value="<?= $escape($query) ?>" placeholder="Ví dụ: áo Nhật Bình, khăn vấn, traditional Vietnamese dress" required minlength="2" maxlength="100"></label>
         <label><span>Nhập cho nhóm</span><select name="type"><option value="garment"<?= $entityType === 'garment' ? ' selected' : '' ?>>Trang phục</option><option value="accessory"<?= $entityType === 'accessory' ? ' selected' : '' ?>>Phụ kiện</option></select></label>
         <button class="admin-button admin-button--solid" type="submit">Tìm nguồn <span>↗</span></button>
     </form>
+    <?php if ($query !== '' && $results !== []): ?>
+    <form method="post" class="catalog-search-form">
+        <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
+        <input type="hidden" name="action" value="research"><input type="hidden" name="q" value="<?= $escape($query) ?>"><input type="hidden" name="type" value="<?= $escape($entityType) ?>">
+        <label><span>AI lọc ảnh theo đúng loại</span><select name="parent_id" required>
+            <option value="">Chọn loại áo / phụ kiện</option>
+            <?php foreach ($entityType === 'garment' ? $garments : $accessories as $parent): ?>
+            <option value="<?= $escape($parent['id']) ?>"<?= $parent['id'] === $selectedParent ? ' selected' : '' ?>><?= $escape($parent['name']) ?></option>
+            <?php endforeach; ?>
+        </select></label>
+        <p>Chỉ lọc tư liệu có sẵn theo mô tả, chưa phân tích chi tiết ảnh. Một lượt AI khi bấm; kết quả lưu tạm 1 giờ. Mẫu đã xuất bản được dùng lại trong Studio.</p>
+        <button class="admin-button admin-button--solid" type="submit"<?= !$research->ready() ? ' disabled' : '' ?>>AI lọc tư liệu</button>
+    </form>
+    <?php endif; ?>
     <section class="catalog-results" aria-label="Kết quả nguồn Wikimedia">
         <?php foreach ($results as $result): ?>
             <article class="catalog-source-card">
@@ -245,14 +255,16 @@ if ($query !== '') {
                     <h2><?= $escape($result['title']) ?></h2>
                     <p><?= $escape($result['description'] ?: 'Chưa có mô tả tiếng Việt; cần biên tập sau khi nhập.') ?></p>
                     <small><?= $escape($result['creator'] ?: 'Chưa rõ tác giả') ?></small>
+                    <?php if (isset($result['research_note'])): ?><p><strong>AI hỗ trợ · cần duyệt:</strong> <?= $escape($result['research_note']) ?></p><?php endif; ?>
                 </div>
                 <form method="post" class="catalog-source-card__action">
                     <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>">
                     <input type="hidden" name="type" value="<?= $escape($entityType) ?>">
+                    <input type="hidden" name="q" value="<?= $escape($query) ?>">
                     <input type="hidden" name="candidate" value="<?= $escape(base64_encode(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR))) ?>">
                     <label><span>Loại cha</span><select name="parent_id" required>
                         <?php foreach ($entityType === 'garment' ? $garments : $accessories as $parent): ?>
-                            <option value="<?= $escape($parent['id']) ?>"><?= $escape($parent['name']) ?></option>
+                            <option value="<?= $escape($parent['id']) ?>"<?= $parent['id'] === $selectedParent ? ' selected' : '' ?>><?= $escape($parent['name']) ?></option>
                         <?php endforeach; ?>
                     </select></label>
                     <a href="<?= $escape($result['source_url']) ?>" target="_blank" rel="noopener noreferrer">Xem nguồn ↗</a>
@@ -260,7 +272,7 @@ if ($query !== '') {
                 </form>
             </article>
         <?php endforeach; ?>
-        <?php if ($query !== '' && $results === [] && $error === ''): ?><p class="catalog-results__empty">Không tìm thấy ảnh phù hợp. Hãy thử từ khoá tiếng Anh hoặc tên trang phục rộng hơn.</p><?php endif; ?>
+        <?php if ($query !== '' && $results === [] && $error === ''): ?><p class="catalog-results__empty"><?= $researchFiltered ? 'AI chưa chọn được tư liệu phù hợp. Mở toàn bộ nguồn để tự đối chiếu; không tự gọi lại AI.' : 'Không tìm thấy ảnh phù hợp. Hãy thử từ khóa tiếng Anh hoặc tên trang phục rộng hơn.' ?></p><?php endif; ?>
     </section>
 </main>
 </body>

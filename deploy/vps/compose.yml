@@ -15,6 +15,7 @@ services:
     volumes:
       - /opt/vremix/current:/var/www/html:ro
       - /etc/vremix/app.env:/var/www/html/.env:ro
+      - /etc/vremix/catalog-research.env:/run/vremix/catalog-research.env:ro
       - /var/lib/vremix:/var/lib/vremix
       - /var/log/vremix:/var/log/vremix
     tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
@@ -23,4 +24,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
