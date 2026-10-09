@@ -148,6 +148,11 @@ dùng; không sửa role, email hoặc mật khẩu. Icon thanh bên có nhãn k
 và focus bàn phím. Kiểm thử offline: `node tests/account-profile.cjs` và
 `node tests/studio-auth-modal.cjs` (không ghi vào Supabase thật).
 
+Gia hạn đăng nhập cùng tài khoản giữ phiên và CSRF của các tab đang mở;
+đăng nhập mới hoặc đổi tài khoản vẫn xoay mã bảo vệ. Xem
+[sửa phiên lưu và phản hồi số người](docs/studio-session-and-people-feedback.md).
+Kiểm thử: `php tests/auth-refresh.php`, `node tests/studio-people-feedback.cjs`.
+
 Mở `auth.php` để đăng ký/đăng nhập bằng email hoặc Google OAuth. Phiên đăng
 nhập dùng cookie HttpOnly và được dùng chung giữa Studio, thư viện Look và
 Admin. Cấu hình Google tại **Admin → Accounts → Đăng nhập Google**; kết nối máy

@@ -35,8 +35,12 @@
     id('customOccasionStatus').setAttribute('aria-label', 'Dịp đã chọn: ' + (plan.customOccasion || ''));
     id('useNoteOccasion').disabled = id('occasionNote').value.trim().length < 2;
     id('groupCount').value = plan.count || '';
+    id('chooseGroup').setAttribute('aria-pressed', String(plan.count > 2));
+    id('groupCountFields').hidden = !(plan.count > 2);
+    id('plannerPeopleSummary').hidden = !plan.count;
+    id('plannerPeopleSummary').textContent = plan.count ? 'Đã chọn ' + plan.count + ' người. Tiếp tục để chọn thời gian.' : '';
     document.querySelectorAll('[data-person-count]').forEach(function (b) { b.setAttribute('aria-pressed', String(Number(b.dataset.personCount) === plan.count)); });
-    document.querySelectorAll('[data-period]').forEach(function (b) { b.setAttribute('aria-pressed', String(plan.period && b.dataset.period === plan.period.kind)); });
+    document.querySelectorAll('[data-period]').forEach(function (b) { b.setAttribute('aria-pressed', String(Boolean(plan.period && b.dataset.period === plan.period.kind))); });
     document.querySelectorAll('[data-group-mode]').forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.groupMode === 'shared') === plan.shared)); });
     var p = plan.people[plan.activePerson - 1]; if (!p) return;
     id('plannerPersonHint').textContent = plan.count === 1 ? 'Chọn bộ bạn thích rồi tiếp tục.' : 'Đang phối cho ' + (p.name || 'Người ' + p.id) + '. ' + (plan.shared && p.id === 1 ? 'Bộ này là gợi ý chung cho những người chưa tùy chỉnh.' : 'Bạn có thể chọn trang phục và phụ kiện riêng.');

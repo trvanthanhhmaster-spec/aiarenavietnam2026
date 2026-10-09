@@ -331,10 +331,14 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <section class="studio-auto-create" id="studioForm" aria-live="polite">
                         <div class="studio-rail__copy">
                             <span class="studio-rail__status"><i></i><span id="studioStatus" hidden></span></span>
-                            <small id="studioDraftStatus" role="status"></small>
-                            <button type="button" id="retryDraftSync" hidden>Thử lưu lại</button>
-                            <button type="button" id="keepLocalCollection" hidden>Giữ bản trên thiết bị thành bộ riêng</button>
-                            <button type="button" id="loadServerCollections" hidden>Mở bản mới nhất</button>
+                            <div id="studioDraftNotice" class="studio-draft-notice" hidden>
+                                <p id="studioDraftStatus" role="status"></p>
+                                <div class="studio-draft-notice__actions">
+                                    <button type="button" class="planner-secondary" id="retryDraftSync" hidden>Thử lưu lại</button>
+                                    <button type="button" class="planner-secondary" id="keepLocalCollection" hidden>Giữ bản trên thiết bị thành bộ riêng</button>
+                                    <button type="button" class="planner-secondary" id="loadServerCollections" hidden>Mở bản mới nhất</button>
+                                </div>
+                            </div>
                             <p id="selectionSummary" hidden></p>
                         </div>
                         <label class="studio-upload" for="inputImage" hidden>

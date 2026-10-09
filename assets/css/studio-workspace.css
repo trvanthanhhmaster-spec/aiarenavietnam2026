@@ -487,7 +487,11 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .library-draft { margin: 16px 0 24px; padding: 16px; border: 1px solid #e6e3ec; border-radius: 14px; }
 .library-draft h3 { margin: 0; font-size: 16px; }
 .library-draft button { margin: 4px 4px 0 0; }
-#studioDraftStatus { display: block; margin-top: 8px; font-size: 12px; color: #64646f; }
+.studio-draft-notice { margin-top: 14px; padding: 14px; border: 1px solid #e3d8cb; border-radius: 12px; background: #faf5ee; }
+.studio-rail__copy #studioDraftStatus { margin: 0; font-size: 12px; line-height: 1.65; color: #69523c; }
+.studio-draft-notice__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.studio-draft-notice__actions .planner-secondary { min-height: 40px; padding: 9px 12px; font-size: 12px; background: #fff; }
+.planner-people-summary { margin-top: 14px; margin-bottom: 0; }
 .workspace-panel-header p, .guide-card-note { font-size: 13px; line-height: 1.65; }
 .guide-card-note { color: #64646f; margin: 0 0 18px; }
 .planner-choices + .guide-card-note, .planner-person-tabs + .guide-card-note { margin-top: 12px; }

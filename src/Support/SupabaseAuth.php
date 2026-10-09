@@ -315,25 +315,29 @@ final class SupabaseAuth
         $payload = $this->authRequest('POST', '/auth/v1/token?grant_type=refresh_token', [
             'refresh_token' => $refreshToken,
         ]);
-        $this->storeSession($payload);
+        $this->storeSession($payload, true);
         return (array) $_SESSION[self::SESSION_USER];
     }
 
     /**
      * @param array<string, mixed> $payload
      */
-    private function storeSession(array $payload): void
+    private function storeSession(array $payload, bool $refresh = false): void
     {
         $user = $payload['user'] ?? null;
         if (!is_array($user) || empty($user['id']) || empty($payload['access_token'])) {
             throw new RuntimeException('Supabase không trả về phiên đăng nhập hợp lệ.');
         }
-        session_regenerate_id(true);
+        // Same-identity refresh must not invalidate CSRF tokens in open tabs.
+        // Actual sign-ins and account changes still rotate both tokens.
+        $keepCsrf = $refresh && ($user['id'] === ($_SESSION[self::SESSION_USER]['id'] ?? null))
+            && !empty($_SESSION[self::SESSION_CSRF]);
+        if (!$keepCsrf) session_regenerate_id(true);
         $_SESSION[self::SESSION_USER] = $user;
         $_SESSION[self::SESSION_ACCESS_TOKEN] = (string) $payload['access_token'];
         $_SESSION[self::SESSION_REFRESH_TOKEN] = (string) ($payload['refresh_token'] ?? '');
         $_SESSION[self::SESSION_EXPIRES_AT] = time() + max(60, (int) ($payload['expires_in'] ?? 3600));
-        $_SESSION[self::SESSION_CSRF] = bin2hex(random_bytes(24));
+        if (!$keepCsrf) $_SESSION[self::SESSION_CSRF] = bin2hex(random_bytes(24));
     }
 
     private function clearSession(): void

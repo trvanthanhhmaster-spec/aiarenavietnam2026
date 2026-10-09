@@ -1079,14 +1079,14 @@
   function selectionChanged() {
     // Editing is never permission to consume a provider generation.
     draftEdited = !currentResultSelection || !samePlan(currentResultSelection);
-    if (currentLookbookItems.length) setStatus('Lựa chọn đã đổi. Ảnh đang hiện là bản tạo trước; kiểm tra rồi tạo ảnh mới khi bạn muốn.');
+    if (currentLookbookItems.length) setStatus(draftEdited ? 'Lựa chọn đã đổi. Ảnh đang hiện là bản tạo trước; kiểm tra rồi tạo ảnh mới khi bạn muốn.' : '');
     syncSubmitButton();
     persistStudio();
   }
 
   async function generateLook() {
     if (generationPending || collectionBusy || savingLook) return;
-    if (['conflict','error'].includes(window.VRemixSession.status().state)) { setStatus('Giải quyết lỗi lưu bộ sưu tập trước khi tạo ảnh.'); return; }
+    if (['conflict','error','auth'].includes(window.VRemixSession.status().state)) { setStatus('Giải quyết lỗi lưu bộ sưu tập trước khi tạo ảnh.'); return; }
     var unresolvedJob = readActiveJob();
     if (unresolvedJob) {
       setStatus('Đang kiểm tra yêu cầu trước để tránh tạo ảnh trùng.');
@@ -2251,8 +2251,10 @@
   document.addEventListener('vremix:draft-sync', function (event) {
     var draftNotice = document.getElementById('studioDraftStatus');
     draftNotice.textContent = event.detail.message;
-    draftNotice.hidden = !['error', 'conflict'].includes(event.detail.state);
-    document.getElementById('retryDraftSync').hidden = event.detail.state !== 'error';
+    draftNotice.hidden = !['error', 'conflict', 'auth'].includes(event.detail.state);
+    document.getElementById('studioDraftNotice').hidden = draftNotice.hidden;
+    document.getElementById('retryDraftSync').hidden = !['error', 'auth'].includes(event.detail.state);
+    document.getElementById('retryDraftSync').textContent = event.detail.state === 'auth' ? 'Tải lại Studio' : 'Thử lưu lại';
     document.getElementById('keepLocalCollection').hidden = event.detail.state !== 'conflict';
     document.getElementById('loadServerCollections').hidden = event.detail.state !== 'conflict';
     var toolbox = document.querySelector('.studio-toolbox'); if (toolbox) toolbox.inert = event.detail.state === 'conflict' || collectionBusy;
@@ -2265,6 +2267,7 @@
     if (window.confirm('Mở bản mới nhất? Chọn “Giữ bản trên thiết bị thành bộ riêng” trước nếu muốn giữ thay đổi chưa đồng bộ.')) window.VRemixSession.discardRecovery();
   });
   document.getElementById('retryDraftSync').addEventListener('click', function () {
+    if (window.VRemixSession.status().state === 'auth') { persistStudio(); window.location.reload(); return; }
     window.VRemixSession.retry().catch(function () { /* The sync status shows the error. */ });
   });
   experience.addEventListener('studio:guide-step', persistStudio);

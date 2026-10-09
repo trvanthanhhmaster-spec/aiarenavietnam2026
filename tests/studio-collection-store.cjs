@@ -15,6 +15,7 @@ function fixture(server,local=storage(),session=storage()) {
     fetch:async(url,options)=>{
       assert.equal(options.headers['X-VRemix-Account'],'account'); calls.push(options);
       if(server.fail) throw Error('offline');
+      if(server.authFail) return {ok:false,status:server.authFail,json:async()=>({error:'session changed'})};
       if(!options.body) return {ok:true,json:async()=>({items:clone(server.rows.filter(r=>!r.deleted)),hasAny:server.rows.length>0,deletedIds:server.rows.filter(r=>r.deleted).map(r=>r.id)})};
       const body=JSON.parse(options.body);
       if(server.gate) {const gate=server.gate;server.gate=null;await gate;}
@@ -75,6 +76,24 @@ async function main() {
   await tabA.api.save({...blankA,collections:[row('tab-a','school',0)]});
   await tabB.api.save({...blankB,collections:[row('tab-b','ceremony',0)]});
   assert.equal([...sharedLocal.data.keys()].filter(k=>k.includes('.recovery.')).length,2,'tabs have independent recovery records');
+  for (const status of [401,403]) {
+    const authServer={rows:[row('protected','school')]}, auth=fixture(authServer);
+    const record=await auth.api.read(); record.collections[0].record.draft.event='local-change';
+    record.collections[0].record.draft.planning={people:[{gender:'female',outfit:{}}]};
+    await auth.api.save(record); authServer.authFail=status;
+    await assert.rejects(auth.api.flush(),/session changed/);
+    assert.equal(auth.api.status().state,'auth','expired identity is not a retryable network error');
+    const count=auth.calls.length;
+    await assert.rejects(auth.api.retry()); assert.equal(auth.calls.length,count,'never retry stale credentials');
+    record.collections[0].record.draft.event='after-session-change'; await auth.api.save(record);
+    const recovery=JSON.parse([...auth.local.data.entries()].find(([key])=>key.includes('.recovery.'))[1]);
+    assert.equal(recovery.record.collections[0].record.draft.event,'after-session-change');
+    assert.equal(recovery.record.collections[0].record.draft.planning.people[0].gender,'female','collection wire preserves gender');
+    assert.equal(authServer.rows[0].record.draft.event,'school','no cross-account write');
+  }
+  const retryServer={rows:[],fail:true},retry=fixture(retryServer);
+  await assert.rejects(retry.api.read(),/offline/); retryServer.fail=false;
+  assert.ok(await retry.api.read(),'failed initial reads are retryable');
   console.log('Collection store: read/no-op safety, independent revisions, conflict copies, tombstones, offline recovery, in-flight changes and per-tab isolation passed.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

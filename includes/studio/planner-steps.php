@@ -25,13 +25,14 @@
     <div class="planner-choices">
         <button type="button" data-person-count="1">Một mình<small>1 người</small></button>
         <button type="button" data-person-count="2">Hai người<small>Phối cùng nhau</small></button>
-        <button type="button" id="chooseGroup">Một nhóm<small>Nhập số người</small></button>
+        <button type="button" id="chooseGroup" aria-pressed="false">Một nhóm<small>Nhập số người</small></button>
     </div>
     <div id="groupCountFields" hidden>
         <label class="planner-field">Số người trong nhóm<input type="number" id="groupCount" min="1" max="12" step="1" inputmode="numeric" placeholder="Ví dụ: 4"></label>
         <button type="button" class="planner-secondary" id="applyGroupCount">Chọn số người này</button>
         <p class="guide-card-note">Tối đa 12 người.</p>
     </div>
+    <p id="plannerPeopleSummary" class="guide-card-note planner-people-summary" role="status" hidden></p>
 </section>
 
 <section class="studio-catalog-card" data-guide-card="time" aria-labelledby="plannerTimeTitle" hidden>

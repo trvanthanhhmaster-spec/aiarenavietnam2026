@@ -2,7 +2,7 @@
 (() => {
   const config = window.VREMIX_STUDIO, base = window.VRemixSession;
   if (!config.collectionEndpoint || !config.auth.authenticated) return;
-  let initialized, baseline = new Map(), pending, blocked = false, writing = Promise.resolve(), timer;
+  let initialized, baseline = new Map(), pending, blocked = false, authExpired = false, writing = Promise.resolve(), timer;
   const accountKey = 'vremix.collections.' + config.auth.userId;
   let tabId;
   try { tabId = sessionStorage.getItem(accountKey+'.tab') || crypto.randomUUID(); sessionStorage.setItem(accountKey+'.tab',tabId); } catch (_) { tabId = crypto.randomUUID(); }
@@ -29,7 +29,7 @@
       if (p) result.planning = { version:1,count:p.count ?? null,shared:p.shared !== false,activePerson:p.activePerson || 1,
         period:p.period ? {kind:p.period.kind,start:p.period.kind==='unspecified'?'':p.period.start,end:p.period.kind==='unspecified'?'':p.period.end}:null,
         customOccasion:(p.customOccasion || '').trim(),occasionNote:(p.occasionNote || '').trim(),people:(p.people || []).map((person,i)=>({
-          id:i+1,name:(person.name || '').trim(),heightCm:person.heightCm ?? null,weightKg:person.weightKg ?? null,
+          id:i+1,name:(person.name || '').trim(),gender:person.gender || '',heightCm:person.heightCm ?? null,weightKg:person.weightKg ?? null,
           faceSupplied:false,customized:Boolean(person.customized),outfit:outfit(person.outfit || {}) })) };
       return result;
     };
@@ -43,7 +43,13 @@
       headers: { 'Content-Type': 'application/json', 'X-VRemix-CSRF': config.lookCsrf, 'X-VRemix-Account': config.auth.userId },
       ...(items ? { body: JSON.stringify({ items }) } : {}) });
     const body = await response.json();
-    if (!response.ok) throw Object.assign(new Error(body.error || 'Chưa mở được bộ sưu tập.'), { status: response.status });
+    if (!response.ok) {
+      if ([401,403].includes(response.status)) {
+        authExpired = true;
+        announce('auth', 'Phiên đăng nhập cần làm mới. Thay đổi được giữ trên thiết bị cho tài khoản này.');
+      }
+      throw Object.assign(new Error(body.error || 'Chưa mở được bộ sưu tập.'), { status: response.status });
+    }
     return body;
   }
   function remember(record) {
@@ -77,10 +83,11 @@
       const collectionId = selected?.id || (body.deletedIds?.includes(active) ? crypto.randomUUID() : active || crypto.randomUUID());
       try { localStorage.setItem(activeKey,collectionId); } catch (_) {}
       return { ...(selected?.record || {}), collectionId, collections: items };
-    })().catch(e => { announce('error', e.message); throw e; });
+    })().catch(e => { initialized = undefined; if (!authExpired) announce('error', e.message); throw e; });
     return initialized;
   }
   async function drain() {
+    if (authExpired) throw new Error(sync.message);
     await read(); if (blocked) throw new Error(sync.message);
     while (pending) {
       const record = pending; pending = null;
@@ -99,7 +106,7 @@
         if (pending) remember(pending); else localStorage.removeItem(key);
         localStorage.setItem(activeKey, (pending || record).collectionId);
         announce(pending ? 'saving' : 'saved', '');
-      } catch (e) { if (!pending) pending = record; blocked = e.status === 409; announce(blocked ? 'conflict' : 'error', e.message); throw e; }
+      } catch (e) { if (!pending) pending = record; blocked = e.status === 409; if (!authExpired) announce(blocked ? 'conflict' : 'error', e.message); throw e; }
     }
   }
   function flush() { clearTimeout(timer); writing = writing.catch(() => {}).then(drain); return writing; }
@@ -121,14 +128,18 @@
       if (!items.some(item => !baseline.has(item.id) || fingerprint(item) !== baseline.get(item.id).fingerprint)) return Promise.resolve();
       remember(record);
       pending = JSON.parse(JSON.stringify(record));
-      if (!blocked) { clearTimeout(timer); timer = setTimeout(() => flush().catch(() => {}),600); announce('saving', 'Đang lưu bộ sưu tập…'); }
+      if (!blocked && !authExpired) { clearTimeout(timer); timer = setTimeout(() => flush().catch(() => {}),600); announce('saving', 'Đang lưu bộ sưu tập…'); }
       return Promise.resolve();
     },
     async deleteVersion(collectionId, jobId) {
       await flush();
       const response = await fetch(config.collectionEndpoint,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-VRemix-CSRF':config.lookCsrf,'X-VRemix-Account':config.auth.userId},body:JSON.stringify({action:'hideVersion',collectionId,jobId,revision:baseline.get(collectionId)?.revision})});
       const body = await response.json();
-      if (!response.ok) { if (response.status===409) {blocked=true;announce('conflict',body.error);} throw new Error(body.error); }
+      if (!response.ok) {
+        if ([401,403].includes(response.status)) { authExpired=true; announce('auth','Phiên đăng nhập cần làm mới. Thay đổi được giữ trên thiết bị cho tài khoản này.'); }
+        else if (response.status===409) {blocked=true;announce('conflict',body.error);}
+        throw new Error(body.error);
+      }
       baseline.set(collectionId,{revision:body.item.revision,fingerprint:fingerprint(body.item)});
       return body.item;
     },
