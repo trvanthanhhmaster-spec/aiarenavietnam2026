@@ -135,6 +135,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <p class="admin-nav__label">Accounts</p>
                 <button data-resource="users"><span>10A</span>Người dùng</button>
                 <button data-resource="roles"><span>10B</span>Phân quyền</button>
+                <button data-resource="google-auth"><span>10C</span>Đăng nhập Google</button>
                 <p class="admin-nav__label">Operations</p>
                 <button data-resource="looks"><span>11</span>Looks</button>
                 <button data-resource="discovery"><span>12</span>Discovery pool</button>
@@ -165,7 +166,8 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                         <button class="admin-button admin-button--solid" id="adminQuickEdit" type="button">Cấu hình API & video</button>
                     </div>
                 </section>
-                <div class="admin-table-wrap">
+                <?php require __DIR__ . '/includes/admin/google-auth.php'; ?>
+                <div class="admin-table-wrap" id="adminTableWrap">
                     <table class="admin-table">
                         <thead id="adminTableHead"></thead>
                         <tbody id="adminTableBody"></tbody>
@@ -195,6 +197,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
             'csrf' => $auth->csrfToken(),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
+    <script src="assets/js/admin-google-auth.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/admin-google-auth.js') ?>" defer></script>
     <script src="assets/js/admin.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/admin.js') ?>" defer></script>
 <?php endif; ?>
 </body>

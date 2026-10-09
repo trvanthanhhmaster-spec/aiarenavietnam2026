@@ -40,6 +40,40 @@ if ($supabaseUrl === '' || $serviceRoleKey === '') {
     $respond(['error' => 'Thiếu SUPABASE_SERVICE_ROLE_KEY trong cấu hình server.'], 503);
 }
 
+// Provider configuration is not a database resource. The shared admin and CSRF
+// checks above also apply to reads; never expose the Management API response.
+if (($_GET['resource'] ?? '') === 'google-auth') {
+    require __DIR__ . '/src/Infrastructure/GoogleAuthSettings.php';
+    try {
+        $google = new App\Infrastructure\GoogleAuthSettings(
+            $supabaseUrl, (string) getenv('SUPABASE_ANON_KEY'), (string) getenv('SUPABASE_MANAGEMENT_TOKEN')
+        );
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $respond($google->read());
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Allow: GET, POST');
+            $respond(['error' => 'Phương thức không được hỗ trợ.'], 405);
+        }
+        $raw = file_get_contents('php://input', false, null, 0, 8193);
+        if ($raw === false || strlen($raw) > 8192) {
+            $respond(['error' => 'Dữ liệu cấu hình quá lớn.'], 413);
+        }
+        $input = json_decode($raw);
+        if (!is_object($input)) {
+            $respond(['error' => 'Cần gửi một đối tượng cấu hình JSON.'], 400);
+        }
+        $respond($google->save(get_object_vars($input)));
+    } catch (RuntimeException $error) {
+        $code = $error->getCode();
+        $respond(['error' => $error->getMessage()], in_array($code, [409, 422, 429, 502, 503], true) ? $code : 502);
+    } catch (Throwable $error) {
+        // Upstream errors can contain credentials; no raw body/message in logs or JSON.
+        error_log('Google Auth configuration failed (' . get_class($error) . ').');
+        $respond(['error' => 'Không thể xử lý cấu hình Google. Vui lòng làm mới để kiểm tra.'], 502);
+    }
+}
+
 $resources = [
     'ai-settings' => [
         'table' => 'ai_runtime_settings',

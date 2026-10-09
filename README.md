@@ -150,7 +150,9 @@ và focus bàn phím. Kiểm thử offline: `node tests/account-profile.cjs` và
 
 Mở `auth.php` để đăng ký/đăng nhập bằng email hoặc Google OAuth. Phiên đăng
 nhập dùng cookie HttpOnly và được dùng chung giữa Studio, thư viện Look và
-Admin. Google cần được bật trong Supabase Authentication > Providers, kèm
+Admin. Cấu hình Google tại **Admin → Accounts → Đăng nhập Google**; kết nối máy
+chủ cần token quản lý riêng (không phải service_role). Xem
+[hướng dẫn cấu hình an toàn](docs/google-auth-admin.md). Google cần được bật, kèm
 redirect URL `http://localhost/aiarenavietnam2026/auth-callback.php`.
 
 Mở `admin.php` sau khi đăng nhập bằng tài khoản có role `admin`. Trên một dự án

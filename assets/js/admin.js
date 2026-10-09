@@ -6,6 +6,7 @@
   var rows = [];
   var usage = null;
   var editing = null;
+  var loadSerial = 0;
   var resourceLabels = {
     'ai-settings': {
       kicker: 'AI operations / 00',
@@ -28,6 +29,7 @@
     pages: { kicker: 'Editorial / 10', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
     users: { kicker: 'Accounts / 10A', title: 'Người dùng', columns: ['email', 'display_name', 'created_at'] },
     roles: { kicker: 'Accounts / 10B', title: 'Phân quyền', columns: ['user_id', 'role', 'created_at'] },
+    'google-auth': { kicker: 'Accounts / 10C', title: 'Đăng nhập Google', columns: [] },
     looks: { kicker: 'Operations / 11', title: 'Looks đã lưu', columns: ['name', 'occasion_slug', 'garment_slug', 'visibility', 'created_at'] },
     discovery: { kicker: 'Operations / 12', title: 'Discovery pool', columns: ['look_id', 'status', 'moderation_note', 'created_at'] },
     jobs: { kicker: 'Operations / 13', title: 'Lịch sử tạo ảnh', columns: ['status', 'provider', 'cost_source', 'created_at', 'client_request_id', 'estimated_cost_vnd', 'error_message'] }
@@ -264,23 +266,33 @@
   }
 
   async function loadResource() {
+    var current = ++loadSerial;
     var metadata = resourceLabels[resourceKey];
     usage = null;
     document.getElementById('adminResourceKicker').textContent = metadata.kicker;
     document.getElementById('adminResourceTitle').textContent = metadata.title;
     createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'users'
-      || resourceKey === 'ai-settings' || resourceKey === 'studio-generation';
+      || resourceKey === 'ai-settings' || resourceKey === 'studio-generation' || resourceKey === 'google-auth';
     renderMetrics();
+    document.getElementById('adminTableWrap').hidden = resourceKey === 'google-auth';
+    if (resourceKey === 'google-auth') {
+      var result = await window.VRemixGoogleAuth.load();
+      if (current === loadSerial && result) setStatus(result);
+      return;
+    }
+    window.VRemixGoogleAuth.leave();
     setStatus('Đang đồng bộ Supabase…');
     tableBody.innerHTML = '<tr><td class="admin-table__loading" colspan="8">Đang đọc dữ liệu đã duyệt…</td></tr>';
     try {
       var body = await request(resourceKey);
+      if (current !== loadSerial) return;
       rows = body.items || [];
       usage = body.usage || null;
       renderMetrics();
       renderTable(metadata.columns);
       setStatus(rows.length + ' bản ghi · vừa đồng bộ');
     } catch (error) {
+      if (current !== loadSerial) return;
       rows = [];
       renderMetrics();
       tableBody.innerHTML = '<tr><td class="admin-table__loading" colspan="8">' + escapeHtml(error.message) + '</td></tr>';
@@ -455,13 +467,17 @@
 
   nav.querySelectorAll('[data-resource]').forEach(function (button) {
     button.addEventListener('click', function () {
+      if (resourceKey === 'google-auth' && !window.VRemixGoogleAuth.canLeave()) return;
       nav.querySelectorAll('[data-resource]').forEach(function (item) { item.classList.remove('is-active'); });
       button.classList.add('is-active');
       resourceKey = button.dataset.resource;
       loadResource();
     });
   });
-  refreshButton.addEventListener('click', loadResource);
+  refreshButton.addEventListener('click', function () {
+    if (resourceKey === 'google-auth' && !window.VRemixGoogleAuth.canLeave()) return;
+    loadResource();
+  });
   createButton.addEventListener('click', function () { openEditor(null); });
   editor.addEventListener('submit', function (event) {
     if (event.submitter && event.submitter.id === 'editorSave') {
