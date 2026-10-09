@@ -86,6 +86,14 @@ for (const error of ['Gemini Web bridge HTTP 502', 'Failed to fetch', 'Supabase 
   assert.ok(message.includes('thử lại'));
 }
 assert.equal(vm.runInContext("humanizeGenerationError('Ảnh vượt quá 8 MB. Hãy chọn ảnh nhỏ hơn 8 MB.');", context), 'Ảnh vượt quá 8 MB. Hãy chọn ảnh nhỏ hơn 8 MB.');
+context.providerError = 'PROVIDER_SESSION_EXPIRED: Gemini Web bridge returned HTTP 503.';
+assert.match(vm.runInContext('humanizeGenerationError(providerError)', context), /quản trị viên kết nối lại/);
+for (const code of ['PROVIDER_TIMEOUT', 'PROVIDER_NO_IMAGE', 'PROVIDER_BUSY', 'PROVIDER_UNAVAILABLE']) {
+  context.providerError = code;
+  const message = vm.runInContext('humanizeGenerationError(providerError)', context);
+  assert.ok(!message.includes('PROVIDER_'));
+  assert.ok(message.includes('thử lại'));
+}
 
 const pendingTimers = [];
 Object.assign(context, {

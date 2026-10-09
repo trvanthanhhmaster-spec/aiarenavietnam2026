@@ -1287,6 +1287,21 @@
 
   function humanizeGenerationError(message) {
     var text = String(message || '');
+    if (/PROVIDER_SESSION_EXPIRED|(?:Gemini|bridge).*session.*(?:expired|unauthenticated)/i.test(text)) {
+      return 'Dịch vụ tạo ảnh cần được quản trị viên kết nối lại. Báo quản trị viên để khôi phục, sau đó thử lại.';
+    }
+    if (/PROVIDER_TIMEOUT/i.test(text)) {
+      return 'Dịch vụ chưa trả ảnh trong thời gian chờ. Bạn có thể chủ động thử lại; hệ thống không tự tạo thêm ảnh.';
+    }
+    if (/PROVIDER_NO_IMAGE/i.test(text)) {
+      return 'Dịch vụ chưa trả về ảnh cho lựa chọn này. Bạn có thể điều chỉnh lựa chọn rồi thử lại.';
+    }
+    if (/PROVIDER_BUSY/i.test(text)) {
+      return 'Dịch vụ đang xử lý một bản phối khác. Hãy chờ ít phút rồi thử lại.';
+    }
+    if (/PROVIDER_UNAVAILABLE/i.test(text)) {
+      return 'Dịch vụ tạo ảnh đang mất kết nối. Hãy thử lại sau; nếu vẫn lỗi, báo quản trị viên kiểm tra kết nối.';
+    }
     if (/no available quota|resource_exhausted|enable billing/i.test(text)) {
       var provider = /veo|video/i.test(text) ? 'video' : 'ảnh';
       return 'Dịch vụ tạo ' + provider + ' đang tạm hết lượt. Bạn có thể thử lại sau hoặc chọn một bản phối khác.';

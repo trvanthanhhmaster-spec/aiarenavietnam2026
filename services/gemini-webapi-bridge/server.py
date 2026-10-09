@@ -25,6 +25,55 @@ from loguru import logger
 logger.remove()
 
 
+class ProviderFailure(RuntimeError):
+    """Allowlisted public failures, never upstream exception strings."""
+    MESSAGES = {
+        "PROVIDER_SESSION_EXPIRED": (503, "Provider session requires administrator renewal."),
+        "PROVIDER_TIMEOUT": (504, "Image generation timed out. Retry explicitly when ready."),
+        "PROVIDER_NO_IMAGE": (502, "Provider returned no generated image."),
+        "PROVIDER_UNAVAILABLE": (502, "Image provider is unavailable."),
+    }
+
+    def __init__(self, code: str):
+        self.code = code
+        self.status, message = self.MESSAGES[code]
+        super().__init__(message)
+
+    def body(self) -> dict:
+        return {"code": self.code, "error": str(self)}
+
+
+def client_is_authenticated(value: GeminiClient) -> bool:
+    return getattr(getattr(value, "account_status", None), "name", "") == "AVAILABLE"
+
+
+async def generate_ready(client, payload, renew_client):
+    """Fail closed if renewal remains unauthenticated; never replay a timeout."""
+    active_client = client
+    renewed = False
+    if not client_is_authenticated(active_client):
+        active_client = await renew_client()
+        renewed = True
+    if not client_is_authenticated(active_client):
+        raise ProviderFailure("PROVIDER_SESSION_EXPIRED")
+    try:
+        return await generate(active_client, payload)
+    except Exception as error:
+        if isinstance(error, ProviderFailure) and error.code != "PROVIDER_SESSION_EXPIRED":
+            raise
+        is_expired = (
+            isinstance(error, ProviderFailure) and error.code == "PROVIDER_SESSION_EXPIRED"
+        ) or not client_is_authenticated(active_client)
+        if not is_expired:
+            raise
+        if renewed:
+            raise ProviderFailure("PROVIDER_SESSION_EXPIRED") from None
+        active_client = await renew_client()
+        if not client_is_authenticated(active_client):
+            raise ProviderFailure("PROVIDER_SESSION_EXPIRED")
+        return await generate(active_client, payload)
+
+
 def load_dotenv(path: Path = Path(__file__).with_name(".env")) -> None:
     """Load the small bridge config without adding another runtime dependency."""
     if not path.is_file():
@@ -194,24 +243,15 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
                 timeout=int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
             )
         except asyncio.TimeoutError as error:
-            raise RuntimeError(
-                "Gemini Web image generation timed out. Retry explicitly when ready."
-                if payload.get("operation") in ("group", "group-edit")
-                else "Gemini Web image generation timed out. The branch can safely fall back to frame A."
-            ) from error
+            raise ProviderFailure("PROVIDER_TIMEOUT") from error
         generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
         if not generated:
             response_text = " ".join(str(getattr(output, "text", "") or "").split())
-            image_types = [type(image).__name__ for image in getattr(output, "images", [])]
-            if "signed in" in response_text.lower() or "image creation isn't available" in response_text.lower():
-                raise RuntimeError(
-                    "Gemini Web session is unauthenticated or expired. "
-                    "Refresh GEMINI_WEB_SECURE_1PSID and GEMINI_WEB_SECURE_1PSIDTS, then restart the bridge."
-                )
-            details = f" ({response_text[:240]})" if response_text else ""
-            if image_types:
-                details += f" [image types: {', '.join(image_types[:5])}]"
-            raise RuntimeError("Gemini web returned no generated image." + details)
+            if "not signed in" in response_text.lower() or "need to sign in" in response_text.lower():
+                raise ProviderFailure("PROVIDER_SESSION_EXPIRED")
+            # Unavailable image creation can also mean account eligibility or
+            # a refusal. Do not blindly renew/replay these provider responses.
+            raise ProviderFailure("PROVIDER_NO_IMAGE")
         with tempfile.TemporaryDirectory(prefix="vremix-gemini-") as directory:
             images = []
             for index, image in enumerate(generated[:5], start=1):
@@ -262,9 +302,6 @@ async def run() -> None:
     client = await create_client()
     client_lock = asyncio.Lock()
 
-    def client_is_authenticated(value: GeminiClient) -> bool:
-        return getattr(getattr(value, "account_status", None), "name", "") == "AVAILABLE"
-
     async def renew_client() -> GeminiClient:
         nonlocal client
         previous = client
@@ -274,15 +311,6 @@ async def run() -> None:
             pass
         client = await create_client()
         return client
-
-    def looks_like_auth_error(error: Exception, value: GeminiClient) -> bool:
-        message = str(error).lower()
-        return (
-            "permission denied" in message
-            or "unauthenticated" in message
-            or "session is not authenticated" in message
-            or not client_is_authenticated(value)
-        )
 
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -299,29 +327,17 @@ async def run() -> None:
                         "authenticated": is_authenticated,
                         "provider": "gemini-webapi",
                         **({} if is_authenticated else {
-                            "error": "Gemini Web session is unauthenticated or expired."
+                            **ProviderFailure("PROVIDER_SESSION_EXPIRED").body()
                         }),
                     },
                 ))
             elif method == "POST" and urlparse(path).path == "/v1/images/generate":
                 if client_lock.locked():
-                    writer.write(response(429, {"error": "Bridge is busy. Retry explicitly later."}))
+                    writer.write(response(429, {"code": "PROVIDER_BUSY", "error": "Bridge is busy. Retry explicitly later."}))
                     await writer.drain()
                     return
                 async with client_lock:
-                    active_client = client
-                    if not client_is_authenticated(active_client):
-                        active_client = await renew_client()
-                    try:
-                        generated = await generate(active_client, json.loads(body))
-                    except Exception as error:
-                        # A long-lived Web session can be invalidated between
-                        # frames. Re-authenticate once before surfacing the
-                        # error so B-E have a chance to generate independently.
-                        if not looks_like_auth_error(error, active_client):
-                            raise
-                        active_client = await renew_client()
-                        generated = await generate(active_client, json.loads(body))
+                    generated = await generate_ready(client, json.loads(body), renew_client)
                 writer.write(response(200, generated))
             else:
                 writer.write(response(404, {"error": "Not found."}))
@@ -329,10 +345,15 @@ async def run() -> None:
             writer.write(response(401, {"error": "Invalid bridge secret."}))
         except (ValueError, asyncio.IncompleteReadError, asyncio.LimitOverrunError):
             writer.write(response(400, {"error": "Invalid bridge request."}))
+        except ProviderFailure as error:
+            print(f"Bridge failure: {error.code}", file=sys.stderr, flush=True)
+            writer.write(response(error.status, error.body()))
         except Exception:
             # Upstream exception strings may contain cookies, tokens, URLs or
             # user prompts. Keep them out of HTTP bodies and production logs.
-            writer.write(response(502, {"error": "Gemini Web bridge unavailable. Check session readiness."}))
+            print("Bridge failure: PROVIDER_UNAVAILABLE", file=sys.stderr, flush=True)
+            failure = ProviderFailure("PROVIDER_UNAVAILABLE")
+            writer.write(response(failure.status, failure.body()))
         finally:
             try:
                 await writer.drain()

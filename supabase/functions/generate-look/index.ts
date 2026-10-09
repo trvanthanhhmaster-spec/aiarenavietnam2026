@@ -4,6 +4,7 @@ import { buildImageRequest } from "./image-request.ts";
 import { buildVideoRequest, type VideoFirstFrame } from "./video-request.ts";
 import { normalizePlan, planPrompt, type StudioPlan } from "./studio-plan.ts";
 import { verifyGateway } from "./gateway-auth.ts";
+import { providerError } from "./provider-error.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -181,23 +182,6 @@ function operationEndpoint(config: ProviderConfig, operationName: string) {
     ? "https://aiplatform.googleapis.com/v1/"
     : "https://generativelanguage.googleapis.com/v1beta/";
   return `${base}${operationName}?key=${encodeURIComponent(config.apiKey)}`;
-}
-
-async function providerError(response: Response, provider: string) {
-  let detail = "";
-  try {
-    const body = await response.clone().json();
-    detail = body?.error?.message || body?.message || "";
-  } catch {
-    detail = await response.text();
-  }
-  if (response.status === 429 && /limit:\s*0|quota|billing/i.test(detail)) {
-    return new Error(`${provider} has no available quota. Enable billing or use an API key with image/video quota.`);
-  }
-  if (response.status === 402 && /prepayment credits are depleted|billing/i.test(detail)) {
-    return new Error(`${provider} has no prepaid Gemini API balance. Add billing credits in AI Studio or use Vertex AI billing.`);
-  }
-  return new Error(`${provider} returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 280)}` : "."}`);
 }
 
 async function rest(path: string, init: RequestInit = {}) {

@@ -94,3 +94,20 @@ reads. It never calls image generation. Only then select image provider `webapi`
 in Admin/shared runtime settings. Health readiness is not proof that the account
 can generate an image. Session cookies may expire; refresh privately and recreate
 only `vremix-bridge`. Do not repeatedly restart to bypass provider restrictions.
+
+For an already provisioned VPS, `scripts/prepare-vps-session.php` emits only the
+two Google session cookies. Pipe it directly over SSH into
+`deploy/vps/refresh-bridge-session.php` in a disposable root PHP container with
+only `/etc/vremix` mounted at `/run/vremix`. It preserves all gateway/bridge keys,
+updates the bind-mounted inode in place and retains UID 10002/mode 0600. Do not
+display the payload or use an entire browser profile. Restart only the bridge
+once, then run the private readiness helper. This is a manual repair, not a
+permanent solution to expiring Web cookies; use the official API for durable
+production credentials.
+
+`deploy/vps/diagnose-generation.php --live` reports safe categories for the latest
+ten jobs, never prompts, account IDs, raw errors or secret values. After explicit
+authorization for a quota-consuming test, `tests/vps-generation-once.php --live
+--allow-one-image` submits one fresh anonymous request with no face references or
+collection changes, and verifies the actual generated storage image. It never
+resubmits POST on timeout. Do not run this test as a deployment health check.
