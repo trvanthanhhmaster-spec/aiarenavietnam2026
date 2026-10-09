@@ -25,7 +25,8 @@ $authUser = $auth->user();
 // Embedded auth returns must not boot a second syncing Studio instance.
 if (($_GET['authReturn'] ?? '') === '1') {
     header('Content-Type: text/html; charset=utf-8');
-    echo '<!doctype html><meta charset="utf-8"><title>Đã cập nhật tài khoản</title><p>Đang mở Studio…</p><script>if(window===window.top)location.replace("studio.php");</script>';
+    header('Cache-Control: no-store');
+    require __DIR__ . '/includes/studio/auth-return.php';
     exit;
 }
 if (empty($_SESSION['studio_generation_owner'])) $_SESSION['studio_generation_owner'] = bin2hex(random_bytes(32));

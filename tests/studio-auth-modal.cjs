@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 function node() {
-  return { events: {}, attributes: {}, addEventListener(name, callback) { this.events[name] = callback; }, setAttribute(name, value) { this.attributes[name] = value; }, getAttribute(name) { return this.attributes[name]; } };
+  return { events: {}, attributes: {}, addEventListener(name, callback) { this.events[name] = callback; }, setAttribute(name, value) { this.attributes[name] = value; }, getAttribute(name) { return this.attributes[name]; }, removeAttribute(name) { delete this.attributes[name]; if (name === 'src') this.src = ''; } };
 }
 const trigger = node();
 trigger.focus = () => { trigger.focused = true; };
@@ -15,7 +15,19 @@ frame.dataset = { src: 'auth.php?next=studio.php&embed=1' };
 const close = node();
 const documentEvents = {};
 const document = { querySelector: selector => { assert.equal(selector, '.workspace-profile'); return trigger; }, addEventListener: (name, callback) => { documentEvents[name] = callback; }, getElementById: id => ({ studioAuthDialog: dialog, studioAuthFrame: frame, studioAuthClose: close })[id] };
-vm.runInNewContext(fs.readFileSync('assets/js/studio-auth-modal.js', 'utf8'), { document, window: {}, URL });
+let reloads = 0;
+const windowEvents = {};
+const window = {
+  addEventListener(name, fn) { windowEvents[name] = fn; },
+  location: { origin: 'http://localhost', reload() {
+    assert.equal(dialog.open, false, 'dialog closes before reload');
+    assert.equal(frame.hidden, true, 'callback is hidden before reload');
+    assert.equal(frame.src, '', 'callback src is cleared before reload');
+    reloads++;
+  } }
+};
+const source = fs.readFileSync('assets/js/studio-auth-modal.js', 'utf8');
+vm.runInNewContext(source, { document, window, URL });
 let prevented = false;
 trigger.events.click({ preventDefault() { prevented = true; } });
 assert.equal(prevented, true);
@@ -23,6 +35,7 @@ assert.equal(dialog.open, true);
 assert.equal(frame.src, frame.dataset.src);
 close.events.click();
 assert.equal(dialog.open, false);
+assert.equal(frame.src, '', 'closing resets the frame so reopening loads a fresh account form');
 documentEvents['vremix:open-auth']();
 assert.equal(dialog.open, true, 'save-look login requirement opens the same modal');
 assert.equal(trigger.focused, true);
@@ -39,10 +52,40 @@ frame.events.load();
 assert.equal(avatar.textContent, 'Á');
 assert.equal(label.textContent, 'Ánh');
 assert.equal(trigger.attributes['aria-label'], 'Tài khoản Ánh');
+trigger.events.click({ preventDefault() {} });
+const message = { origin: 'http://localhost', source: frame.contentWindow, data: { type: 'vremix:auth-return' } };
+windowEvents.message({ ...message, origin: 'https://untrusted.example' });
+windowEvents.message({ ...message, source: {} });
+windowEvents.message({ ...message, data: { type: 'other' } });
+assert.equal(reloads, 0, 'untrusted origins, other frames and unrelated messages cannot complete auth');
+windowEvents.message(message);
+assert.equal(reloads, 1);
+windowEvents.message(message);
+frame.contentWindow.location.href = 'http://localhost/studio.php?authReturn=1';
+frame.events.load();
+assert.equal(reloads, 1, 'message and load completion race must only reload once');
+trigger.events.click({ preventDefault() {} });
+assert.equal(dialog.open, false, 'a pending refresh must not reopen the callback');
+// The iframe load path still works if the completion message is unavailable.
+vm.runInNewContext(source, { document, window, URL });
+dialog.open = true;
+frame.events.load();
+assert.equal(reloads, 2, 'same-origin callback load is a fallback');
+const callback = fs.readFileSync('assets/js/studio-auth-return.js', 'utf8');
+let sent = 0, replaced = '';
+const child = { top: {}, location: { origin: 'http://localhost' }, parent: { postMessage(data, origin) {
+  assert.equal(data.type, 'vremix:auth-return'); assert.equal(origin, 'http://localhost'); sent++;
+} } };
+vm.runInNewContext(callback, { window: child });
+assert.equal(sent, 1, 'iframe callback explicitly signals its parent');
+const topWindow = { location: { replace(url) { replaced = url; } } }; topWindow.top = topWindow;
+vm.runInNewContext(callback, { window: topWindow });
+assert.equal(replaced, 'studio.php', 'top-level OAuth callback returns to Studio');
+assert.ok(!fs.readFileSync('includes/studio/auth-return.php', 'utf8').includes('Đang mở Studio'), 'callback has no flashing intermediary text');
 const auth = fs.readFileSync('auth.php', 'utf8');
 assert.ok(auth.includes('name="embed" value="1"'));
 assert.ok(auth.includes('verifyCsrf'));
 assert.ok(auth.includes('target="_top"'));
 assert.ok(auth.includes('if ($isAdmin)'), 'admin entry is gated by a server-side role check');
 assert.ok(auth.includes('name="action" value="update-profile"'), 'account details can update the display name');
-console.log('Studio auth modal: lazy form, open/close, backdrop, focus return, CSRF and OAuth target passed.');
+console.log('Studio auth modal: fresh reopen, callback message/load, origin/source checks, close-before-refresh, race guard, top-level return, CSRF and OAuth target passed.');
