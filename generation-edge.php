@@ -5,6 +5,7 @@ require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Support/StudioHistory.php';
 require __DIR__ . '/src/Support/StudioPlan.php';
 require __DIR__ . '/src/Support/EdgeGateway.php';
+require __DIR__ . '/src/Support/StudioIntelligence.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
 require __DIR__ . '/src/Infrastructure/StudioStorage.php';
 use App\Support\Env;
@@ -41,6 +42,10 @@ try {
         if (strlen($raw) > 12_000_000) $respond(['error' => 'Dữ liệu quá lớn.'], 413);
         $input = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         if (!is_array($input) || empty($input['planning'])) $respond(['error' => 'Hãy hoàn tất bốn bước.'], 422);
+        unset($input['recommendationContext']);
+        $context = App\Support\StudioIntelligence::trustedContext($input, $_SESSION);
+        if ($context) $input['recommendationContext'] = $context;
+        unset($input['adviceContextId']);
         $client = new SupabaseAdminClient($url, $key);
         $settings = $client->select('studio_generation_settings', ['id' => 'eq.1', 'select' => 'canvas_aspect_ratio,target_resolution', 'limit' => '1']);
         if (empty($settings[0])) throw new RuntimeException('Cấu hình tạo ảnh chưa sẵn sàng.');

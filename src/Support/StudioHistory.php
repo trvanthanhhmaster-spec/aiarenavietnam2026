@@ -131,6 +131,11 @@ final class StudioHistory
                 foreach (['garment','variant','color','pattern','style','accessories','scene'] as $field) if (in_array($person['checks'][$field] ?? '', ['match','mismatch','uncertain','not-requested'], true)) $checks[$field] = $person['checks'][$field];
                 $safe['imageAssessment']['people'][] = ['personId'=>$person['personId'], 'checks'=>$checks];
             }
+            foreach (array_slice(is_array($assessment['constructionChecks'] ?? null) ? $assessment['constructionChecks'] : [], 0, 12) as $check) {
+                if (is_int($check['personId'] ?? null) && $check['personId'] >= 1 && $check['personId'] <= 12 && in_array($check['status'] ?? '', ['match','mismatch','uncertain'], true) && is_string($check['reason'] ?? null)) {
+                    $safe['imageAssessment']['constructionChecks'][] = ['personId' => $check['personId'], 'status' => $check['status'], 'reason' => mb_substr($check['reason'], 0, 400)];
+                }
+            }
         }
         $item = ['url'=>$url,'path'=>$path];
         foreach (['width','height'] as $key) if (is_int($output['lookbook']['items'][0][$key] ?? null)) $item[$key] = $output['lookbook']['items'][0][$key];

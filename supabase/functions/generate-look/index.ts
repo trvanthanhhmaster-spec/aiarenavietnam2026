@@ -8,6 +8,7 @@ import { providerError } from "./provider-error.ts";
 import { imageDimensions, parseImageAssessment, reviewPrompt, type ImageAssessment } from './image-assessment.ts';
 import { loadGarmentReferences, garmentReferenceInstructions, type GarmentReference } from './garment-references.ts';
 import { selectionCopy } from './selection-copy.ts';
+import knowledge from '../_shared/studio-knowledge.json' with { type: 'json' };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,7 @@ let runtimeSettingsCacheExpiresAt = 0;
 const runtimeSettingsCacheTtlMs = 15_000;
 
 type LookRequest = {
+  recommendationContext?: Record<string, unknown>;
   planning?: StudioPlan;
   clientRequestId?: string;
   eventSlug?: string;
@@ -473,7 +475,7 @@ async function reviewImage(request: LookRequest, catalog: Record<string, any>, i
   const body = await response.json();
   const text = settings.imageProvider === 'webapi' ? body.text : body?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('');
   if (typeof text !== 'string') throw new Error('Empty review.');
-  return { copy:selectionCopy(parseGeminiCopy(text), request, catalog), assessment:parseImageAssessment(JSON.parse(text).imageAssessment, request.planning, true) };
+  return { copy:selectionCopy(parseGeminiCopy(text), request, catalog), assessment:parseImageAssessment(JSON.parse(text).imageAssessment, request.planning, true, true) };
 }
 
 async function generateImages(
@@ -800,6 +802,10 @@ async function processLook(
     throw new Error("One or more accessory variants are not in the approved catalog.");
   }
 
+  for (const item of garment) {
+    const heritage = knowledge.heritage[item.slug as keyof typeof knowledge.heritage];
+    if (heritage) { item.origin_note = heritage.origin; item.significance_note = heritage.meaning; item.heritage = heritage; }
+  }
   const catalog = {
     event: event[0],
     garment: garment.find((g: any) => g.slug === input.garmentSlug) || garment[0],
@@ -840,7 +846,8 @@ async function processLook(
       ? `Gemini copy fallback: ${error.message}`
       : "Gemini copy fallback was used.";
   }
-  const imagePrompt = input.planning ? groupPrompt + `\nEvent: ${JSON.stringify(event[0])}\n` + garmentReferenceInstructions(garmentReferences) : copy.imagePrompt || fallbackImagePrompt(input, catalog);
+  const adviceContext = input.recommendationContext ? `\nDated advisory context (never override selected outfits, event or scene, never invent weather outside the forecast dates): ${JSON.stringify(input.recommendationContext)}\n` : '';
+  const imagePrompt = input.planning ? groupPrompt + `\nEvent: ${JSON.stringify(event[0])}\n` + adviceContext + garmentReferenceInstructions(garmentReferences) : copy.imagePrompt || fallbackImagePrompt(input, catalog);
   const generationType = input.generationType || "image";
   let assets: GeneratedAsset[] = [];
   let imageSource: "gemini" | "catalog-fallback" = "gemini";

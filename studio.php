@@ -6,6 +6,7 @@ require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseClient.php';
 require __DIR__ . '/src/Repositories/SiteContentRepository.php';
 require __DIR__ . '/src/Repositories/StudioRepository.php';
+require __DIR__ . '/src/Support/StudioIntelligence.php';
 
 use App\Infrastructure\SupabaseClient;
 use App\Repositories\SiteContentRepository;
@@ -78,7 +79,11 @@ $accountInitial = $authUser !== null
         ? $accountName
         : (string) ($authUser['email'] ?? 'V'), 0, 1))
     : 'V';
+$catalog = App\Support\StudioIntelligence::enrichCatalog($catalog);
+$intelligence = App\Support\StudioIntelligence::publicData($catalog);
 $studioData = $catalog + [
+    'intelligence' => $intelligence,
+    'advisorEndpoint' => 'studio-advisor.php',
     'generationEndpoint' => $localWebGeneration
         ? 'local-generate.php'
         : 'generation-edge.php',
@@ -110,6 +115,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <title>Studio — <?= $escape($site['title'] ?? 'V-Remix') ?></title>
     <meta name="description" content="Studio phối Việt phục V-Remix theo bối cảnh, dáng áo và điểm nhấn cá nhân.">
     <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/css/studio-intelligence.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-intelligence.css') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
@@ -157,6 +163,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <strong>Bạn muốn mặc gì hôm nay?</strong>
                         <p class="studio-collection-heading__note">Chọn dịp trước. Sau đó chọn một dáng Việt phục và thêm điểm nhấn theo cách của bạn.</p>
                     </div>
+                    <?php require __DIR__ . '/includes/studio/intelligence.php'; ?>
                     <?php require __DIR__ . '/includes/studio/planner-steps.php'; ?>
 
                     <section class="studio-catalog-card studio-catalog-card--garment" data-guide-card="garment" aria-labelledby="catalogGarmentTitle" hidden>
@@ -498,6 +505,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
     <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
+    <script src="assets/js/studio-intelligence.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-intelligence.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>
     <script src="assets/js/studio-collections.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections.js') ?>" defer></script>
 </body>

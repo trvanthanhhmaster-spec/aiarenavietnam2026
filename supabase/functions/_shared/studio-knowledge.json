@@ -1,0 +1,53 @@
+{
+  "version": "2026-10-10",
+  "cities": [
+    {"id":"ha-noi","name":"Hà Nội","latitude":21.0,"longitude":105.8},
+    {"id":"bac-ninh","name":"Bắc Ninh","latitude":21.2,"longitude":106.1},
+    {"id":"hai-phong","name":"Hải Phòng","latitude":20.8,"longitude":106.7},
+    {"id":"hue","name":"Huế","latitude":16.5,"longitude":107.6},
+    {"id":"da-nang","name":"Đà Nẵng","latitude":16.1,"longitude":108.2},
+    {"id":"hoi-an","name":"Hội An","latitude":15.9,"longitude":108.3},
+    {"id":"ho-chi-minh","name":"TP. Hồ Chí Minh","latitude":10.8,"longitude":106.7},
+    {"id":"can-tho","name":"Cần Thơ","latitude":10.0,"longitude":105.8}
+  ],
+  "heritage": {
+    "ao-ngu-than-tay-chen": {
+      "origin":"Áo ngũ thân gắn với lịch sử y phục ở Đàng Trong và văn hóa Huế. Sở Văn hóa và Thể thao Huế nêu cải cách y phục của chúa Nguyễn Phúc Khoát năm 1744.",
+      "meaning":"Ngày nay, dáng áo được sử dụng trong hoạt động bảo tồn và giới thiệu văn hóa áo dài Huế. Không coi mọi biến thể hiện đại là phục dựng một thời kỳ cụ thể.",
+      "structure":"Giữ phom năm thân, cổ đứng, khuy cài và tay chẽn của mẫu đã chọn.",
+      "sources":[{"id":"hue-ngu-than","title":"Áo dài trong văn hóa Huế","publisher":"Sở Văn hóa và Thể thao Huế","url":"https://svhttdl.hue.gov.vn/tin-trong-tinh/ao-dai-trong-van-hoa-hue-tu-di-san-den-bieu-tuong-song-dong-cua-ban-sac.html","scope":"Bối cảnh lịch sử và hoạt động bảo tồn áo ngũ thân","checkedAt":"2026-10-10"}]
+    },
+    "ao-tac": {
+      "origin":"Áo tấc là tên gọi của áo ngũ thân tay rộng, còn được gọi là áo lễ hoặc áo thụng, theo bài giới thiệu trên cổng thông tin du lịch Huế.",
+      "meaning":"Dáng áo gắn với sinh hoạt nghi lễ; hiện cũng được dùng để trải nghiệm văn hóa và chụp ảnh. Phối hiện đại không mặc nhiên là sai văn hóa.",
+      "structure":"Giữ phom năm thân, cổ áo, khuy cài và đặc biệt tay rộng; không đổi thành tay chẽn.",
+      "sources":[{"id":"hue-ao-tac","title":"Áo tấc, cổ phục quý đang hồi sinh","publisher":"Cổng thông tin du lịch Huế (dẫn báo Thừa Thiên Huế)","url":"https://huetourism.gov.vn/ao-tac-co-phuc-quy-dang-hoi-sinh/?pid=MjExMjB8Y3NkbGRs0","scope":"Tên gọi, phom năm thân, tay rộng và bối cảnh sử dụng","checkedAt":"2026-10-10"}]
+    },
+    "ao-nhat-binh": {
+      "origin":"Nhật Bình là lễ phục gắn với phụ nữ cung đình triều Nguyễn. Tư liệu Khám phá Huế mô tả cổ áo rộng và phần trang trí hình chữ nhật trước ngực.",
+      "meaning":"Màu sắc và trang trí trong quy chế cung đình từng liên quan đến phẩm cấp. Không suy ra danh vị lịch sử của người mặc chỉ từ màu áo trong bản phối hiện đại.",
+      "structure":"Giữ cổ rộng dạng chữ nhật, hai vạt đối khâm và trang trí của mẫu; không đổi thành cổ đứng ngũ thân.",
+      "sources":[{"id":"hue-nhat-binh","title":"Áo dài Nhật Bình","publisher":"Khám phá Huế","url":"https://khamphahue.com.vn/Van-hoa/Hue-Kinh-%C4%91o-ao-dai-Viet-Nam/Chi-tiet/tid/Ao-dai-Nhat-Binh.html/pid/3648/cid/129","scope":"Bối cảnh cung đình, cổ áo và quy chế màu sắc","checkedAt":"2026-10-10"}]
+    },
+    "ao-tu-than": {
+      "origin":"Áo tứ thân được giới thiệu trong chương trình Nẻo về nguồn cội của VTV với chủ đề vẻ đẹp trang phục phụ nữ Kinh Bắc.",
+      "meaning":"Đọc trong bối cảnh văn hóa Kinh Bắc; nguồn này không đủ để ấn định một niên đại ra đời hay quy định mọi phụ kiện bắt buộc.",
+      "structure":"Đối chiếu bốn thân và cách buộc/mở vạt với ảnh mẫu; không ghép cổ Nhật Bình rồi gọi là phục dựng tứ thân.",
+      "sources":[{"id":"vtv-tu-than","title":"Nẻo về nguồn cội: Áo tứ thân - Vẻ đẹp trang phục phụ nữ Kinh Bắc","publisher":"Đài Truyền hình Việt Nam","url":"https://vtv.vn/video/neo-ve-nguon-coi-ao-tu-than-ve-dep-trang-phuc-phu-nu-kinh-bac-378376.htm","scope":"Mối liên hệ với trang phục phụ nữ Kinh Bắc; không dùng để khẳng định niên đại","checkedAt":"2026-10-10"}]
+    }
+  },
+  "lookbooks": [
+    {"id":"campus-indigo","title":"Ngũ thân cho ngày đến lớp","garment":"ao-ngu-than-tay-chen","event":"school","note":"Gợi ý chàm lam, quần sáng và tay chẽn gọn. Ảnh tư liệu đen trắng minh họa phom, không xác nhận màu; màu chàm lam là lựa chọn biên tập hiện đại.","image":"assets/media/catalog/garment-ao-ngu-than.webp","source":"https://commons.wikimedia.org/wiki/File:Ao_ngu_than_on_postcard_dated_1904.JPG","credit":"Pierre Dieulefils · Public domain","outfit":{"garmentVariant":"ao-ngu-than-tay-chen-indigo","color":"indigo","style":"school-polished","accessories":[]}},
+    {"id":"ceremony-red","title":"Áo tấc cho dịp trang trọng","garment":"ao-tac","event":"ceremony","note":"Áo đỏ, quần sáng và tay rộng. Quạt, trang sức trong ảnh không được tự thêm vào lựa chọn. Phù hợp làm điểm khởi đầu cho bản phối dự lễ.","image":"assets/media/catalog/garment-ao-tac.webp","source":"https://commons.wikimedia.org/wiki/File:Rio_m%C3%A3_ch%C3%A2u_%C3%A1o_t%E1%BA%A5c.jpg","credit":"Ptdtch · CC BY-SA 4.0","outfit":{"garmentVariant":"ao-tac-do-son","color":"vermilion","style":"elegant","accessories":[]}},
+    {"id":"heritage-nhat-binh","title":"Nhật Bình trong khung ảnh di sản","garment":"ao-nhat-binh","event":"portrait","note":"Ngà ấm, nhấn phần cổ và hoa văn theo mẫu. Ảnh tư liệu là cảm hứng, không phải kết quả AI hay chứng nhận phục dựng. Không suy ra phẩm cấp từ màu áo.","image":"assets/media/catalog/garment-ao-nhat-binh.webp","source":"https://commons.wikimedia.org/wiki/File:Vietnamese_woman_wearing_%C3%81o_Nh%E1%BA%ADt_B%C3%ACnh.jpg","credit":"Gia đình Nguyễn Văn Huyên · CC BY-SA 4.0","outfit":{"garmentVariant":"ao-nhat-binh-ngam","color":"ivory","style":"elegant","accessories":[]}},
+    {"id":"kinh-bac-tu-than","title":"Tứ thân và câu chuyện Kinh Bắc","garment":"ao-tu-than","event":"street","note":"Gợi ý xanh rêu cho phố, giữ lớp yếm và cách buộc vạt theo mẫu. Đây là lựa chọn biên tập hiện đại; ảnh tư liệu không xác nhận màu xanh rêu. Tự chọn phụ kiện thay vì sao chép người mẫu.","image":"assets/media/catalog/garment-ao-tu-than.webp","source":"https://commons.wikimedia.org/wiki/File:%C3%81o_t%E1%BB%A9_th%C3%A2n_1a.jpg","credit":"Momili000 · CC BY-SA 3.0","outfit":{"garmentVariant":"ao-tu-than-xanh-reu","color":"moss","style":"street-soft","accessories":[]}}
+  ],
+  "festivals": [
+    {"id":"tet-2026","title":"Tết Nguyên đán Bính Ngọ","start":"2026-02-17","end":"2026-02-17","city":"all","type":"calendar-day","source":"https://tphcm.chinhphu.vn/nguoi-dan-va-du-khach-tai-tphcm-han-hoan-du-xuan-101260217164751707.htm"},
+    {"id":"hue-spring-2026","title":"Festival Huế: Xuân Cố đô","start":"2026-01-01","end":"2026-03-31","city":"hue","type":"festival-season","source":"https://hue.gov.vn/Portals/0/Uploads/VBPL/Nam2026/Thang1/00.00.H57-500-KH-UBND-2025-PL2_signed.pdf"},
+    {"id":"hue-summer-2026","title":"Festival Huế: Kinh thành tỏa sáng","start":"2026-04-01","end":"2026-06-30","city":"hue","type":"festival-season","source":"https://hue.gov.vn/Portals/0/Uploads/VBPL/Nam2026/Thang1/00.00.H57-500-KH-UBND-2025-PL2_signed.pdf"},
+    {"id":"hue-international-2026","title":"Festival Nghệ thuật Quốc tế Huế","start":"2026-06-13","end":"2026-06-18","city":"hue","type":"event","source":"https://hue.gov.vn/Portals/0/Uploads/VBPL/Nam2026/Thang1/00.00.H57-500-KH-UBND-2025-PL2_signed.pdf"},
+    {"id":"hue-autumn-2026","title":"Festival Huế: Huế vào thu","start":"2026-07-01","end":"2026-09-30","city":"hue","type":"festival-season","source":"https://hue.gov.vn/Portals/0/Uploads/VBPL/Nam2026/Thang1/00.00.H57-500-KH-UBND-2025-PL2_signed.pdf"},
+    {"id":"hue-winter-2026","title":"Festival Huế: Mùa Đông xứ Huế","start":"2026-10-01","end":"2026-12-31","city":"hue","type":"festival-season","source":"https://hue.gov.vn/Portals/0/Uploads/VBPL/Nam2026/Thang1/00.00.H57-500-KH-UBND-2025-PL2_signed.pdf"}
+  ]
+}

@@ -1,0 +1,32 @@
+.studio-intelligence { margin: 12px 14px 18px; border: 1px solid #dedbe4; border-radius: 18px; background: #fffaf9; color: #202025; }
+.studio-intelligence > summary { list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; cursor: pointer; }
+.studio-intelligence > summary::-webkit-details-marker { display: none; }
+.studio-intelligence > summary strong, .studio-intelligence > summary small { display: block; }
+.studio-intelligence > summary small { margin-top: 5px; color: #656271; font-size: 12px; line-height: 1.5; }
+.studio-intelligence__chevron { font-size: 24px; transition: transform .18s; }
+.studio-intelligence[open] .studio-intelligence__chevron { transform: rotate(90deg); }
+.studio-intelligence__body { padding: 0 16px 18px; }
+.studio-intelligence__body > section + section { margin-top: 22px; padding-top: 22px; border-top: 1px solid #e3dee4; }
+.studio-intelligence h3 { font: 600 16px/1.5 'Be Vietnam Pro', sans-serif; margin: 0 0 12px; }
+.studio-intelligence label { display: block; font-size: 13px; margin: 12px 0 7px; }
+.studio-intelligence select, .studio-intelligence textarea { width: 100%; min-width: 0; border: 1px solid #d9d4df; border-radius: 12px; background: white; color: #25232a; font: inherit; font-size: 14px; padding: 12px; }
+.studio-intelligence textarea { resize: vertical; }
+.studio-intelligence__actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.studio-intelligence button { min-height: 44px; border: 1px solid #d9d4df; border-radius: 12px; padding: 10px 12px; background: #fff; color: #25232a; font: inherit; font-size: 13px; cursor: pointer; }
+.studio-intelligence button:disabled { opacity: .5; cursor: wait; }
+.studio-intelligence #adviceAI { color: #fff; background: #19181d; border-color: #19181d; }
+.studio-intelligence button:focus-visible, .studio-intelligence summary:focus-visible { outline: 2px solid #535b69; outline-offset: 3px; }
+.studio-intelligence p, .studio-intelligence li { line-height: 1.65; font-size: 13px; margin: 10px 0; overflow-wrap: anywhere; }
+.studio-intelligence .studio-intelligence__note { font-size: 12px; color: #656271; }
+.studio-intelligence a { color: #3d6654; text-underline-offset: 3px; }
+.studio-intelligence__guard { border-left: 3px solid #abc6b7; padding-left: 12px; margin-top: 14px; }
+.studio-intelligence__guard.is-warning { border-left-color: #b45435; }
+.studio-intelligence__lookbooks { display: grid; gap: 20px; }
+.studio-intelligence__lookbook { margin: 0; display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 12px; }
+.studio-intelligence__lookbook img { width: 104px; height: 144px; object-fit: cover; border-radius: 12px; background: #e8e3df; }
+.studio-intelligence__lookbook h4 { font-size: 14px; line-height: 1.5; margin: 0; }
+.studio-intelligence__lookbook p { margin: 6px 0; font-size: 12px; }
+.studio-intelligence__lookbook a { display: block; font-size: 11px; line-height: 1.6; margin: 8px 0; }
+.studio-intelligence__lookbook button { margin-top: 4px; }
+#passportSource small { display: block; margin-top: 8px; line-height: 1.6; }
+@media (max-width: 480px) { .studio-intelligence { margin-inline: 12px; } .studio-intelligence__lookbook { grid-template-columns: 86px minmax(0, 1fr); } .studio-intelligence__lookbook img { width: 86px; height: 128px; } }

@@ -22,3 +22,8 @@ Deno.test('PHP fixed HMAC vector verifies in Edge; tampering fails closed', asyn
   }
   if (await verifyGateway(request(), undefined, now) || await verifyGateway(request(), 'wrong'.repeat(8), now)) throw new Error('Missing/wrong secret accepted');
 });
+Deno.test('text advice signature is bound to its own function, not an image route', async () => {
+  const advice = request({'x-vremix-signature':'b0d78f15da608cd1b075c215074fc4e5e8f11ceb0e42cb3ad3c323cc872058c6'}, '{"planning":true}', 'https://fixture/functions/v1/studio-advisor');
+  if (!await verifyGateway(advice,secret,now,'studio-advisor')) throw new Error('Advice signature rejected');
+  if (await verifyGateway(advice,secret,now) || await verifyGateway(request(),secret,now,'studio-advisor')) throw new Error('Signature crossed function boundaries');
+});

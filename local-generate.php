@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/src/Support/Env.php';
 require __DIR__ . '/src/Support/StudioPlan.php';
+require __DIR__ . '/src/Support/StudioIntelligence.php';
 require __DIR__ . '/src/Support/StudioHistory.php';
 require __DIR__ . '/src/Support/SupabaseAuth.php';
 require __DIR__ . '/src/Infrastructure/SupabaseAdminClient.php';
@@ -149,11 +150,14 @@ try {
             $database = require __DIR__ . '/config/database.php';
             $catalog = (new StudioRepository(new SupabaseClient($database['url'], $database['anon_key'])))->getCatalog();
             if (!$catalog) throw new RuntimeException('Catalog chưa sẵn sàng.');
+            $catalog = App\Support\StudioIntelligence::enrichCatalog($catalog);
             $event = ($input['eventSlug'] ?? '') === 'custom' && $plan['customOccasion'] !== ''
                 ? ['label' => $plan['customOccasion'], 'description' => 'User preference only; not reviewed cultural knowledge. Do not claim culturally verified occasion or suitability.']
                 : (array_values(array_filter($catalog['events'], static fn (array $e): bool => $e['slug'] === ($input['eventSlug'] ?? '')))[0] ?? null);
             if (!$event) throw new InvalidArgumentException('Chọn một dịp đã được duyệt.');
             $basePrompt = StudioPlan::prompt($plan, $catalog) . "\nEvent: " . $event['label'] . '. ' . ($event['description'] ?? '');
+            $context = App\Support\StudioIntelligence::trustedContext($input, $_SESSION);
+            if ($context) $basePrompt .= "\nDated advisory context; never override selected clothing, event or scene or invent weather outside forecast dates: " . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             $scopes = ['A' => 'Create one complete photo of the specified people and their chosen outfits.'];
         } catch (InvalidArgumentException $error) {
             $respond(['error' => $error->getMessage(), 'status' => 'failed'], 422);

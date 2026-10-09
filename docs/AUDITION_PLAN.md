@@ -1,6 +1,9 @@
 # V-Remix - Kế hoạch Audition đã định hình lại
 
-Cập nhật: 2026-10-07
+Cập nhật chức năng: 2026-10-10. Kế hoạch nền dưới đây giữ lại làm tham chiếu;
+phạm vi triển khai/kiểm chứng mới nhất nằm tại [Studio intelligence](STUDIO_INTELLIGENCE.md)
+và [luồng tham chiếu trang phục](garment-reference-pipeline.md). Không dùng các
+checkbox lịch sử bên dưới để suy ra toàn bộ chức năng đã được thử AI trên production.
 
 Tài liệu này là nguồn ưu tiên cho giai đoạn Audition. Kế hoạch nền tảng dài hạn
 vẫn được giữ lại, nhưng không được làm chậm hoặc làm mỏng luồng demo cốt lõi.

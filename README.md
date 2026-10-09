@@ -2,6 +2,11 @@
 
 Landing page V-Remix chạy bằng PHP trên XAMPP.
 
+Studio đã có mô-đun **Gợi ý cho bạn**: thời tiết thật theo khu vực, lịch lễ hội có nguồn,
+AI Stylist văn bản gọi theo xác nhận, cảnh báo Remix/phục dựng và bốn lookbook biên tập.
+Phạm vi dữ liệu, giới hạn quyền riêng tư/lượt AI và cách kiểm thử:
+[`docs/STUDIO_INTELLIGENCE.md`](docs/STUDIO_INTELLIGENCE.md).
+
 Kế hoạch ưu tiên cho bản thi nằm tại
 [`docs/AUDITION_PLAN.md`](docs/AUDITION_PLAN.md). Trong giai đoạn Audition,
 lookbook ảnh và nội dung văn hóa là luồng bắt buộc; video là lớp nâng cao và

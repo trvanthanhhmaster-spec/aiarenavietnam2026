@@ -27,3 +27,10 @@ Deno.test('dimensions reflect image bytes rather than requested resolution',()=>
   const value=imageDimensions(btoa(String.fromCharCode(...header)));assert(value?.width===1376&&value?.height===768);
   assert(imageDimensions('invalid')===null);
 });
+Deno.test('wrong wide sleeves overrides a claimed overall pass; occlusion remains uncertain', () => {
+  const value = {...fixture(), constructionChecks: [{personId:1,status:'mismatch',reason:'Áo tấc đang có tay chẽn thay vì tay rộng.'}, {personId:2,status:'match',reason:'Các vạt áo tứ thân vẫn nhìn thấy rõ.'}]};
+  const result = parseImageAssessment(value, plan, true, true);
+  assert(result.status === 'mismatch'); assert(result.people?.[0].checks.garment === 'mismatch');
+  value.constructionChecks[0].status = 'uncertain'; assert(parseImageAssessment(value, plan, true, true).status === 'uncertain');
+  let rejected = false; try { parseImageAssessment(fixture(), plan, true, true); } catch { rejected = true; } assert(rejected);
+});

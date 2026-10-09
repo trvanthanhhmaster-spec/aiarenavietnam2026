@@ -822,6 +822,7 @@
   }
 
   function updatePassport() {
+    var heritage = (catalog.intelligence || {}).heritage && catalog.intelligence.heritage[state.garment];
     var garment = lookup(catalog.garments, state.garment);
     var garmentVariant = lookup(catalog.garmentVariants, state.garmentVariant);
     var event = selectedEvent(state.event);
@@ -829,13 +830,13 @@
     var style = lookup(catalog.styles, state.style);
     var scene = lookup(catalog.scenes, state.scene);
     if (passportTitle) passportTitle.textContent = garmentVariant.name || garment.name || 'Chưa chọn Việt phục';
-    if (passportOrigin) passportOrigin.textContent = garment.origin_note || 'Chọn một trang phục để xem nội dung đã được duyệt.';
+    if (passportOrigin) passportOrigin.textContent = heritage ? heritage.origin : garment.origin_note || 'Chọn một trang phục để xem nội dung đã được duyệt.';
     if (passportFeature) passportFeature.textContent = [
       garmentVariant.description || garment.description,
       garmentVariant.material ? 'Chất liệu: ' + garmentVariant.material : '',
       garmentVariant.pattern_notes ? 'Họa tiết: ' + garmentVariant.pattern_notes : ''
     ].filter(Boolean).join(' · ') || '—';
-    if (passportMeaning) passportMeaning.textContent = garment.significance_note || '—';
+    if (passportMeaning) passportMeaning.textContent = heritage ? heritage.meaning : garment.significance_note || '—';
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
     if (passportSource) {
       passportSource.textContent = source ? source.title : 'Nguồn đã được duyệt sẽ hiển thị tại đây.';
@@ -851,6 +852,14 @@
         ? 'Tư liệu hình ảnh: dùng đối chiếu dáng áo, không đủ để chứng minh nhận định lịch sử.'
         : 'Nguồn tham khảo cần được đối chiếu theo từng nhận định; không phải chứng nhận phục dựng.';
       passportSource.appendChild(sourceNote);
+      if (heritage) {
+        passportSource.replaceChildren();
+        heritage.sources.forEach(function (item) {
+          var link = document.createElement('a'); link.href = safeExternalUrl(item.url, ''); link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = item.title + ' ↗';
+          var note = document.createElement('small'); note.textContent = item.publisher + ' · ' + item.scope + ' · Đối chiếu ' + item.checkedAt;
+          passportSource.append(link, note);
+        });
+      }
     }
     if (passportVisual) {
       var passportImage = catalogImageUrl(garmentVariant) || catalogImageUrl(garment);
@@ -1210,6 +1219,7 @@
     Object.assign(currentRequestSelection, Planner.clone(primary));
     activeJob.selection = Planner.clone(currentRequestSelection);
     payload.weather = ''; payload.season = '';
+    payload.adviceContextId = experience.adviceContextId ? experience.adviceContextId() : '';
     // Resolve the selected previous image on the server; never send an arbitrary image URL.
     if (savedLookId) payload.referenceLookId = savedLookId;
     else if (currentResultJobId) payload.referenceJobId = currentResultJobId;
@@ -2022,6 +2032,9 @@
         var details = Object.keys(fields).filter(function (key) { return person.checks && ['mismatch','uncertain'].includes(person.checks[key]); }).map(function (key) { return fields[key] + (person.checks[key] === 'mismatch' ? ' chưa khớp' : ' chưa rõ'); });
         if (details.length) findings.push('Người ' + person.personId + ': ' + details.join(', '));
       });
+      (assessment && Array.isArray(assessment.constructionChecks) ? assessment.constructionChecks.slice(0,12) : []).forEach(function (check) {
+        if (['mismatch','uncertain'].includes(check.status) && typeof check.reason === 'string') findings.push('Cấu trúc · Người ' + check.personId + ': ' + check.reason.slice(0,400));
+      });
       verification.textContent = (statusText[assessment && assessment.status] || statusText['not-assessed']) + (findings.length ? ' ' + findings.join('. ') + '.' : '');
     }
     var provenance = document.getElementById('resultCopySource');
@@ -2092,6 +2105,22 @@
   // The guide uses this API; selection and per-person outfits have one owner.
   experience.plannerApi = {
     get: function () { return Planner.clone(planning); },
+    selection: function () { return { event: state.event, planning: Planner.clone(planning) }; },
+    applyRecipe: function (id) {
+      if (generationPending) throw new Error('Chờ tạo ảnh xong trước khi đổi bản phối.');
+      var recipe = ((catalog.intelligence || {}).lookbooks || []).find(function (row) { return row.id === id; });
+      if (!recipe || !lookup(catalog.garments, recipe.garment).slug) throw new Error('Mẫu này không còn trong thư viện.');
+      if (!planning.count) throw new Error('Chọn số người trước khi áp dụng bản phối.');
+      var p = planning.people[planning.activePerson - 1];
+      if (!p) throw new Error('Chọn người cần phối.');
+      if (!window.confirm('Thay lựa chọn trang phục của Người ' + p.id + ' bằng bản phối này? Không tự tạo ảnh. Các người khác giữ nguyên lựa chọn.' + (planning.shared && planning.count > 1 ? ' Chuyển nhóm sang “Mỗi người một bộ”.' : ''))) return false;
+      // Applying inspiration is explicitly per-person, even in shared mode.
+      p.outfit = Planner.clone(recipe.outfit); p.customized = true;
+      if (planning.count > 1) planning.shared = false;
+      if (!state.event && lookup(catalog.events, recipe.event).slug) state.event = recipe.event;
+      Planner.load(planning, state); syncVariantSelections(); renderCatalogPanels(); updateSummary('garment'); selectionChanged();
+      return true;
+    },
     count: function (count) {
       if (generationPending) return;
       if (planning.count && count < planning.count && planning.people.slice(count).some(function (person) { return person.outfit.garment || person.name || person.gender || person.heightCm || person.weightKg || person.faceSupplied; })
