@@ -2,8 +2,8 @@
 
 - Public URL: https://v-remix.vietnamsir.com/
 - Studio: https://v-remix.vietnamsir.com/studio.php
-- Runtime release: `1736740`; immutable source under
-  `/opt/vremix/releases/1736740`, active symlink `/opt/vremix/current`.
+- Runtime release: `a5fb10f`; immutable source under
+  `/opt/vremix/releases/a5fb10f`, active symlink `/opt/vremix/current`.
 - Host: 160.30.160.101, SSH port 8686. No credentials are recorded here.
 - Isolated Docker container `vremix-php`, UID/GID 10001, PHP 8.3.35,
   read-only source, capabilities dropped, 384 MiB RAM limit.
@@ -33,7 +33,7 @@
   login, private ownership, CSRF, per-collection revisions, independent writes,
   atomic rollback, stale-tab conflicts, guest-chain claim, deleted versions and
   collections, RLS and service-only RPC. Fixtures/accounts were cleaned.
-- All 20 JavaScript test files passed locally; public Studio was visually checked
+- All 21 JavaScript test files passed locally; public Studio was visually checked
   in the browser with its idle illustration and four-step flow.
 - Generating state now uses the supplied 10-second muted loading video. It is
   lazy-loaded, paused on completion/error or backgrounding, and respects reduced
@@ -43,6 +43,13 @@
   export and version deletion live in a compact disclosure menu. Desktop and
   390px browser checks verified placement, outside/Escape dismissal and focus
   return; original export handlers and permissions remain unchanged.
+- Admin now has Accounts → Đăng nhập Google, with provider status, write-only
+  secret entry and copyable Google / website callbacks. Authenticated production
+  browser verified the Google-disabled state and missing-token lock; desktop and
+  390px checks showed no horizontal overflow. Local guest API returns 403.
+  Offline PHP/JS tests cover narrow provider PATCH, secret redaction, validation,
+  stale-state rejection and uncertain-write safety. Real Auth settings were not
+  modified during these checks.
 - Existing `chatgpt.vietnamsir.com`, `shop.vietnamsir.com` and `vietnamsir.com`
   still return HTTP 200. The new container has no restart loop.
 
@@ -53,5 +60,8 @@
   consumed by deployment tests. Synthetic fixtures are not provider evidence.
 - Google OAuth is disabled in Supabase (`external_google_enabled=false`). Email
   login works; enabling Google requires the owner's OAuth client configuration.
+  VPS has no `SUPABASE_MANAGEMENT_TOKEN`; Admin saving remains disabled until a
+  dedicated project-scoped token is privately provisioned server-side. No CLI
+  personal token was copied. See `docs/google-auth-admin.md` for setup.
 - Renewing the certificate against staging was not run; timer and hooks were
   inspected, and the actual certificate was issued and verified.
