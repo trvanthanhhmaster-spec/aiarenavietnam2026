@@ -6,6 +6,7 @@
   var rows = [];
   var usage = null;
   var editing = null;
+  var saving = false;
   var loadSerial = 0;
   var resourceLabels = {
     'ai-settings': {
@@ -199,6 +200,8 @@
   var editorFields = document.getElementById('editorFields');
   var editorTitle = document.getElementById('editorTitle');
   var editorKicker = document.getElementById('editorKicker');
+  var editorError = document.getElementById('editorError');
+  var saveButton = document.getElementById('editorSave');
   var createButton = document.getElementById('adminCreate');
   var refreshButton = document.getElementById('adminRefresh');
   var syncState = document.getElementById('adminSyncState');
@@ -268,6 +271,7 @@
   async function loadResource() {
     var current = ++loadSerial;
     var metadata = resourceLabels[resourceKey];
+    document.dispatchEvent(new CustomEvent('admin:resource', { detail: { resource: resourceKey } }));
     usage = null;
     document.getElementById('adminResourceKicker').textContent = metadata.kicker;
     document.getElementById('adminResourceTitle').textContent = metadata.title;
@@ -282,6 +286,8 @@
     }
     window.VRemixGoogleAuth.leave();
     setStatus('Đang đồng bộ Supabase…');
+    empty.hidden = true;
+    tableHead.innerHTML = '';
     tableBody.innerHTML = '<tr><td class="admin-table__loading" colspan="8">Đang đọc dữ liệu đã duyệt…</td></tr>';
     try {
       var body = await request(resourceKey);
@@ -365,6 +371,8 @@
   }
 
   function openEditor(row) {
+    editorError.hidden = true;
+    editorError.textContent = '';
     editing = row || {};
     var definitions = fields[resourceKey] || [];
     editorTitle.textContent = resourceKey === 'ai-settings'
@@ -437,7 +445,7 @@
       else if (definition[2] === 'number') record[key] = field.value === '' ? null : Number(field.value);
       else if (definition[2] === 'json') {
         try { record[key] = JSON.parse(field.value || '{}'); }
-        catch (error) { throw new Error('UI copy JSON không hợp lệ.'); }
+        catch (error) { throw new Error(definition[1] + ': JSON không hợp lệ.'); }
       } else record[key] = field.value;
     });
     setStatus('Đang lưu vào Supabase…');
@@ -469,7 +477,9 @@
     button.addEventListener('click', function () {
       if (resourceKey === 'google-auth' && !window.VRemixGoogleAuth.canLeave()) return;
       nav.querySelectorAll('[data-resource]').forEach(function (item) { item.classList.remove('is-active'); });
+      nav.querySelectorAll('[data-resource]').forEach(function (item) { item.removeAttribute('aria-current'); });
       button.classList.add('is-active');
+      button.setAttribute('aria-current', 'page');
       resourceKey = button.dataset.resource;
       loadResource();
     });
@@ -479,10 +489,24 @@
     loadResource();
   });
   createButton.addEventListener('click', function () { openEditor(null); });
+  dialog.addEventListener('cancel', function (event) { if (saving) event.preventDefault(); });
   editor.addEventListener('submit', function (event) {
+    if (saving) { event.preventDefault(); return; }
     if (event.submitter && event.submitter.id === 'editorSave') {
       event.preventDefault();
-      saveEditor().catch(function (error) { setStatus(error.message); });
+      saving = true;
+      saveButton.disabled = true;
+      editor.setAttribute('aria-busy', 'true');
+      editorError.hidden = true;
+      saveEditor().catch(function (error) {
+        setStatus(error.message);
+        editorError.textContent = error.message;
+        editorError.hidden = false;
+      }).finally(function () {
+        saving = false;
+        saveButton.disabled = false;
+        editor.removeAttribute('aria-busy');
+      });
     }
   });
 

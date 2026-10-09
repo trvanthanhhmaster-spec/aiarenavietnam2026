@@ -164,6 +164,8 @@ redirect URL `http://localhost/aiarenavietnam2026/auth-callback.php`.
 Mở `admin.php` sau khi đăng nhập bằng tài khoản có role `admin`. Trên một dự án
 trống, tài khoản Supabase đầu tiên mở Admin từ localhost sẽ được cấp role
 `admin`; các môi trường khác phải cấp role trong `user_roles`. Trang
+quản trị dùng giao diện cyan/olive với thanh nhóm icon, tìm mục không phân biệt
+dấu và menu đầy đủ trên điện thoại; xem [thiết kế admin](docs/admin-dashboard-design.md).
 `API & chi phí` là màn hình mặc định: tại đây có thể bật/tắt generation, chọn
 provider/model ảnh và video, nhập Gemini API key dạng write-only, đặt số biến
 thể, đơn giá ước tính và ngân sách ngày/tháng. API key được mã hoá AES-256-GCM
