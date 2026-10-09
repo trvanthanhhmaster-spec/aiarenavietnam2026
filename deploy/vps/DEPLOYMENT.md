@@ -1,4 +1,32 @@
-# Verified deployment — 2026-10-09
+# Garment-reference upgrade — 2026-10-10
+
+- Active source release: `2cedf30`, `/opt/vremix/current` points to
+  `/opt/vremix/releases/2cedf30`. PHP and bridge containers both use this tag.
+- `generate-look` Edge Function deployed to the existing project. Gateway HMAC,
+  secret mounts, provider dependency pin and network isolation remain unchanged.
+- HTTPS/page/assets/private-route/video smoke checks and signed gateway checks
+  passed. Authenticated bridge readiness passed without generating an image.
+- Exactly ONE owner-authorized anonymous Studio image job completed:
+  `df78ab4b-ca86-42c5-a278-d63019422446`. One published áo tấc sample was attached;
+  no personal face reference was uploaded and no collection was changed.
+- Stored image decoded at 1376×768, HTTP 200. The review completed, reporting
+  one person and matched garment, variant, color, pattern, accessories and scene.
+  Cultural Score was 85/100 (tentative AI assessment, not cultural certification).
+- Visual inspection found the red garment, wide sleeves and courtyard; sample
+  fan and necklace were not copied. One successful sample is not proof of perfect
+  reconstruction, model-identity separation or consistency across all garments.
+- Production menu visibly distinguishes original-image share-card export from
+  a new paid 9:16 generation. No repair or vertical-image job was run.
+- Offline checks passed: 29 Deno tests, 30 JavaScript suites, five bridge contract
+  suites, PHP validators/history/targeted-repair checks and source lint/type checks.
+- Scholarly historical-source curation is still outstanding. See
+  `docs/garment-reference-pipeline.md` for behavior and verification boundaries.
+- Previous releases and `/opt/vremix/release.env.pre-2cedf30` are retained for rollback.
+  Local QA image/evidence/screenshots are ignored by Git; no secrets are recorded.
+
+---
+
+# Historical deployment — 2026-10-09
 
 - Public URL: https://v-remix.vietnamsir.com/
 - Studio: https://v-remix.vietnamsir.com/studio.php

@@ -13,3 +13,4 @@ __pycache__/
 dist/
 build/
 coverage/
+artifacts/reference-generation-qa/
