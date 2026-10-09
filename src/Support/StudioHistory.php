@@ -54,13 +54,21 @@ final class StudioHistory
                 }
             }
             unset($input['referenceJobId']);
-            $old = ['planning'=>$look['selection']['planning'] ?? null];
+            $old = ['planning'=>$look['selection']['planning'] ?? null, 'eventSlug'=>$look['selection']['event'] ?? ''];
             $image = ['url'=>$look['image_url'],'path'=>$look['storage_path'] ?? null];
             $input['history'] = ['rootJobId'=>null,'rootLookId'=>$look['id'],'parentJobId'=>null];
         }
         $before = $old['planning'] ?? null; $after = $input['planning'] ?? null;
-        $input['editInstruction'] = "Edit the supplied previous version, NOT a fresh random composition. Preserve identities, faces, hair, pose, camera, background and all garment/accessory details not changed in the requested plan. A person-count change may add/remove people while preserving the existing people where possible. Do not reproduce text, panels or reference-sheet labels.\n"
-            . json_encode(['previousPlan'=>$before,'requestedPlan'=>$after], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $eventChanged = ($old['eventSlug'] ?? '') !== ($input['eventSlug'] ?? '')
+            || ($before['customOccasion'] ?? '') !== ($after['customOccasion'] ?? '')
+            || ($before['occasionNote'] ?? '') !== ($after['occasionNote'] ?? '');
+        $sceneChanged = array_column(array_column($before['people'] ?? [], 'outfit'), 'scene')
+            !== array_column(array_column($after['people'] ?? [], 'outfit'), 'scene');
+        $background = $eventChanged || $sceneChanged
+            ? 'Update the background to the requested event and explicit scene choices. Do NOT preserve a conflicting old background.'
+            : 'Preserve the background because the event and scene choices are unchanged.';
+        $input['editInstruction'] = "Edit the supplied previous version, NOT a fresh random composition. Preserve unchanged identities, faces, hair and garment/accessory details. Apply every changed choice, including removal of accessories and explicit color/pattern overrides. Keep pose and camera where possible without conflicting with the requested scene or people count. {$background} A person-count change may add/remove people while preserving the existing people where possible. Do not reproduce text, panels or reference-sheet labels.\n"
+            . json_encode(['previousEvent'=>$old['eventSlug'] ?? '', 'requestedEvent'=>$input['eventSlug'] ?? '', 'previousPlan'=>$before,'requestedPlan'=>$after], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         return $this->storage->imageData($image);
     }
     public static function selection(array $input): array
@@ -69,5 +77,29 @@ final class StudioHistory
         foreach (['event'=>'eventSlug','garment'=>'garmentSlug','garmentVariant'=>'garmentVariantSlug','color'=>'colorSlug','pattern'=>'patternSlug','style'=>'styleSlug','scene'=>'sceneSlug'] as $key=>$source) $result[$key] = $input[$source] ?? '';
         $result['accessories'] = $input['accessorySlugs'] ?? []; $result['accessoryVariants'] = $input['accessoryVariantSlugs'] ?? [];
         return $result;
+    }
+    /** Public result metadata only; never expose internal prompts, provider errors or face bytes. */
+    public static function output(array $output, ?string $url, ?string $path): array
+    {
+        $safe = [];
+        foreach (['story','guardrail','genZTip'] as $key) if (is_string($output[$key] ?? null)) $safe[$key] = mb_substr($output[$key], 0, 12000);
+        foreach (['copySource','culturalScoreSource','imageSource'] as $key) if (is_string($output[$key] ?? null)) $safe[$key] = mb_substr($output[$key], 0, 80);
+        $score = $output['culturalScore'] ?? null;
+        if (is_numeric($score) && (float)$score >= 0 && (float)$score <= 100) $safe['culturalScore'] = (float)$score;
+        if (is_array($output['imageAssessment'] ?? null)) {
+            $assessment = $output['imageAssessment'];
+            $safe['imageAssessment'] = ['status'=>in_array($assessment['status'] ?? '', ['matched','mismatch','uncertain','not-assessed'], true) ? $assessment['status'] : 'not-assessed'];
+            if (is_int($assessment['observedPeopleCount'] ?? null) && $assessment['observedPeopleCount'] >= 0 && $assessment['observedPeopleCount'] <= 30) $safe['imageAssessment']['observedPeopleCount'] = $assessment['observedPeopleCount'];
+            foreach (array_slice(is_array($assessment['people'] ?? null) ? $assessment['people'] : [], 0, 12) as $person) {
+                if (!is_array($person) || !is_int($person['personId'] ?? null) || $person['personId'] < 1 || $person['personId'] > 12) continue;
+                $checks = [];
+                foreach (['garment','variant','color','pattern','style','accessories','scene'] as $field) if (in_array($person['checks'][$field] ?? '', ['match','mismatch','uncertain','not-requested'], true)) $checks[$field] = $person['checks'][$field];
+                $safe['imageAssessment']['people'][] = ['personId'=>$person['personId'], 'checks'=>$checks];
+            }
+        }
+        $item = ['url'=>$url,'path'=>$path];
+        foreach (['width','height'] as $key) if (is_int($output['lookbook']['items'][0][$key] ?? null)) $item[$key] = $output['lookbook']['items'][0][$key];
+        $safe['lookbook'] = ['aspectRatio'=>$output['lookbook']['aspectRatio'] ?? '16:9', 'items'=>$url ? [$item] : []];
+        return $safe;
     }
 }

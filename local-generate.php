@@ -258,6 +258,7 @@ try {
             'mimeType' => $mimeType,
             'index' => count($frames) + 1,
             'fallback' => in_array($key, $fallbackFrames, true),
+            ...(($size = @getimagesizefromstring((string) base64_decode((string) $image['data'], true))) ? ['width'=>$size[0], 'height'=>$size[1]] : []),
         ];
         if ($key === 'A') {
             $sourceImage = ['mimeType' => $mimeType, 'data' => (string) $image['data']];
@@ -267,6 +268,8 @@ try {
     $output = [
         'generationType' => (string) ($input['generationType'] ?? 'image'),
         'provider' => 'gemini-webapi-local',
+        'copySource' => 'catalog-fallback',
+        'imageAssessment' => ['status'=>'not-assessed','source'=>'not-assessed'],
         'story' => $plan !== null ? 'Bản phối minh họa theo dịp mặc và trang phục của ' . $plan['count'] . ' người. Đây không phải chứng nhận độ chính xác văn hóa hay kích cỡ.' : ($fallbackFrames === []
             ? 'Bộ ảnh được tạo từ một frame A cố định và bốn phép biến đổi có kiểm soát.'
             : 'Frame A đã được khoá. ' . implode(', ', $fallbackFrames) . ' đang dùng ảnh A làm fallback vì Gemini tạm thời không trả ảnh.'),

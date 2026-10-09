@@ -5,6 +5,7 @@ import { buildVideoRequest, type VideoFirstFrame } from "./video-request.ts";
 import { normalizePlan, planPrompt, type StudioPlan } from "./studio-plan.ts";
 import { verifyGateway } from "./gateway-auth.ts";
 import { providerError } from "./provider-error.ts";
+import { imageDimensions, parseImageAssessment, reviewPrompt, type ImageAssessment } from './image-assessment.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,6 +71,8 @@ type GeneratedAsset = {
   url: string;
   mimeType: string;
   index: number;
+  width?: number;
+  height?: number;
 };
 
 type RuntimeSettings = {
@@ -404,7 +407,7 @@ async function askGemini(
     `Selected style: ${JSON.stringify(request.styleSlug)}`,
     `Selected scene: ${JSON.stringify(request.sceneSlug)}`,
     `Base look locks: ${JSON.stringify(request.locks || {})}`,
-    `Catalog facts: ${JSON.stringify(catalog)}`,
+    `Catalog facts: ${JSON.stringify(selectedCatalog(request, catalog))}`,
     ...(request.planning ? [`Group wear plan: ${JSON.stringify(request.planning)}. Explain all selected garment types without inventing weather or historical facts.`] : []),
   ].join("\n");
   const parts: Record<string, unknown>[] = [{ text: prompt }];
@@ -430,6 +433,44 @@ async function askGemini(
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned an empty response.");
   return parseGeminiCopy(text);
+}
+
+function selectedCatalog(request: LookRequest, catalog: Record<string, any>) {
+  const outfits = request.planning?.people.map(p => p.outfit) || [{ garment: request.garmentSlug, garmentVariant: request.garmentVariantSlug,
+    color: request.colorSlug, pattern: request.patternSlug, style: request.styleSlug, scene: request.sceneSlug,
+    accessories: request.accessorySlugs || [], accessoryVariants: request.accessoryVariantSlugs || [] }];
+  const selected = (rows: any[], values: unknown[]) => (rows || []).filter(row => values.includes(row.slug));
+  return { event: catalog.event,
+    garments: selected(catalog.garments || [catalog.garment], outfits.map(o => o.garment)),
+    garmentVariants: selected(catalog.garmentVariants || [catalog.garmentVariant].filter(Boolean), outfits.map(o => o.garmentVariant)),
+    accessories: selected(catalog.accessories, outfits.flatMap(o => o.accessories)),
+    accessoryVariants: selected(catalog.accessoryVariants, outfits.flatMap(o => o.accessoryVariants)),
+    options: selected(catalog.options, outfits.flatMap(o => [o.color,o.pattern,o.style,o.scene])),
+    rules: (catalog.rules || []).filter((rule: any) => !rule.context || rule.context === 'all' || rule.context === request.eventSlug) };
+}
+
+async function reviewImage(request: LookRequest, catalog: Record<string, any>, image: { bytes: string; mimeType: string }, settings: RuntimeSettings) {
+  if (!request.planning) throw new Error('Review requires a normalized plan.');
+  const selected = planPrompt(request.planning, catalog);
+  const prompt = reviewPrompt(selected.slice(selected.indexOf('\n') + 1) + '\nCatalog facts: ' + JSON.stringify(selectedCatalog(request, catalog)));
+  let response: Response;
+  if (settings.imageProvider === 'webapi') {
+    const url = Deno.env.get('GEMINI_WEB_BRIDGE_URL')?.replace(/\/+$/, ''), secret = Deno.env.get('GEMINI_WEB_BRIDGE_SECRET');
+    if (!url || !secret) throw new Error('Review bridge is not configured.');
+    response = await fetch(`${url}/v1/images/generate`, { method: 'POST', signal: AbortSignal.timeout(45000),
+      headers: { 'Content-Type':'application/json', 'x-vremix-bridge-secret':secret },
+      body: JSON.stringify({ operation:'review', prompt, sourceImage:{ mimeType:image.mimeType,data:image.bytes } }) });
+  } else {
+    const config = providerConfig(false, settings);
+    response = await fetch(modelEndpoint(config, settings.textModel, 'generateContent'), { method:'POST', signal:AbortSignal.timeout(45000),
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt},{inline_data:{mime_type:image.mimeType,data:image.bytes}}]}],
+        generationConfig:{responseMimeType:'application/json',temperature:0.1} }) });
+  }
+  if (!response.ok) throw await providerError(response, settings.imageProvider === 'webapi' ? 'Gemini Web bridge' : 'Gemini review');
+  const body = await response.json();
+  const text = settings.imageProvider === 'webapi' ? body.text : body?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('');
+  if (typeof text !== 'string') throw new Error('Empty review.');
+  return { copy:parseGeminiCopy(text), assessment:parseImageAssessment(JSON.parse(text).imageAssessment, request.planning) };
 }
 
 async function generateImages(
@@ -717,6 +758,7 @@ async function storeLookbook(jobId: string, images: { bytes: string; mimeType: s
     const path = `${jobId}/look-${index + 1}.${extension}`;
     await uploadImage(path, images[index].bytes, images[index].mimeType);
     assets.push({
+      ...(imageDimensions(images[index].bytes) || {}),
       path,
       url: await signedUrl(path),
       mimeType: images[index].mimeType,
@@ -771,7 +813,11 @@ async function processLook(
   let copySource: "gemini" | "catalog-fallback" = "gemini";
   let copyWarning: string | undefined;
   try {
-    copy = await askGemini(input, catalog, promptVersion, settings);
+    // Web provider reviews the generated image and writes copy in ONE later text call.
+    // Do not call an unrelated official API key before image generation.
+    if (settings.imageProvider === 'webapi' && input.planning) {
+      copy = fallbackCopy(input, catalog); copySource = 'catalog-fallback';
+    } else copy = await askGemini(input, catalog, promptVersion, settings);
   } catch (error) {
     // Catalog facts are already approved, so they provide a truthful fallback
     // for the copy layer while the image provider can still finish the job.
@@ -788,6 +834,7 @@ async function processLook(
   let imageWarning: string | undefined;
   let videoFirstFrame: VideoFirstFrame | undefined;
   let videoFrames: Array<{ bytes: string; mimeType: string }> = [];
+  let imageAssessment: ImageAssessment = {status:'not-assessed',source:'not-assessed'};
   if (generationType === "image" || generationType === "video" || generationType === "both") {
     try {
       const generated = await generateImages(
@@ -798,6 +845,16 @@ async function processLook(
         input,
       );
       assets = await storeLookbook(job.id, generated);
+      if (input.planning && generated[0]) {
+        try {
+          const review = await reviewImage(input, catalog, generated[0], settings);
+          copy = review.copy; copySource = 'gemini'; copyWarning = undefined;
+          imageAssessment = review.assessment;
+        } catch {
+          // Keep the usable image. Never replay a generation or fabricate a pass/score.
+          imageAssessment = {status:'not-assessed',source:'not-assessed'};
+        }
+      }
       videoFrames = generated;
       if (generated[0]) {
         videoFirstFrame = {
@@ -831,6 +888,7 @@ async function processLook(
     culturalScoreSource: copySource === "gemini" ? "gemini-selection-assessment" : "not-assessed",
     ...(copyWarning ? { copyWarning } : {}),
     imageSource,
+    imageAssessment,
     ...(imageWarning ? { imageWarning } : {}),
     promptVersion: { id: promptVersion.id, version: promptVersion.version, model: promptVersion.model },
     imagePrompt,

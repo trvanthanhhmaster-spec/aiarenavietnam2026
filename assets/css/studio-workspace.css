@@ -665,7 +665,8 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .result-selection { display: grid; gap: 12px; margin: 0 0 20px; }
 .result-selection > div { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 12px; }
 .result-selection dt { color: #64646f; font-size: 13px; }
-.result-selection dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.result-selection dd { margin: 0; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.studio-result-note { max-width: 68ch; margin: 12px 0 18px; color: #64646f; font-size: 13px; line-height: 1.65; }
 @media (max-width: 1023px) {
   .studio-workbench { grid-template-areas: 'panelhead' 'panel' 'preview'; }
   .studio-preview { height: 500px; }

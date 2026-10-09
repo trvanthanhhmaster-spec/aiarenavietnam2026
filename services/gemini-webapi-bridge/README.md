@@ -34,3 +34,7 @@ The generation contract is `POST /v1/images/generate` with a JSON body containin
 Studio uses `operation: group` for the first complete image and `operation: group-edit` when editing a selected version. For `group-edit`, `sourceImage` is the previous composition; optional `referenceImages` contains one additional numbered face-reference sheet. Each image is bounded to 8 MB. Restart the bridge after changing its code. History records keep selection metadata, never the uploaded face-sheet bytes.
 
 Do not commit `.env`, browser cookies, or generated images. Do not expose this loopback bridge directly to the public internet; if it must serve Supabase Edge Functions, put it behind an authenticated HTTPS service and rotate the bridge secret.
+
+## Structured image review
+
+`operation: review` uses the same authenticated endpoint with the generated `sourceImage` and a review prompt. It requests JSON text only and returns `{text, provider}`, not a new image. Invalid JSON is a safe `PROVIDER_NO_TEXT` failure. The timeout is 40 seconds, temporary source files are removed, and timeouts are never automatically replayed. Edge validates the per-person findings before displaying any assessment. Review failures preserve the generated image and remain explicitly unassessed.

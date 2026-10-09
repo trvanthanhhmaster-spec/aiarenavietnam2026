@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiểm tra thẻ V Remix</title>
+<style>body{margin:0;padding:24px;background:#ece8e3;color:#202023;font:15px/1.6 system-ui}main{max-width:540px;margin:auto}h1{font-size:24px}canvas{width:100%;height:auto;display:block;margin-top:24px;border-radius:20px}select,button{padding:12px;margin-right:12px;border:1px solid #bbb5ad;border-radius:10px;background:#fff;font:inherit}</style>
+<main><h1>Thẻ chia sẻ V Remix</h1><p>Bản QA chỉ kiểm tra bố cục bằng ảnh minh họa có sẵn. Không gọi AI, đăng nhập hay lưu dữ liệu.</p>
+<label>Số người <select id="count"><option>1</option><option>2</option><option>12</option></select></label><button id="download">Tải bản QA</button>
+<canvas id="card" width="1080" height="1920" aria-label="Thẻ chia sẻ 1080 × 1920"></canvas></main>
+<script src="../assets/js/studio-lookbook-card.js"></script>
+<script>
+const image=new Image(), canvas=document.getElementById('card');
+function render(){const count=Number(document.getElementById('count').value),rows=[['Dịp mặc','Dự lễ cùng gia đình'],['Số người',count+' người'],['Thời gian','Chưa xác định']];for(let i=1;i<=count;i++)rows.push(['Người '+i,'Áo ngũ thân · Phụ kiện: Không thêm']);VRemixLookbookCard.draw(canvas,[image],rows,{story:'Bố cục thử nghiệm với ảnh minh họa có sẵn. Đây không phải ảnh AI tạo từ lựa chọn trên.',guardrail:'Ảnh minh họa chưa được kiểm tra cấu trúc và chi tiết trang phục. Hãy đối chiếu nguồn văn hóa trước khi sử dụng.',genZTip:'Chọn rõ màu sắc, phong cách hoặc phụ kiện nếu muốn thử một bản phối khác. Không tự thêm phụ kiện vào lựa chọn.'});}
+image.onload=render;image.src='../assets/media/studio-atelier-poster.png';
+document.getElementById('count').addEventListener('change',render);
+document.getElementById('download').onclick=()=>{const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='v-remix-card-qa.png';a.click();};
+</script></html>

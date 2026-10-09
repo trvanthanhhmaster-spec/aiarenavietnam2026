@@ -438,6 +438,8 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <details class="workspace-output-details" id="outputDetails" hidden>
         <summary>Thông tin bản phối</summary>
         <dl class="result-selection" id="resultSelectionInfo"></dl>
+        <p class="studio-result-note" id="resultVerification" role="status">Ảnh chưa được AI đối chiếu với lựa chọn.</p>
+        <p class="studio-result-note" id="resultCopySource"></p>
         <section class="studio-result" id="studioResult" hidden>
             <div class="studio-result__backdrop" aria-hidden="true"></div>
             <div class="studio-result__header">
@@ -458,7 +460,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <p id="resultProgress">Mình đang chuẩn bị bản phối cho bạn.</p>
                     <div class="result-story"><span>Câu chuyện trang phục</span><p id="resultStory">—</p></div>
                     <div class="result-story"><span>Lưu ý văn hóa</span><p id="resultGuardrail">—</p></div>
-                    <div class="result-story result-score"><span>Mức độ phù hợp văn hóa</span><p id="resultCulturalScore">—</p></div>
+                    <div class="result-story result-score" hidden><span>Điểm gợi ý AI về lựa chọn</span><p id="resultCulturalScore">—</p></div>
                     <div class="result-story"><span>Gợi ý chụp & phối</span><p id="resultGenZTip">—</p></div>
                     <div class="result-video-branches" id="resultVideoBranches" hidden aria-label="Các video chuyển cảnh"></div>
                 </div>
@@ -484,6 +486,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-collections-model.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections-model.js') ?>" defer></script>
     <script src="assets/js/studio-loading.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-loading.js') ?>" defer></script>
     <script src="assets/js/studio-result-actions.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-result-actions.js') ?>" defer></script>
+    <script src="assets/js/studio-lookbook-card.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-lookbook-card.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>

@@ -31,6 +31,7 @@ class ProviderFailure(RuntimeError):
         "PROVIDER_SESSION_EXPIRED": (503, "Provider session requires administrator renewal."),
         "PROVIDER_TIMEOUT": (504, "Image generation timed out. Retry explicitly when ready."),
         "PROVIDER_NO_IMAGE": (502, "Provider returned no generated image."),
+        "PROVIDER_NO_TEXT": (502, "Provider returned no valid structured review."),
         "PROVIDER_UNAVAILABLE": (502, "Image provider is unavailable."),
     }
 
@@ -188,6 +189,8 @@ async def image_bytes(image, directory: str, index: int) -> tuple[str, str]:
 
 
 async def generate(client: GeminiClient, payload: dict) -> dict:
+    if payload.get("operation", "edit") not in {"base", "edit", "group", "group-edit", "review"}:
+        raise ValueError("Unsupported operation.")
     prompt = str(payload.get("prompt", "")).strip()
     if not prompt:
         raise ValueError("prompt is required.")
@@ -236,14 +239,27 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
         + instruction +
         "No text, logo or watermark.\n\n" + prompt
     )
+    if payload.get("operation") == "review":
+        full_prompt = "Return JSON text only. Do not generate images or search the web.\n\n" + prompt
     try:
         try:
             output = await asyncio.wait_for(
                 client.generate_content(full_prompt, files=files, temporary=True),
-                timeout=int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
+                timeout=40 if payload.get("operation") == "review" else int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
             )
         except asyncio.TimeoutError as error:
             raise ProviderFailure("PROVIDER_TIMEOUT") from error
+        if payload.get("operation") == "review":
+            text = str(getattr(output, "text", "") or "").strip()
+            if text.startswith("```"):
+                text = "\n".join(text.splitlines()[1:-1]).strip()
+            try:
+                value = json.loads(text) if len(text) <= 20000 else None
+                if not isinstance(value, dict):
+                    raise ValueError("Not an object")
+            except (ValueError, TypeError):
+                raise ProviderFailure("PROVIDER_NO_TEXT") from None
+            return {"text": json.dumps(value, ensure_ascii=False), "provider": "gemini-webapi"}
         generated = [image for image in output.images if type(image).__name__ == "GeneratedImage"]
         if not generated:
             response_text = " ".join(str(getattr(output, "text", "") or "").split())

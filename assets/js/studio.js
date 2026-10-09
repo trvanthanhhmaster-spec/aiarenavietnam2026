@@ -844,10 +844,10 @@
       accessoryCheck.textContent = state.accessories.length ? '○ Kiểm tra phụ kiện không che cấu trúc áo trên ảnh.' : '○ Chưa thêm phụ kiện';
       accessoryCheck.classList.toggle('is-ok', false);
     }
-    var rule = (catalog.rules || []).find(function (item) {
-      return !item.garment_id || item.garment_id === garment.id;
+    var rules = (catalog.rules || []).filter(function (item) {
+      return (!item.garment_id || item.garment_id === garment.id) && (!item.context || item.context === 'all' || item.context === state.event);
     });
-    if (culturalWarning) culturalWarning.textContent = rule ? rule.rule_text : 'Hệ thống sẽ hiển thị quy tắc văn hoá đã được duyệt.';
+    if (culturalWarning) culturalWarning.textContent = rules.length ? rules.map(function (item) { return item.rule_text; }).join(' ') + ' Đây là lưu ý tham khảo, không phải xác nhận ảnh đã phù hợp.' : 'Chưa có lưu ý riêng cho lựa chọn này; cần đối chiếu nguồn văn hóa.';
   }
 
   function formatMoney(value) {
@@ -1366,10 +1366,52 @@
     if (output.imageSource === 'gemini-webapi-partial-fallback') {
       return 'Các bản phối đã sẵn sàng; một số ảnh đang dùng bản gốc làm dự phòng.';
     }
+    if (output.imageAssessment && output.imageAssessment.status === 'mismatch') {
+      return 'AI nhận thấy chi tiết chưa khớp lựa chọn. Ảnh vẫn được giữ; xem thông tin bản phối trước khi dùng hoặc tạo lại.';
+    }
     if (output.copySource === 'catalog-fallback') {
-      return 'Các bản phối đã sẵn sàng; phần giới thiệu dùng dữ liệu đã được duyệt.';
+      return 'Ảnh đã sẵn sàng; phần giới thiệu dùng lựa chọn và dữ liệu catalog. Chưa xác minh ảnh khớp mọi chi tiết.';
     }
     return 'Ảnh bản phối đã sẵn sàng. Bạn có thể lưu, tải hoặc sửa lựa chọn để tạo ảnh khác.';
+  }
+
+  function resultChoiceRows(snapshot) {
+    if (!snapshot) return [];
+    var plan = Planner.restore(snapshot), period = plan.period;
+    var time = period && (period.kind === 'unspecified' || typeof period.start === 'string' && typeof period.end === 'string') ? Planner.periodLabel(period) : 'Chưa xác định';
+    var rows = [['Dịp mặc', selectedEvent(snapshot.event, plan).label], ['Số người', plan.count ? plan.count + ' người' : ''], ['Thời gian', time]];
+    (plan.people || []).forEach(function (person, index) {
+      var o = person.outfit || {};
+      var parts = [lookup(catalog.garmentVariants || [], o.garmentVariant).name || lookup(catalog.garments || [], o.garment).name];
+      Object.keys({ color:'colors', pattern:'patterns', style:'styles', scene:'scenes' }).forEach(function (kind) {
+        var collection = { color:'colors', pattern:'patterns', style:'styles', scene:'scenes' }[kind];
+        var option = lookup(catalog[collection] || [], o[kind]);
+        if (o[kind]) parts.push({color:'Màu',pattern:'Họa tiết',style:'Phong cách',scene:'Bối cảnh'}[kind] + ': ' + (option.label || 'Lựa chọn cũ không còn trong catalog'));
+      });
+      var variants = (catalog.accessoryVariants || []).filter(function (item) { return (o.accessoryVariants || []).includes(item.slug); });
+      var names = (o.accessories || []).map(function (slug) {
+        var parent = lookup(catalog.accessories || [], slug);
+        var chosen = variants.filter(function (item) { return item.accessory_id === parent.id; });
+        return chosen.length ? chosen.map(function (item) { return item.name; }).join(', ') : parent.name || 'Phụ kiện cũ không còn trong catalog';
+      });
+      parts.push('Phụ kiện: ' + (names.length ? names.join(', ') : 'Không thêm'));
+      rows.push(['Người ' + (index + 1), parts.filter(Boolean).join(' · ')]);
+    });
+    return rows;
+  }
+
+  function safeCatalogCopy(output, snapshot) {
+    if (output.copySource !== 'catalog-fallback' || !snapshot) return output;
+    // Old stored fallbacks may list the entire catalog. Rebuild on display, not in the database.
+    var safe = Planner.clone(output), plan = Planner.restore(snapshot);
+    var garments = (plan.people || []).map(function (person) { return lookup(catalog.garments || [], person.outfit.garment); });
+    var origins = Array.from(new Set(garments.map(function (g) { return g.origin_note; }).filter(Boolean)));
+    var guidance = Array.from(new Set(garments.map(function (g) { return g.significance_note; }).filter(Boolean)));
+    safe.story = resultChoiceRows(snapshot).map(function (row) { return row[0] + ': ' + row[1]; }).join('. ') + '. ' + origins.join(' ');
+    safe.guardrail = guidance.join(' ') + ' Lưu ý từ catalog, chưa phải kết luận ảnh đạt chuẩn văn hóa.';
+    safe.genZTip = 'Muốn thử cách phối khác, hãy chọn rõ màu, phong cách hoặc phụ kiện trước khi tạo lại. Gợi ý không tự thay đổi lựa chọn của bạn.';
+    safe.culturalScore = null; safe.culturalScoreSource = 'not-assessed';
+    return safe;
   }
 
   function requireImageOutput(output) {
@@ -1380,6 +1422,7 @@
   }
 
   function applyOutput(output) {
+    output = safeCatalogCopy(output, currentResultSelection);
     var items = output.lookbook && Array.isArray(output.lookbook.items)
       ? output.lookbook.items.filter(function (item) { return item && item.url; })
       : [];
@@ -1387,7 +1430,11 @@
     var fingerprint = JSON.stringify({
       story: output.story || '',
       guardrail: output.guardrail || '',
-      culturalScore: output.culturalScore || '',
+      culturalScore: output.culturalScore == null ? '' : output.culturalScore,
+      culturalScoreSource: output.culturalScoreSource || '',
+      copySource: output.copySource || '',
+      imageAssessment: output.imageAssessment || null,
+      dimensions: items.map(function (item) { return [item.width, item.height]; }),
       genZTip: output.genZTip || '',
       images: items.map(function (item) { return item.url; }),
       video: output.video && output.video.url || '',
@@ -1403,10 +1450,10 @@
     resultGuardrail.textContent = output.guardrail || '';
     if (resultCulturalScore) {
       var score = Number(output.culturalScore);
-      resultCulturalScore.textContent = output.culturalScore != null && Number.isFinite(score)
-        ? Math.round(score) + '/100 · ' + (score >= 85 ? 'Phù hợp' : score >= 70 ? 'Nên cân chỉnh' : 'Cần xem lại')
-        : 'Chưa có dữ liệu';
-      resultCulturalScore.classList.toggle('is-warning', Number.isFinite(score) && score < 85);
+      var assessedScore = output.culturalScoreSource === 'gemini-selection-assessment' && typeof output.culturalScore === 'number' && Number.isFinite(score) && score >= 0 && score <= 100;
+      resultCulturalScore.parentElement.hidden = !assessedScore;
+      resultCulturalScore.textContent = assessedScore ? Math.round(score) + '/100 · Gợi ý AI về lựa chọn, chưa thẩm định văn hóa' : '';
+      resultCulturalScore.classList.toggle('is-warning', assessedScore && score < 85);
     }
     resultGenZTip.textContent = output.genZTip || '';
 
@@ -1654,30 +1701,9 @@
     var context = canvas.getContext('2d');
     if (!context) throw new Error('Trình duyệt không hỗ trợ xuất lookbook.');
 
-    context.fillStyle = '#0b1a20';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    var layout = lookbookLayout(images.length, canvas.width, canvas.height);
-    images.forEach(function (image, index) {
-      // Story format must not crop faces or garments from the original.
-      var rect = layout[index];
-      var scale = Math.min(rect.width / image.naturalWidth, (rect.height - 240) / image.naturalHeight);
-      var width = image.naturalWidth * scale, height = image.naturalHeight * scale;
-      context.drawImage(image, rect.x + (rect.width - width) / 2, rect.y + 180 + (rect.height - 240 - height) / 2, width, height);
-    });
-
-    var topShade = context.createLinearGradient(0, 0, 0, 210);
-    topShade.addColorStop(0, 'rgba(7, 21, 27, .84)');
-    topShade.addColorStop(1, 'rgba(7, 21, 27, 0)');
-    context.fillStyle = topShade;
-    context.fillRect(0, 0, canvas.width, 210);
-    context.fillStyle = '#e6f35e';
-    context.font = '500 28px "Space Grotesk", "Be Vietnam Pro", sans-serif';
-    context.letterSpacing = '4px';
-    context.fillText('V-REMIX / LOOKBOOK', 56, 76);
-    context.fillStyle = 'rgba(245, 246, 239, .82)';
-    context.font = '400 22px "Be Vietnam Pro", sans-serif';
-    context.letterSpacing = '0px';
-    context.fillText('Việt phục, theo cách bạn.', 56, 118);
+    if (document.fonts) await document.fonts.ready;
+    if (!window.VRemixLookbookCard) throw new Error('Tải lại Studio để cập nhật trình xuất thẻ.');
+    window.VRemixLookbookCard.draw(canvas, images, resultChoiceRows(currentResultSelection), currentOutput || {});
 
     var blob = await new Promise(function (resolve, reject) {
       canvas.toBlob(function (value) {
@@ -1909,20 +1935,7 @@
     info.replaceChildren();
     var snapshot = currentResultSelection;
     if (!snapshot) return;
-    var plan = Planner.restore(snapshot);
-    var period = plan.period;
-    var time = period && (period.kind === 'unspecified' || typeof period.start === 'string' && typeof period.end === 'string')
-      ? Planner.periodLabel(period) : 'Chưa xác định';
-    var rows = [
-      ['Dịp mặc', selectedEvent(snapshot.event, plan).label],
-      ['Số người', plan.count ? plan.count + ' người' : ''],
-      ['Thời gian', time]
-    ];
-    (plan.people || []).forEach(function (person, index) {
-      var outfit = person.outfit || {};
-      var garment = lookup(catalog.garmentVariants, outfit.garmentVariant).name || lookup(catalog.garments, outfit.garment).name;
-      rows.push([person.name || 'Người ' + (index + 1), garment]);
-    });
+    var rows = resultChoiceRows(snapshot);
     rows.forEach(function (row) {
       if (!row[1]) return;
       var group = document.createElement('div'), term = document.createElement('dt'), value = document.createElement('dd');
@@ -1934,8 +1947,26 @@
       node.parentElement.hidden = !text;
       node.textContent = text || '';
     });
-    // A generated score is not a verified cultural assessment.
-    if (resultCulturalScore) resultCulturalScore.parentElement.hidden = true;
+    var assessment = currentOutput && currentOutput.imageAssessment;
+    var statusText = {matched:'AI chưa thấy sai lệch rõ khi đối chiếu ảnh; chưa phải thẩm định văn hóa.',mismatch:'AI nhận thấy chi tiết chưa khớp. Hãy đối chiếu ảnh với lựa chọn bên trên.',uncertain:'AI chưa xác định được một số chi tiết. Bạn cần kiểm tra ảnh.', 'not-assessed':'Ảnh chưa được AI đối chiếu với lựa chọn.'};
+    var verification = document.getElementById('resultVerification');
+    if (verification) {
+      var findings = [], fields = {garment:'dáng áo',variant:'mẫu áo',color:'màu',pattern:'họa tiết',style:'phong cách',accessories:'phụ kiện',scene:'bối cảnh'};
+      (assessment && Array.isArray(assessment.people) ? assessment.people.slice(0,12) : []).forEach(function (person) {
+        if (!Number.isInteger(person.personId) || person.personId < 1 || person.personId > 12) return;
+        var details = Object.keys(fields).filter(function (key) { return person.checks && ['mismatch','uncertain'].includes(person.checks[key]); }).map(function (key) { return fields[key] + (person.checks[key] === 'mismatch' ? ' chưa khớp' : ' chưa rõ'); });
+        if (details.length) findings.push('Người ' + person.personId + ': ' + details.join(', '));
+      });
+      verification.textContent = (statusText[assessment && assessment.status] || statusText['not-assessed']) + (findings.length ? ' ' + findings.join('. ') + '.' : '');
+    }
+    var provenance = document.getElementById('resultCopySource');
+    if (provenance) provenance.textContent = currentOutput && currentOutput.copySource === 'gemini' ? 'Nội dung gợi ý AI · cần đối chiếu nguồn văn hóa' : currentOutput && currentOutput.copySource === 'catalog-fallback' ? 'Nội dung từ lựa chọn và catalog · không phải đánh giá ảnh' : 'Phiên bản cũ · chưa có thông tin nguồn nội dung';
+    var score = currentOutput && currentOutput.culturalScore;
+    var assessed = currentOutput && currentOutput.culturalScoreSource === 'gemini-selection-assessment' && typeof score === 'number' && Number.isFinite(score) && score >= 0 && score <= 100;
+    if (resultCulturalScore) {
+      resultCulturalScore.parentElement.hidden = !assessed;
+      resultCulturalScore.textContent = assessed ? Math.round(score) + '/100 · Gợi ý AI về lựa chọn, chưa thẩm định văn hóa' : '';
+    }
   }
   var resultDetails = document.getElementById('outputDetails');
   if (resultDetails) resultDetails.addEventListener('toggle', function () {
@@ -2128,7 +2159,7 @@
       try {
         var response = await fetch(catalog.historyEndpoint + '?lookId=' + encodeURIComponent(record.savedLookId), { headers: { 'X-VRemix-CSRF': catalog.lookCsrf } });
         var body = await response.json(); var item = body.items && body.items.find(function (item) { return item.lookId === record.savedLookId; });
-        if (response.ok && item && item.image_url) record.output = { lookbook: { items: [{ url: item.image_url, path: item.storage_path }] } };
+        if (response.ok && item && item.image_url) record.output = item.output || Object.assign({}, record.output || {}, { lookbook: { items: [{ url: item.image_url, path: item.storage_path }] } });
         else if (!record.output) record.mediaUnavailable = true;
       } catch (_) { if (!record.output) record.mediaUnavailable = true; }
     }
@@ -2171,13 +2202,17 @@
       try {
         var response = await fetch(catalog.historyEndpoint + '?lookId=' + encodeURIComponent(look.id), { headers: { 'X-VRemix-CSRF': catalog.lookCsrf } });
         var chain = await response.json();
-        if (response.ok) chainIds = chainIds.concat((chain.items || []).map(function (item) { return item.jobId; }));
+        if (response.ok) {
+          chainIds = chainIds.concat((chain.items || []).map(function (item) { return item.jobId; }));
+          var original = (chain.items || []).find(function (item) { return look.generation_job_id ? item.jobId === look.generation_job_id : item.lookId === look.id; });
+          if (original && original.output) look = Object.assign({}, look, { output: original.output });
+        }
       } catch (_) { /* The saved selection can still be opened during an outage. */ }
       var existing = collections.list().find(function (item) { return item.record.jobId && chainIds.includes(item.record.jobId) || item.record.savedLookId === look.id; });
       if (!existing) {
         collections.importHistory([{ ids: [look.generation_job_id || 'look:' + look.id], updatedAt: Date.parse(look.created_at) || Date.now(), record: {
           draft: look.selection, selection: look.selection, guideStep: 'review', jobId: look.generation_job_id || null, savedLookId: look.id,
-          output: look.image_url ? { lookbook: { items: [{ url: look.image_url, path: look.storage_path }] } } : null
+          output: look.output || (look.image_url ? { lookbook: { items: [{ url: look.image_url, path: look.storage_path }] } } : null)
         } }]);
         existing = collections.list().find(function (item) { return item.record.savedLookId === look.id; });
       }
@@ -2243,7 +2278,11 @@
       currentResultJobId = look.generation_job_id || look.jobId || null;
       resultSaveId = look.client_save_id || createRequestId(); savedLookId = look.lookId || (look.saved === false ? null : look.id);
       lastOutputFingerprint = '';
-      applyOutput({ story: look.saved === false ? 'Ảnh trong lịch sử của bạn. Có thể lưu bản phối này vào thư viện.' : 'Bản phối đã lưu trong thư viện riêng.', lookbook: { aspectRatio: look.selection.aspectRatio || '16:9', items: [{ url: look.image_url, path: look.storage_path }] } });
+      var restoredOutput = Planner.clone(look.output || {});
+      // Signed URLs are refreshed independently of the version's original text.
+      var previousAsset = restoredOutput.lookbook && restoredOutput.lookbook.items && restoredOutput.lookbook.items[0] || {};
+      restoredOutput.lookbook = { aspectRatio: look.selection.aspectRatio || '16:9', items: [Object.assign({}, previousAsset, { url: look.image_url, path: look.storage_path })] };
+      applyOutput(restoredOutput);
       }
       if (edit) {
         draftEdited = false;

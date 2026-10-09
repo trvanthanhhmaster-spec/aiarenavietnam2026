@@ -12,6 +12,7 @@ export type FallbackLookRequest = {
   patternSlug?: string;
   styleSlug?: string;
   sceneSlug?: string;
+  planning?: { people: Array<{ id: number; outfit: { garment: string; garmentVariant?: string; color?: string; pattern?: string; style?: string; scene?: string; accessories?: string[]; accessoryVariants?: string[] } }> };
 };
 
 export type FallbackCopy = {
@@ -40,7 +41,7 @@ export function fallbackImagePrompt(
     `${garment}, garment type: ${garmentType}; preserve its Vietnamese silhouette, collar, panels, buttons and sleeve construction.`,
     `Concrete item details: ${garmentVariant.silhouette || ""}; material: ${garmentVariant.material || ""}; pattern: ${garmentVariant.pattern_notes || ""}; visual reference prompt: ${garmentVariant.prompt_descriptor || ""}.`,
     `Location: ${request.location || scene}. Season: ${request.season || "current season"}. Weather: ${request.weather || "not specified"}. Palette: ${color}. Pattern: ${pattern}. Styling direction: ${style}.`,
-    "Contemporary accessories may be subtle, but the traditional garment remains the visual centre.",
+    `Use only selected accessories: ${JSON.stringify(request.accessorySlugs || [])}; selected accessory variants: ${JSON.stringify(request.accessoryVariantSlugs || [])}. Do not invent additional accessories. Explicit color and pattern choices override the variant palette and pattern, never its garment structure.`,
     "Natural light, respectful cultural context, clean background, portrait composition, no text, no logo, no watermark.",
   ].join(" ");
 }
@@ -50,27 +51,37 @@ export function fallbackCopy(
   catalog: Record<string, any>,
 ): FallbackCopy {
   const event = catalog.event || {};
-  const garment = catalog.garment || {};
-  const garmentVariant = catalog.garmentVariant || {};
   const accessories = Array.isArray(catalog.accessories) ? catalog.accessories : [];
   const accessoryVariants = Array.isArray(catalog.accessoryVariants) ? catalog.accessoryVariants : [];
   const options = Array.isArray(catalog.options) ? catalog.options : [];
-  const color = options.find((item: any) => item.slug === request.colorSlug && item.option_type === "color");
-  const pattern = options.find((item: any) => item.slug === request.patternSlug && item.option_type === "pattern");
-  const style = options.find((item: any) => item.slug === request.styleSlug && item.option_type === "style");
-  const accessoryNames = (accessoryVariants.length ? accessoryVariants : accessories)
-    .map((item: any) => item.name).filter(Boolean);
-  const accessoryText = accessoryNames.length ? accessoryNames.join(", ") : "không thêm phụ kiện";
-  const origin = garment.origin_note || "một dòng trang phục truyền thống Việt";
-  const significance = garment.significance_note || "giữ nguyên những chi tiết nhận diện đã được duyệt";
-  const colorLabel = color?.label || request.colorSlug || "màu trung tính";
-  const styleLabel = style?.label || request.styleSlug || "tối giản hiện đại";
-  const patternLabel = pattern?.label || request.patternSlug || "trơn";
+  const people = request.planning?.people || [{ id: 1, outfit: {
+    garment: request.garmentSlug || catalog.garment?.slug || '', garmentVariant: request.garmentVariantSlug,
+    color: request.colorSlug, pattern: request.patternSlug, style: request.styleSlug, scene: request.sceneSlug,
+    accessories: request.accessorySlugs || [], accessoryVariants: request.accessoryVariantSlugs || [],
+  } }];
+  const selected = people.map(({ id, outfit: o }) => {
+    const garment = (catalog.garments || []).find((g: any) => g.slug === o.garment) || catalog.garment || {};
+    const variant = (catalog.garmentVariants || []).find((v: any) => v.slug === o.garmentVariant && v.garment_id === garment.id)
+      || (o.garmentVariant && catalog.garmentVariant?.slug === o.garmentVariant ? catalog.garmentVariant : {});
+    const chosen = accessories.filter((a: any) => (o.accessories || []).includes(a.slug));
+    const variants = accessoryVariants.filter((v: any) => (o.accessoryVariants || []).includes(v.slug) && chosen.some((a: any) => a.id === v.accessory_id));
+    const names = [...chosen.filter((a: any) => !variants.some((v: any) => v.accessory_id === a.id)), ...variants].map((a: any) => a.name).filter(Boolean);
+    const option = (type: string, slug?: string) => options.find((i: any) => i.option_type === type && i.slug === slug)?.label;
+    const details = [option('color', o.color) ? `màu ${option('color', o.color)}` : 'giữ màu của mẫu đã chọn',
+      option('pattern', o.pattern) ? `họa tiết ${option('pattern', o.pattern)}` : '',
+      option('style', o.style) ? `phong cách ${option('style', o.style)}` : '',
+      option('scene', o.scene) ? `bối cảnh ${option('scene', o.scene)}` : '',
+      names.length ? `phụ kiện: ${names.join(', ')}` : 'không thêm phụ kiện'].filter(Boolean);
+    return { id, garment, name: variant.name || garment.name || 'Việt phục', details };
+  });
+  const garmentNames = [...new Set(selected.map(p => p.name))].join(', ');
+  const facts = [...new Set(selected.map(p => p.garment.origin_note).filter(Boolean))].join(' ');
+  const guidance = [...new Set(selected.map(p => p.garment.significance_note).filter(Boolean))].join(' ');
 
   return {
-    story: `${garmentVariant.name || garment.name || "Việt phục"} xuất hiện trong bối cảnh ${event.label || request.eventSlug || "hiện đại"} với bảng màu ${colorLabel}, họa tiết ${patternLabel} và tinh thần ${styleLabel}. ${origin} Bản phối dùng ${accessoryText} để tạo nhịp mới nhưng vẫn đặt dáng áo làm trung tâm.`,
-    guardrail: `Giữ nguyên phom dáng, cổ áo, hàng cúc, các thân áo và tay áo của ${garment.name || "trang phục đã chọn"}; bám theo chất liệu và chi tiết của mẫu ${garmentVariant.name || "đã duyệt"}. ${significance} Chỉ hiện đại hóa bằng phụ kiện và cách phối đã chọn; không thêm tuyên bố lịch sử ngoài dữ liệu catalog đã duyệt.`,
-    genZTip: `Chọn một điểm nhấn vừa đủ — ${accessoryText} — rồi giữ phần còn lại gọn để ${garmentVariant.name || garment.name || "dáng Việt"} vẫn là nhân vật chính trong ảnh.`,
+    story: `Lựa chọn cho ${event.label || request.eventSlug || 'dịp mặc của bạn'}: ${selected.map(p => `Người ${p.id}: ${p.name}; ${p.details.join('; ')}.`).join(' ')} ${facts}`.trim(),
+    guardrail: `Lưu ý tham khảo cho ${garmentNames}: giữ nguyên phom dáng, cổ áo, các thân áo và tay áo. ${guidance} Chỉ hiện đại hóa bằng phụ kiện và cách phối đã chọn; không thêm tuyên bố lịch sử ngoài dữ liệu catalog đã duyệt. Đây không phải kết luận ảnh đã đạt chuẩn văn hóa.`,
+    genZTip: `Giữ ${garmentNames} làm điểm nhấn. Nếu muốn thử cách phối khác, hãy chọn rõ màu, phong cách hoặc phụ kiện trước khi tạo lại; gợi ý này không thay đổi lựa chọn hiện tại.`,
     // Catalog copy is not an AI or expert assessment of the generated image.
     culturalScore: null,
     imagePrompt: fallbackImagePrompt(request, catalog),
