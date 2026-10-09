@@ -1979,8 +1979,8 @@
     get: function () { return Planner.clone(planning); },
     count: function (count) {
       if (generationPending) return;
-      if (planning.count && count < planning.count && planning.people.slice(count).some(function (person) { return person.outfit.garment || person.name || person.faceSupplied; })
-          && !window.confirm('Giảm số người sẽ bỏ trang phục và ảnh tham khảo của những người ở cuối danh sách. Bạn muốn tiếp tục?')) return;
+      if (planning.count && count < planning.count && planning.people.slice(count).some(function (person) { return person.outfit.garment || person.name || person.gender || person.heightCm || person.weightKg || person.faceSupplied; })
+          && !window.confirm('Giảm số người sẽ bỏ thông tin, trang phục và ảnh tham khảo của những người ở cuối danh sách. Bạn muốn tiếp tục?')) return;
       Planner.setCount(planning, count);
       faceFiles.forEach(function (value, id) { if (id > count) { URL.revokeObjectURL(value.url); faceFiles.delete(id); } });
       Planner.load(planning, state); syncVariantSelections(); renderCatalogPanels(); updateSummary('people'); selectionChanged();
@@ -2014,12 +2014,13 @@
       planning.activePerson = id; Planner.load(planning, state); syncVariantSelections(); renderCatalogPanels(); updateSummary('person');
       persistStudio();
     },
-    profile: function (name, height, weight) {
+    profile: function (name, height, weight, gender) {
       if (generationPending) return;
       var p = planning.people[planning.activePerson - 1]; if (!p) return;
       var h = height === '' ? null : Number(height), w = weight === '' ? null : Number(weight);
+      var g = Planner.gender(gender === undefined ? p.gender : gender);
       if ((h !== null && (!Number.isFinite(h) || h < 50 || h > 250)) || (w !== null && (!Number.isFinite(w) || w < 10 || w > 300))) throw new Error('Chiều cao từ 50–250 cm, cân nặng từ 10–300 kg; có thể để trống.');
-      p.name = String(name).trim().slice(0, 60); p.heightCm = h; p.weightKg = w; updateSummary('profile'); selectionChanged();
+      p.name = String(name).trim().slice(0, 60); p.gender = g; p.heightCm = h; p.weightKg = w; updateSummary('profile'); selectionChanged();
     },
     face: function (file, consent) {
       if (generationPending) return;

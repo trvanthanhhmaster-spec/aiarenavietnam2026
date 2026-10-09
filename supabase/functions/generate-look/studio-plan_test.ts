@@ -6,6 +6,17 @@ const base = () => ({ version: 1, count: 2, shared: false, period: { kind: 'unsp
 const catalog = { garments: [{ id: 'g1', slug: 'ao-tac', name: 'Áo tấc', prompt_descriptor: 'wide sleeves' }, { id: 'g2', slug: 'ao-tu-than', name: 'Áo tứ thân' }],
   garmentVariants: [], accessories: [{ id: 'a1', slug: 'tote', name: 'Túi tote' }], accessoryVariants: [], options: [] };
 function rejects(value: unknown) { let rejected = false; try { normalizePlan(value); } catch { rejected = true; } assert(rejected); }
+Deno.test('optional gender stays per person, supports legacy metadata and rejects arbitrary text', () => {
+  assert(normalizePlan(base()).people[0].gender === '');
+  const input = base() as any; input.people[0].gender = 'female'; input.people[1].gender = 'other';
+  const plan = normalizePlan(input);
+  assert(plan.people[0].gender === 'female' && plan.people[1].gender === 'other');
+  const prompt = planPrompt(plan, catalog);
+  assert(prompt.includes('"gender":"female"') && prompt.includes('"gender":"other"'));
+  assert(prompt.includes('never infer it from names') && prompt.includes('Áo tấc'));
+  for (const gender of ['invalid', 1, ['male']]) { input.people[0].gender = gender; rejects(input); }
+  input.people[0].gender = ''; assert(planPrompt(normalizePlan(input), catalog).includes('"gender":null'));
+});
 Deno.test('group plan validates count, person IDs, dates, measurements and garments', () => {
   const p = normalizePlan(base()); assert(p.count === 2); assert(p.people[1].outfit.style === '');
   rejects({ ...base(), count: 0 }); rejects({ ...base(), count: 13 }); rejects({ ...base(), count: 1.5 });

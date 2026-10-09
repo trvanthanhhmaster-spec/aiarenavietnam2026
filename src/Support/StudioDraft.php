@@ -85,11 +85,13 @@ final class StudioDraft
         $people = [];
         foreach (array_values($plan['people']) as $index => $person) {
             if (!is_array($person) || !is_array($person['outfit'] ?? null)) throw new InvalidArgumentException('Trang phục trong bản nháp không hợp lệ.');
+            $gender = $person['gender'] ?? '';
+            if (!in_array($gender, ['', 'male', 'female', 'other'], true)) throw new InvalidArgumentException('Giới tính không hợp lệ.');
             foreach (['heightCm' => [50, 250], 'weightKg' => [10, 300]] as $key => $range) {
                 $value = $person[$key] ?? null;
                 if ($value !== null && ((!is_int($value) && !is_float($value)) || !is_finite((float) $value) || $value < $range[0] || $value > $range[1])) throw new InvalidArgumentException('Số đo không hợp lệ.');
             }
-            $people[] = ['id' => $index + 1, 'name' => self::text($person['name'] ?? '', 60),
+            $people[] = ['id' => $index + 1, 'name' => self::text($person['name'] ?? '', 60), 'gender' => $gender,
                 'heightCm' => $person['heightCm'] ?? null, 'weightKg' => $person['weightKg'] ?? null,
                 'faceSupplied' => false, 'customized' => ($person['customized'] ?? false) === true,
                 'outfit' => self::outfit($person['outfit'])];

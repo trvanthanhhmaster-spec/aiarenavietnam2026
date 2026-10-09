@@ -38,7 +38,7 @@ assert.doesNotThrow(() => context.requireImageOutput({ lookbook: { items: [{ url
 const ui = fs.readFileSync('assets/js/studio-planner-ui.js', 'utf8');
 const profileStart = ui.indexOf('  function commitProfile()'), profileEnd = ui.indexOf('  function render()', profileStart);
 let writes = 0;
-const nodes = { personName: { value: 'Linh' }, personHeight: { value: '1' }, personWeight: { value: '' } };
+const nodes = { personName: { value: 'Linh' }, personHeight: { value: '1' }, personWeight: { value: '' }, personGender: { value: '' } };
 const p = { name: 'Linh', heightCm: null, weightKg: null };
 const profile = { id: k => nodes[k], api: { get: () => ({ people: [p], activePerson: 1 }), profile(name, h) {
   writes++; if (Number(h) < 50) throw new Error('invalid'); p.heightCm = Number(h);

@@ -10,7 +10,13 @@
     outfitKeys.forEach(function (key) { result[key] = clone(state[key] == null ? (/ies|Variants/.test(key) ? [] : '') : state[key]); });
     return result;
   }
-  function person(id) { return { id: id, name: '', heightCm: null, weightKg: null, faceSupplied: false, customized: false, outfit: outfit({}) }; }
+  function gender(value) {
+    if (value == null) return '';
+    if (['', 'male', 'female', 'other'].indexOf(value) < 0) throw new Error('Chọn giới tính hợp lệ hoặc để trống.');
+    return value;
+  }
+  function genderLabel(value) { return { male: 'Nam', female: 'Nữ', other: 'Khác' }[value] || ''; }
+  function person(id) { return { id: id, name: '', gender: '', heightCm: null, weightKg: null, faceSupplied: false, customized: false, outfit: outfit({}) }; }
   function create() { return { version: 1, count: null, shared: true, activePerson: 1, period: null, occasionNote: '', customOccasion: '', people: [] }; }
   function setCount(plan, count) {
     if (!Number.isInteger(count) || count < 1 || count > 12) throw new Error('Chọn từ 1 đến 12 người.');
@@ -44,6 +50,7 @@
       plan.activePerson = Math.max(1, Math.min(plan.people.length || 1, Number(plan.activePerson) || 1));
       plan.people.forEach(function (p, i) {
         p.id = i + 1;
+        p.gender = gender(p.gender);
         p.outfit = outfit(p.outfit || {});
         p.faceSupplied = false;
       });
@@ -105,5 +112,5 @@
     return labels[p.kind] + ' · ' + format(p.start) + (p.start === p.end ? '' : ' – ' + format(p.end));
   }
   return { create: create, setCount: setCount, capture: capture, load: load, restore: restore, setShared: setShared,
-    outfit: outfit, clone: clone, period: period, periodLabel: periodLabel, missing: missing, localDate: localDate };
+    outfit: outfit, clone: clone, period: period, periodLabel: periodLabel, missing: missing, localDate: localDate, gender: gender, genderLabel: genderLabel };
 });

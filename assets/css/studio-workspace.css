@@ -486,7 +486,8 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .library-draft button { margin: 4px 4px 0 0; }
 #studioDraftStatus { display: block; margin-top: 8px; font-size: 12px; color: #64646f; }
 .workspace-panel-header p, .guide-card-note { font-size: 13px; line-height: 1.65; }
-.guide-card-note { color: #64646f; margin: -3px 0 18px; }
+.guide-card-note { color: #64646f; margin: 0 0 18px; }
+.planner-choices + .guide-card-note, .planner-person-tabs + .guide-card-note { margin-top: 12px; }
 .studio-catalog-card__head h2 { font-size: 16px; letter-spacing: -.025em; }
 .studio-progress__step { min-height: 44px; }
 .studio-progress__step strong { font-size: 12px; }
@@ -540,9 +541,9 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .guide-navigation #guideContinue:disabled { opacity: .4; cursor: default; }
 .guide-navigation .workspace-icon { width: 16px; height: 16px; }
 .planner-field { display: grid; gap: 7px; margin: 14px 0; color: #40404a; font-size: 13px; }
-.planner-field input, .planner-field textarea { min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dedbe3; border-radius: 10px; background: #fff; color: #17171b; font: inherit; }
+.planner-field input, .planner-field textarea, .planner-field select { min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dedbe3; border-radius: 10px; background: #fff; color: #17171b; font: inherit; }
 .planner-field textarea { min-height: 90px; resize: vertical; }
-.planner-field input:focus-visible, .planner-field textarea:focus-visible { outline: 2px solid #a53737; outline-offset: 2px; }
+.planner-field input:focus-visible, .planner-field textarea:focus-visible, .planner-field select:focus-visible { outline: 2px solid #a53737; outline-offset: 2px; }
 .planner-details { margin: 15px 0 0; padding-top: 12px; border-top: 1px solid #e3dee5; font-size: 13px; }
 .planner-details summary { cursor: pointer; line-height: 1.6; }
 .planner-details small { display: block; color: #64646f; font-size: 12px; line-height: 1.6; }
@@ -568,6 +569,27 @@ body.studio-page :focus-visible { outline: 2px solid #a53737; outline-offset: 3p
 .planner-details summary { min-height: 44px; padding-block: 10px; font-size: 15px; font-weight: 500; }
 .planner-field { font-size: 14px; }
 .planner-details .planner-field input, .planner-details .planner-field textarea { font-size: 15px; line-height: 1.5; }
+#personDetails { margin-top: 20px; padding-top: 0; }
+#personDetails > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; list-style: none; }
+#personDetails > summary::-webkit-details-marker { display: none; }
+#personDetails > summary strong { display: block; font-size: 15px; font-weight: 500; line-height: 1.5; }
+#personDetails > summary small { margin-top: 5px; font-size: 12px; font-weight: 400; }
+#personDetails > summary svg { flex-shrink: 0; transition: transform 180ms; }
+#personDetails[open] > summary svg { transform: rotate(90deg); }
+#personDetails > summary:hover { color: #6d4545; }
+#personDetails > summary:focus-visible { outline: 2px solid #a53737; outline-offset: 4px; border-radius: 4px; }
+.planner-person-fields { display: grid; gap: 18px; padding: 4px 0 8px; }
+.planner-person-fields .planner-field { margin: 0; gap: 8px; }
+.planner-person-fields .guide-card-note { margin: 0; font-size: 12px; line-height: 1.7; }
+.planner-person-fields .planner-field select { min-height: 48px; font-size: 16px; line-height: 1.5; }
+#personGenderHint { margin-top: -8px; }
+.planner-person-reference { display: grid; gap: 14px; margin-top: 4px; padding-top: 20px; border-top: 1px solid #e3dee5; }
+.planner-person-reference h3 { margin: 0; font-size: 14px; font-weight: 500; }
+.planner-person-reference .planner-consent { margin: 0; font-size: 13px; }
+.planner-person-reference input[type='file'] { font-size: 12px; padding: 8px; }
+.planner-person-reference input[type='file']::file-selector-button { padding: 8px 10px; margin-right: 8px; border: 0; border-radius: 6px; background: #eeebf3; color: #17171b; font: inherit; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { #personDetails > summary svg { transition: none; } }
+@media (max-width: 767px) { .planner-person-fields .planner-field input:not([type='file']) { font-size: 16px; } }
 #customOccasionStatus {
   display: flex; align-items: center; gap: 12px; margin: 14px 0 18px;
   padding: 14px 16px; border-radius: 12px; border: 1px solid #cbd8d1;

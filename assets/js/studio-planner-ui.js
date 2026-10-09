@@ -8,10 +8,10 @@
   function commitProfile() {
     var plan = api.get(), person = plan.people[plan.activePerson - 1];
     if (!person) return true;
-    var name = id('personName').value, height = id('personHeight').value, weight = id('personWeight').value;
+    var name = id('personName').value, height = id('personHeight').value, weight = id('personWeight').value, gender = id('personGender').value;
     if (name === person.name && height === String(person.heightCm == null ? '' : person.heightCm)
-        && weight === String(person.weightKg == null ? '' : person.weightKg)) return true;
-    return action(function () { api.profile(name, height, weight); });
+        && weight === String(person.weightKg == null ? '' : person.weightKg) && gender === (person.gender || '')) return true;
+    return action(function () { api.profile(name, height, weight, gender); });
   }
   function render() {
     var guide = experience.studioGuide, plan = guide.planning, data = window.VREMIX_STUDIO;
@@ -26,7 +26,7 @@
       button.textContent = label + ' · ' + (p.outfit.garment ? 'Đã chọn' : 'Chưa chọn');
       button.setAttribute('aria-pressed', String(p.id === plan.activePerson));
       button.addEventListener('click', function () { api.person(p.id); }); id('plannerPeople').appendChild(button);
-      var row = document.createElement('p'); row.textContent = label + ': ' + (variant ? variant.name : garment ? garment.name : 'Chưa chọn') + (p.outfit.accessories.length ? ' · ' + p.outfit.accessories.length + ' phụ kiện' : '') + (p.faceSupplied ? ' · có ảnh tham khảo' : '');
+      var row = document.createElement('p'); row.textContent = label + ': ' + (variant ? variant.name : garment ? garment.name : 'Chưa chọn') + (window.VRemixPlanner.genderLabel(p.gender) ? ' · ' + window.VRemixPlanner.genderLabel(p.gender) : '') + (p.outfit.accessories.length ? ' · ' + p.outfit.accessories.length + ' phụ kiện' : '') + (p.faceSupplied ? ' · có ảnh tham khảo' : '');
       id('plannerReviewPeople').appendChild(row);
     });
     id('plannerPeriodSummary').textContent = guide.labels.time;
@@ -41,6 +41,8 @@
     var p = plan.people[plan.activePerson - 1]; if (!p) return;
     id('plannerPersonHint').textContent = plan.count === 1 ? 'Chọn bộ bạn thích rồi tiếp tục.' : 'Đang phối cho ' + (p.name || 'Người ' + p.id) + '. ' + (plan.shared && p.id === 1 ? 'Bộ này là gợi ý chung cho những người chưa tùy chỉnh.' : 'Bạn có thể chọn trang phục và phụ kiện riêng.');
     id('personName').value = p.name; id('personHeight').value = p.heightCm == null ? '' : p.heightCm; id('personWeight').value = p.weightKg == null ? '' : p.weightKg;
+    id('personGender').value = p.gender || '';
+    id('personDetailsTitle').textContent = 'Thông tin · ' + (p.name || 'Người ' + p.id);
     var url = api.faceUrl();
     id('personFace').value = ''; id('personFacePreview').hidden = !url; id('removePersonFace').hidden = !url;
     id('personFaceConsent').checked = Boolean(url);
@@ -63,7 +65,7 @@
   id('occasionNote').addEventListener('input', function () { api.occasionNote(this.value); });
   id('useSearchOccasion').addEventListener('click', function () { action(function () { api.customOccasion(id('occasionSearch').value); }); });
   id('useNoteOccasion').addEventListener('click', function () { action(function () { api.customOccasion(id('occasionNote').value); }); });
-  ['personName', 'personHeight', 'personWeight'].forEach(function (name) { id(name).addEventListener('change', commitProfile); });
+  ['personName', 'personHeight', 'personWeight', 'personGender'].forEach(function (name) { id(name).addEventListener('change', commitProfile); });
   // Capture before the workspace's navigation handlers: invalid measurements
   // must not silently create a look using the previously saved profile.
   experience.addEventListener('click', function (event) {

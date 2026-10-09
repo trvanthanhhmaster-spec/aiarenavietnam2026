@@ -116,7 +116,7 @@ function visit(step) {
 }
 // A real input's closest generic data-guide-step is the workspace itself.
 // Clicking it must not navigate or steal focus from typing/date/file controls.
-for (const field of ['occasionSearch', 'occasionNote', 'groupCount', 'periodStart', 'periodEnd', 'personName', 'personHeight', 'personWeight', 'personFaceConsent', 'personFace']) {
+for (const field of ['occasionSearch', 'occasionNote', 'groupCount', 'periodStart', 'periodEnd', 'personName', 'personGender', 'personHeight', 'personWeight', 'personFaceConsent', 'personFace']) {
   garmentTrigger.focused = false;
   const step = ids.studioExperience.dataset.guideStep;
   ids.studioExperience.emit('click', { target: { id: field, closest: selector => selector === '[data-guide-step]' ? ids.studioExperience : null } });

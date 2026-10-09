@@ -10,10 +10,21 @@ $input = ['version' => 1, 'count' => 2, 'shared' => false, 'period' => ['kind' =
 $p = StudioPlan::normalize($input);
 check(count($p['people']) === 2 && $p['people'][1]['outfit']['style'] === '');
 check(!str_contains(json_encode($p), 'secret-pixels'));
+check($p['people'][0]['gender'] === '');
+$genderInput = $input; $genderInput['people'][0]['gender'] = 'female'; $genderInput['people'][1]['gender'] = 'other';
+$genderPlan = StudioPlan::normalize($genderInput);
+check($genderPlan['people'][0]['gender'] === 'female' && $genderPlan['people'][1]['gender'] === 'other');
+foreach (['unknown', 1, ['male']] as $gender) {
+    $badGender = $input; $badGender['people'][0]['gender'] = $gender;
+    $rejected = false; try { StudioPlan::normalize($badGender); } catch (InvalidArgumentException) { $rejected = true; } check($rejected);
+}
 $custom = StudioPlan::normalize(array_replace($input, ['customOccasion' => 'Đi biển']));
 check($custom['customOccasion'] === 'Đi biển');
 $catalog = ['garments' => [['id' => 'g1', 'slug' => 'ao-tac', 'name' => 'Áo tấc'], ['id' => 'g2', 'slug' => 'ao-tu-than', 'name' => 'Áo tứ thân']], 'accessories' => [['id' => 'a1', 'slug' => 'tote', 'name' => 'Túi tote']]];
 $prompt = StudioPlan::prompt($p, $catalog);
+check(str_contains(StudioPlan::prompt($genderPlan, $catalog), '"gender":"female"'));
+check(str_contains(StudioPlan::prompt($genderPlan, $catalog), '"gender":"other"'));
+check(str_contains($prompt, '"gender":null') && str_contains($prompt, 'never infer it from names'));
 check(str_contains($prompt, 'exactly 2 people') && str_contains($prompt, 'Áo tấc') && str_contains($prompt, 'Áo tứ thân'));
 check(str_contains(StudioPlan::prompt($custom, $catalog), 'Đi biển'));
 check(str_contains(StudioPlan::prompt($custom, $catalog), 'not reviewed cultural knowledge'));
