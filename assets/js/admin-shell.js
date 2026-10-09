@@ -95,7 +95,7 @@
     setOpen(false, false);
     if (window.matchMedia('(max-width: 900px)').matches) document.getElementById('adminContent').focus();
   });
-  window.matchMedia('(max-width: 900px)').addEventListener('change', function () { setOpen(false, false); });
+  window.matchMedia('(max-width: 900px)').addEventListener('change', function () { setOpen(false, false); render(); });
   var selected = nav.querySelector('.is-active[data-resource]');
   if (selected) selected.setAttribute('aria-current', 'page');
   render();
