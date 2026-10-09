@@ -43,4 +43,25 @@ assert.ok(!markup.includes('Chọn nơi xuất hiện'));
 assert.ok(!/kind: 'pattern', items: catalog.patterns/.test(source),'no shared generic motif strip');
 assert.match(source,/if \(kind === 'scene'\) planning.people.forEach/,'one image background is applied to all people');
 assert.ok(markup.includes('studio-catalog-choices.js'));
+// The real click handler must update every person's background, including
+// customized people, and allow returning to occasion-derived backgrounds.
+const Planner = require('../assets/js/studio-planner.js');
+const plan = Planner.create(); Planner.setCount(plan, 2); plan.period = Planner.period('unspecified');
+plan.people[1].customized = true;
+context.state.garment = 'ao-tac'; context.state.event = 'ceremony';
+context.state.color = 'old'; context.state.pattern = 'cloud';
+Object.assign(context, { planning: plan, Planner, generationPending:false, syncVariantSelections(){},
+  renderCatalogPanels(){}, updateSummary(){}, renderQuickStart(){}, setStatus(){}, selectionChanged(){},
+  experience:{querySelectorAll:()=>[]}, modeById:()=>({title:'Bối cảnh'}) });
+vm.runInContext(extract('chooseOption','updateSummary'),context);
+context.chooseOption('scene','temple');
+assert.ok(plan.people.every(p=>p.outfit.scene === 'temple'));
+context.chooseOption('scene','');
+assert.ok(plan.people.every(p=>p.outfit.scene === ''));
+context.chooseOption('garmentVariant','tac-red');
+assert.equal(plan.people[0].outfit.color,''); assert.equal(plan.people[0].outfit.pattern,'');
+assert.equal(plan.people[1].outfit.garment,'','customized outfits are not overwritten by Person 1 sample selection');
+context.generationPending = true;
+context.chooseOption('scene','temple');
+assert.ok(plan.people.every(p=>p.outfit.scene === ''),'generation lock remains intact');
 console.log('Studio catalog choices: garment-scoped references and colors, retained overrides, atomic sample reset, source escaping, real scene assets, optional shared background passed.');
