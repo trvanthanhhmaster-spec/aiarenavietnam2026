@@ -23,7 +23,7 @@ function updatePrivateEnv(string $path, array $updates): void {
     }
     foreach ($updates as $key => $value) $output[] = $key . '=' . $value;
     if (file_put_contents($path, implode("\n", $output) . "\n", LOCK_EX) === false) throw new RuntimeException('Private configuration write failed.');
-    chmod($path, 0600);
+    // Keep the web runtime's existing mode/ACL; private key files are separate.
 }
 try {
     $cookies = envValues($root . '/services/gemini-webapi-bridge/.env');

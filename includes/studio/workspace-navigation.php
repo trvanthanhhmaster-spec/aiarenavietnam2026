@@ -13,9 +13,9 @@
 <header class="studio-masthead">
     <a class="workspace-logo" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>"><img src="assets/images/v-remix-leaf-logo.png" alt="" width="1280" height="1280"></a>
     <nav class="workspace-topnav" aria-label="Điều hướng V-Remix">
-        <a href="index.php#stage">Khám phá</a>
-        <span aria-current="page">Studio</span>
-        <button type="button" data-workspace-collections disabled>Bộ sưu tập của tôi</button>
+        <a href="index.php#stage" aria-label="Khám phá" title="Khám phá"><?= $studioIcon('house') ?><span class="workspace-topnav__label">Khám phá</span></a>
+        <span aria-current="page" aria-label="Studio"><?= $studioIcon('sliders-horizontal') ?><span class="workspace-topnav__label">Studio</span></span>
+        <button type="button" data-workspace-collections aria-label="Bộ sưu tập của tôi" title="Bộ sưu tập của tôi" disabled><?= $studioIcon('images') ?><span class="workspace-topnav__label workspace-topnav__label--desktop">Bộ sưu tập của tôi</span><span class="workspace-topnav__label workspace-topnav__label--mobile" aria-hidden="true">Bộ sưu tập</span></button>
     </nav>
     <div class="workspace-utilities">
         <button type="button" id="workspaceFullscreen" aria-label="Mở toàn màn hình" title="Mở toàn màn hình"><?= $studioIcon('maximize') ?></button>
@@ -23,6 +23,7 @@
             <?php if ($authUser !== null): ?>
                 <span aria-hidden="true"><?= $escape($accountInitial) ?></span><small><?= $escape($accountName) ?></small>
             <?php else: ?>
+                <svg class="workspace-profile__icon" aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>
                 <strong>Đăng nhập</strong>
             <?php endif; ?>
         </a>

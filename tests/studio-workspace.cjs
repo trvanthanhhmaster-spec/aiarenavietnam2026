@@ -9,7 +9,9 @@ assert.ok(navigation.includes('assets/images/v-remix-leaf-logo.png'), 'Studio us
 assert.ok(!navigation.includes('workspace-wordmark'), 'header must not duplicate the brand');
 assert.ok(navigation.includes('workspace-sidebar__home'), 'home navigation remains available');
 assert.ok(navigation.includes('if ($authUser !== null)'), 'avatar is only rendered for authenticated users');
-assert.ok(navigation.includes('<strong>Đăng nhập</strong>'), 'guests see a clear login label at every breakpoint');
+assert.ok(navigation.includes('<strong>Đăng nhập</strong>') && navigation.includes('workspace-profile__icon'), 'guests have desktop login text and a named mobile account icon');
+assert.ok(navigation.includes('workspace-topnav__label--mobile'), 'mobile collections label stays short without changing its accessible name');
+assert.ok(navigation.includes('aria-label="Bộ sưu tập của tôi"'), 'collections action retains its accessible name and event hook');
 assert.equal((navigation.match(/data-workspace-tooltip/g) || []).length, 6, 'all sidebar icons have named hover/focus hints');
 
 function element(classes = []) {
