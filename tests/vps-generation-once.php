@@ -75,7 +75,11 @@ try {
         'reviewStatus'=>$output['reviewStatus'] ?? 'unavailable', 'assessment'=>$output['imageAssessment'] ?? null,
         'culturalScore'=>$output['culturalScore'] ?? null, 'copyPolicy'=>$output['copyPolicy']]);
     if ($destination !== null) {
-        file_put_contents($destination.'/generated-image.png', $bytes);
+        $imageName = 'generated-image.' . match ($size[2]) {
+            IMAGETYPE_JPEG => 'jpg', IMAGETYPE_WEBP => 'webp', default => 'png',
+        };
+        $evidence['imageFile'] = $imageName;
+        file_put_contents($destination . '/' . $imageName, $bytes);
         file_put_contents($destination.'/evidence.json', json_encode($evidence,JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     }
     echo json_encode($evidence, JSON_THROW_ON_ERROR) . "\n";

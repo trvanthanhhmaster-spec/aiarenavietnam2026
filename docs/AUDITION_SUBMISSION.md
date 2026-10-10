@@ -46,7 +46,7 @@ khuôn mặt, không thay đổi bộ sưu tập. Đã xem ảnh lưu thực t�
 constructionChecks=match; đây là nhận định AI của một ca, không phải chứng
 nhận văn hóa hoặc độ chính xác cho toàn bộ catalog. Minh chứng riêng nằm ở
 `artifacts/reference-generation-qa/0c643f1a-3696-4743-8688-aa7c1ade84bf/`
-gồm `generated-image.png` và `evidence.json`; không commit ảnh hoặc cookie.
+gồm `generated-image.jpg` và `evidence.json`; không commit ảnh hoặc cookie.
 
 Bridge production dùng image `vremix-bridge:dba0d31`: tắt retry của thư viện,
 đặt watchdog sau deadline của request và không gửi lại khi mất phiên sau
