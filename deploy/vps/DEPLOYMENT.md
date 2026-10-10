@@ -1,4 +1,15 @@
-# Branding asset previews and discoverable sharing-image editor — 2026-10-10
+# Catalog source search synchronized with Admin — 2026-10-10
+
+- Active PHP/source release: `d1bb0b6`; bridge remains `2cedf30`. Only the PHP container was recreated. No provider keys, Edge functions, Nginx configuration, database schema or owner settings changed.
+- Source search now shares the blue Admin theme and configured brand logo. A compact heading and immediate search form replace the oversized cream editorial layout. Optional paid AI filtering is in its own disclosure; source cards retain creator/license links, explicit draft import and CSRF. Import requires choosing a destination instead of silently assigning the first garment.
+- The controller's search/research/import logic is unchanged. Its view lives in `includes/catalog/search-page.php`; the tiny UI script only handles loading feedback, repeat-submit prevention, back/forward restoration and failed thumbnails. It does not fetch providers or submit automatically.
+- All 32 CJS suites and targeted PHP catalog/research/settings contracts passed offline; the final view also passed in an isolated network-disabled production image. Deterministic browser fixtures covered empty/error states, unavailable AI, escaped metadata, failed thumbnails and 320px/390px layouts.
+- Authenticated production search for áo tấc returned two real Wikimedia sources with attribution and licensing. Both portrait photos decoded and were verified against their constrained viewport dimensions (280px desktop / 250px mobile), without clipping; 390px production layout had no horizontal overflow. No AI filtering or actual draft import was run, so mutation/provider success is not claimed by this UI follow-up.
+- Read-only VPS security/media and public SEO smoke passed on the final release. Prior `ce53b2d`, intermediate releases and release-env backups are retained for rollback. Ignored screenshots: `artifacts/website-settings-qa/production-catalog-search.png` and `production-catalog-results.png`.
+
+---
+
+# Branding asset previews and discoverable sharing-image editor — 2026-10-10 (historical)
 
 - Active PHP/source release: `ce53b2d`; bridge remains `2cedf30`. Only the PHP container was recreated; no Nginx, Edge, credentials or settings data was changed by this follow-up.
 - Removed duplicate text below the rail wordmark. Brand entry now shows the current logo and saved sharing image, with a guarded shortcut to the existing SEO editor. Every upload control includes an image preview; local file previews are labelled not uploaded, pending files block silent saves, and uploading one image retains other selected files.
