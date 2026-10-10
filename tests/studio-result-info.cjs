@@ -51,3 +51,10 @@ assert.equal(ids.generatePortrait.hidden,false);assert.match(ids.resultReference
 assert.match(ids.resultCopySource.textContent,/Mô tả từ lựa chọn/);
 context.samePlan=()=>false;context.renderResultInfo();assert.equal(ids.repairGeneration.disabled,true);
 context.currentOutput.imageAssessment.status='uncertain';context.renderResultInfo();assert.equal(ids.repairGeneration.hidden,true,'uncertainty alone must not trigger paid repair');
+ids.resultAssessment=node();context.window={VRemixAssessment:require('../assets/js/studio-assessment.js')};
+context.currentOutput={reviewStatus:'completed',imageAssessment:{source:'ai-image-review',status:'matched',people:[],constructionChecks:[]}};
+context.renderResultInfo();
+assert.match(ids.resultVerification.textContent,/chưa xác định/,'incomplete legacy pass is downgraded consistently in summary and table');
+assert.equal(ids.repairGeneration.hidden,true);assert.ok(ids.resultAssessment.children.length>0);
+context.currentResultSelection=null;context.renderResultInfo();
+assert.equal(ids.resultAssessment.hidden,true);assert.equal(ids.resultAssessment.children.length,0,'cleared snapshot cannot retain previous person checks');

@@ -150,6 +150,10 @@ Kết quả tạo là một ảnh cho cả nhóm. Lượt đánh giá riêng tr�
 
 ## Minh chứng và thao tác cuối
 
+- Trang minh chứng: https://v-remix.vietnamsir.com/minh-chung.php — ca production
+  đã ghi nhận, bảng đối chiếu từng mục, nguồn văn hóa và giới hạn kiểm thử.
+  Xem `AUDITION_RELIABILITY.md` để phân biệt ca chạy thật với dữ liệu mô phỏng.
+
 - Demo: https://v-remix.vietnamsir.com/
 - Mã nguồn: https://github.com/trvanthanhhmaster-spec/aiarenavietnam2026
 - Video đang ghi trong form: `https://drive.google.com/drive/project/1FZpNS97RrNoP1h56GL2iCs_hxcb9ueJw?usp=sharing`. Người dự thi xác nhận đây mới là thư mục, chưa có video. Cần quay/tải video thật và thay bằng link xem đã kiểm tra quyền.

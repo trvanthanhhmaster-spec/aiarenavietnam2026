@@ -837,6 +837,8 @@
       garmentVariant.pattern_notes ? 'Họa tiết: ' + garmentVariant.pattern_notes : ''
     ].filter(Boolean).join(' · ') || '—';
     if (passportMeaning) passportMeaning.textContent = heritage ? heritage.meaning : garment.significance_note || '—';
+    var passportStructure = document.getElementById('passportStructure');
+    if (passportStructure) passportStructure.textContent = heritage ? heritage.structure + ' Những phần bị che trong ảnh cần được kiểm tra thêm.' : 'Chưa có đặc trưng cấu trúc được biên tập cho dáng áo này.';
     var source = (catalog.sources || []).find(function (item) { return item.id === garment.source_id; });
     if (passportSource) {
       passportSource.textContent = source ? source.title : 'Nguồn đã được duyệt sẽ hiển thị tại đây.';
@@ -2019,6 +2021,8 @@
     if (!info) return;
     info.replaceChildren();
     var snapshot = currentResultSelection;
+    var assessmentPanel = document.getElementById('resultAssessment');
+    if (assessmentPanel) { assessmentPanel.replaceChildren(); assessmentPanel.hidden = true; }
     if (!snapshot) return;
     var rows = resultChoiceRows(snapshot);
     rows.forEach(function (row) {
@@ -2033,8 +2037,13 @@
       node.textContent = text || '';
     });
     var assessment = currentOutput && currentOutput.imageAssessment;
+    var detailedAssessment = null;
+    if (assessmentPanel && window.VRemixAssessment) {
+      detailedAssessment = window.VRemixAssessment.build(snapshot, currentOutput, catalog);
+      window.VRemixAssessment.render(assessmentPanel, detailedAssessment, document);
+    }
     var repairButton = document.getElementById('repairGeneration');
-    if (repairButton) { repairButton.hidden = !assessment || assessment.status !== 'mismatch'; repairButton.disabled = generationPending || !samePlan(currentResultSelection); }
+    if (repairButton) { repairButton.hidden = !assessment || (detailedAssessment ? detailedAssessment.status : assessment.status) !== 'mismatch'; repairButton.disabled = generationPending || !samePlan(currentResultSelection); }
     var portraitButton = document.getElementById('generatePortrait');
     if (portraitButton) { portraitButton.hidden = !currentLookbookItems.length; portraitButton.disabled = generationPending || !samePlan(currentResultSelection); }
     var statusText = {matched:'AI chưa thấy sai lệch rõ khi đối chiếu ảnh; chưa phải thẩm định văn hóa.',mismatch:'AI nhận thấy chi tiết chưa khớp. Hãy đối chiếu ảnh với lựa chọn bên trên.',uncertain:'AI chưa xác định được một số chi tiết. Bạn cần kiểm tra ảnh.', 'not-assessed':'Ảnh chưa được AI đối chiếu với lựa chọn.'};
@@ -2049,7 +2058,7 @@
       (assessment && Array.isArray(assessment.constructionChecks) ? assessment.constructionChecks.slice(0,12) : []).forEach(function (check) {
         if (['mismatch','uncertain'].includes(check.status) && typeof check.reason === 'string') findings.push('Cấu trúc · Người ' + check.personId + ': ' + check.reason.slice(0,400));
       });
-      verification.textContent = (statusText[assessment && assessment.status] || statusText['not-assessed']) + (findings.length ? ' ' + findings.join('. ') + '.' : '');
+      verification.textContent = (statusText[detailedAssessment ? detailedAssessment.status : assessment && assessment.status] || statusText['not-assessed']) + (!detailedAssessment && findings.length ? ' ' + findings.join('. ') + '.' : '');
     }
     var provenance = document.getElementById('resultCopySource');
     if (provenance) provenance.textContent = currentOutput && currentOutput.copyPolicy === 'selected-catalog-only' ? 'Mô tả từ lựa chọn và catalog · đánh giá ảnh/điểm là gợi ý AI, không phải thẩm định văn hóa' : currentOutput && currentOutput.copySource === 'gemini' ? 'Nội dung gợi ý AI · cần đối chiếu nguồn văn hóa' : currentOutput && currentOutput.copySource === 'catalog-fallback' ? 'Nội dung từ lựa chọn và catalog · không phải đánh giá ảnh' : 'Phiên bản cũ · chưa có thông tin nguồn nội dung';

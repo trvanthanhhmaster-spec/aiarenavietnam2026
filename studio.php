@@ -120,6 +120,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <link rel="stylesheet" href="assets/css/studio.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-designer.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-designer.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-workspace.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-workspace.css') ?>">
+    <link rel="stylesheet" href="assets/css/studio-assessment.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-assessment.css') ?>">
 </head>
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
@@ -130,6 +131,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <p class="studio-kicker" id="projectKicker">Không gian của bạn</p>
                     <h1 id="projectTitle">Việt phục, theo cách bạn.</h1>
                     <p class="studio-intro__note" id="projectContext" hidden></p>
+                    <a class="studio-proof-link" href="minh-chung.php">Xem bản phối đã kiểm chứng ↗</a>
                 </div>
             </div>
             <button type="button" class="workspace-new-collection" id="newStudioCollection" disabled>＋ Bộ sưu tập mới</button>
@@ -409,6 +411,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <dl>
                             <div><dt>Nguồn gốc</dt><dd id="passportOrigin">Chọn một trang phục để xem nội dung đã được duyệt.</dd></div>
                             <div><dt>Đặc điểm</dt><dd id="passportFeature">—</dd></div>
+                            <div><dt>Cấu trúc cần giữ</dt><dd id="passportStructure">Chọn dáng áo để xem đặc trưng cần đối chiếu.</dd></div>
                             <div><dt>Ý nghĩa</dt><dd id="passportMeaning">—</dd></div>
                             <div><dt>Nguồn tham khảo</dt><dd id="passportSource">Đang chờ nguồn đã được duyệt.</dd></div>
                         </dl>
@@ -454,6 +457,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <p class="studio-result-note" id="resultVerification" role="status">Ảnh chưa được AI đối chiếu với lựa chọn.</p>
         <p class="studio-result-note" id="resultCopySource"></p>
         <p class="studio-result-note" id="resultReferenceSource"></p>
+        <section class="studio-assessment" id="resultAssessment" aria-label="Đối chiếu ảnh theo từng người" hidden></section>
         <section class="studio-result" id="studioResult" hidden>
             <div class="studio-result__backdrop" aria-hidden="true"></div>
             <div class="studio-result__header">
@@ -508,6 +512,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-result-actions.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-result-actions.js') ?>" defer></script>
     <script src="assets/js/studio-lookbook-card.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-lookbook-card.js') ?>" defer></script>
     <script src="assets/js/studio-catalog-choices.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-catalog-choices.js') ?>" defer></script>
+    <script src="assets/js/studio-assessment.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-assessment.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>

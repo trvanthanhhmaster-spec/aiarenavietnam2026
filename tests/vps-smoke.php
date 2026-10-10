@@ -13,8 +13,13 @@ function smokeRequest(string $route,array $headers=[]): array {
     smokeCheck($body!==false,'HTTPS request failed for '.$route);
     return ['status'=>$status,'body'=>$body,'headers'=>implode('',$received)];
 }
-foreach(['/','/studio.php','/auth.php','/admin.php','/assets/css/studio-workspace.css','/assets/js/studio-collection-store.js','/assets/media/studio-atelier-poster.png'] as $route) {
+foreach(['/','/studio.php','/minh-chung.php','/auth.php','/admin.php','/assets/css/studio-workspace.css','/assets/css/studio-assessment.css','/assets/js/studio-assessment.js','/assets/data/audition-proof.json','/assets/media/evidence/ao-tac-production-20261010.jpg','/assets/js/studio-collection-store.js','/assets/media/studio-atelier-poster.png'] as $route) {
     $r=smokeRequest($route);smokeCheck($r['status']===200,$route.' HTTP '.$r['status']);
+    if($route==='/assets/data/audition-proof.json') {
+        $proof=json_decode($r['body'],true);
+        smokeCheck(($proof['scope']['expertCertified']??true)===false && ($proof['scope']['allCatalogValidated']??true)===false,'Proof overstates validation scope');
+        $image=smokeRequest('/'.$proof['image']);smokeCheck(hash('sha256',$image['body'])===$proof['imageSha256'],'Public evidence image differs from recorded original');
+    }
     if($route==='/studio.php') {
         preg_match('/window.VREMIX_STUDIO = (\{.*?\});/s',$r['body'],$m);$c=json_decode($m[1]??'',true);
         smokeCheck(($c['generationEndpoint']??'')==='generation-edge.php','Public Studio selected a local-only provider');

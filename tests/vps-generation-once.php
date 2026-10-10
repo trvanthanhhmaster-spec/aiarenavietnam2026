@@ -38,6 +38,12 @@ try {
         if (!mkdir($destination, 0700, true)) throw new RuntimeException('Unable to create private test evidence. No image submitted.');
         $evidence = ['status' => 'submitting', 'requestId' => $uuid, 'startedAtUtc' => gmdate('c'),
             'maxImageRequests' => 1, 'maxReviewRequests' => 1, 'facesUploaded' => 0, 'collectionChanges' => 0];
+        // Freeze only the technical QA choices, without names/face/session data.
+        $evidence['selection'] = ['event' => $payload['eventSlug'], 'planning' => [
+            'count' => 1, 'customOccasion' => $payload['planning']['customOccasion'],
+            'people' => [['id' => 1, 'outfit' => $payload['planning']['people'][0]['outfit']]]]];
+        $evidence['sampleSnapshot'] = array_intersect_key($variant, array_flip([
+            'slug', 'name', 'image_url', 'thumbnail_url', 'source_url', 'image_credit', 'image_license']));
         if (file_put_contents($destination . '/evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)) === false)
             throw new RuntimeException('Unable to save request evidence. No image submitted.');
     }

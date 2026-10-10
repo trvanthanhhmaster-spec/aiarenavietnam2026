@@ -1,0 +1,79 @@
+{
+  "status": "completed",
+  "requestId": "0c643f1a-3696-4743-8688-aa7c1ade84bf",
+  "startedAtUtc": "2026-10-10T08:57:30+00:00",
+  "maxImageRequests": 1,
+  "maxReviewRequests": 1,
+  "facesUploaded": 0,
+  "collectionChanges": 0,
+  "jobId": "40b1715c-c6e4-4604-b67e-7595f87d962f",
+  "imageCount": 1,
+  "acceptedHttp": 202,
+  "promptPolicy": "versioned-group-v2",
+  "narrativeSource": "selected-catalog",
+  "width": 1376,
+  "height": 768,
+  "storageHttp": 200,
+  "garmentReferences": "attached",
+  "referenceCount": 1,
+  "reviewStatus": "completed",
+  "assessment": {
+    "people": [
+      {
+        "checks": {
+          "color": "match",
+          "scene": "match",
+          "style": "not-requested",
+          "garment": "match",
+          "pattern": "match",
+          "variant": "match",
+          "accessories": "match"
+        },
+        "personId": 1
+      }
+    ],
+    "source": "ai-image-review",
+    "status": "matched",
+    "constructionChecks": [
+      {
+        "reason": "Áo hiển thị rõ phom dáng áo tấc với phần ống tay rộng đặc trưng, cổ đứng chỉn chu, cúc cài đường cổ và hai vạt dài phối cùng quần trắng rộng rãi. Cấu trúc tay rộng hoàn toàn khớp với mẫu áo tấc, không bị biến dạng thành tay chẽn.",
+        "status": "match",
+        "personId": 1
+      }
+    ],
+    "observedPeopleCount": 1
+  },
+  "culturalScore": 95,
+  "copyPolicy": "selected-catalog-only",
+  "image": "assets/media/evidence/ao-tac-production-20261010.jpg",
+  "imageSha256": "364840f5070d991851a528d6868808a36a9fe7608bd48ff97d2594015d32c9a5",
+  "selection": {
+    "event": "custom",
+    "planning": {
+      "count": 1,
+      "customOccasion": "Kiểm thử kỹ thuật tạo ảnh",
+      "people": [
+        {
+          "id": 1,
+          "outfit": {
+            "garment": "ao-tac",
+            "garmentVariant": "ao-tac-do-son",
+            "color": "",
+            "pattern": "",
+            "style": "",
+            "scene": "",
+            "accessories": [],
+            "accessoryVariants": []
+          }
+        }
+      ]
+    }
+  },
+  "selectionProvenance": "Read-only retrieval of the recorded production job input on 2026-10-10; names, face data, session identifiers and account data excluded.",
+  "scope": {
+    "realProductionCase": true,
+    "fictionalAdult": true,
+    "expertCertified": false,
+    "allCatalogValidated": false
+  }
+}
