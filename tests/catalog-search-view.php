@@ -20,4 +20,6 @@ $accessory = renderCatalogPreview('accessory');
 $assert(str_contains($accessory, 'Khăn vấn</option>') && !str_contains($accessory, 'Áo tấc</option>'), 'Parent choices scoped to entity type');
 $controller = file_get_contents($root . '/catalog-search.php');
 $assert(str_contains($controller, "'/includes/catalog/search-page.php'"), 'Controller renders tested template');
+$css = file_get_contents($root . '/assets/css/catalog-search.css');
+$assert(str_contains($css, '.catalog-source-card__image img { position: absolute; inset: 0;') && str_contains($css, 'object-fit: contain;'), 'Portrait sources constrained to the viewport box, not intrinsic grid height');
 echo "Catalog search view contracts passed.\n";
