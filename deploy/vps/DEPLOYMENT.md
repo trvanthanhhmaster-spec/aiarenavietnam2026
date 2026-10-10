@@ -1,4 +1,40 @@
-# Catalog source search synchronized with Admin — 2026-10-10
+# Fashion shop network foundation — 2026-10-10
+
+- Active PHP/source release: `76bab15`; bridge remains `2cedf30`. Migration
+  `20261010150000_fashion_network.sql` is applied to the linked Supabase project.
+- Public `shops.php`, authenticated merchant submissions and admin-only review
+  are live. Admin's Catalog navigation and Studio's sourcing panel link to them.
+  Products, variants, media permissions and buy/rent/made-to-order offers are
+  separate records. Nothing is seeded or promoted from legacy shop links.
+- The new route was added narrowly to this site's Nginx PHP allowlist (source
+  commit `d4fc736`). `nginx -t` passed before graceful reload; backup retained at
+  `/opt/vremix/backups/nginx.pre-fashion-network.conf`. All private path denials
+  and unrelated virtual hosts remain unchanged.
+- Schema trial and post-migration integration tests used temporary users/shop/
+  products inside rolled-back transactions. Checks covered owner isolation,
+  admin review, stale revisions, atomic child replacement, private permission
+  evidence, unknown prices, published reads and archived-parent RLS. No fixtures
+  remain. CLI's local Docker catalog-cache warning did not prevent the remote
+  migration; its schema and RPC behavior were verified afterward.
+- All existing 32 CJS suites, new network UI tests, targeted PHP validation/view/
+  auth/plan/settings/transport checks and network-disabled release-image checks
+  passed. Browser QA tested explicit synthetic product/forms/review states and
+  production directory/merchant/review views, including 390px without horizontal
+  overflow. Guest merchant/review requests redirect to the existing login.
+- Production directory is genuinely empty (zero shop records). No real merchant
+  registration, product publication, image upload, AI call, stock verification,
+  partner outreach or payment was performed. Actual web form mutations remain
+  untested end-to-end; database transactions and input/view contracts are verified.
+- VPS public/security/media and SEO smoke passed after the route change. Screenshot
+  proof is ignored under `artifacts/network-qa/production-directory.png`.
+- Previous `d1bb0b6` release and `/opt/vremix/release.env.pre-76bab15` are retained.
+  Rolling PHP back leaves the additive, empty network schema in place; do not drop
+  network tables if merchant data has since been submitted. See
+  `docs/fashion-network.md` for the scope and next integration slices.
+
+---
+
+# Catalog source search synchronized with Admin — 2026-10-10 (historical)
 
 - Active PHP/source release: `d1bb0b6`; bridge remains `2cedf30`. Only the PHP container was recreated. No provider keys, Edge functions, Nginx configuration, database schema or owner settings changed.
 - Source search now shares the blue Admin theme and configured brand logo. A compact heading and immediate search form replace the oversized cream editorial layout. Optional paid AI filtering is in its own disclosure; source cards retain creator/license links, explicit draft import and CSRF. Import requires choosing a destination instead of silently assigning the first garment.

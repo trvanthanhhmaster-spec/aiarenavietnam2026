@@ -52,12 +52,18 @@ retain a visible source-link fallback. Do not submit private links or tokens.
 
 - `php tests/fashion-network.php`: input, price/consent and auth-return contracts.
 - `php tests/fashion-network-view.php`: deterministic templates, escaping and states.
+- `node tests/fashion-network-ui.cjs`: image failure, conditional units, submission
+  feedback, repeat-submit prevention and browser-history reset.
 - `php tests/fashion-network-preview.php <private-temp-dir>` and the loopback-only
   `tests/fashion-network-router.php`: explicitly synthetic browser QA, not partners.
 - `supabase db query --linked --file tests/fashion-network-transaction.sql`:
   disposable users/shop/products entirely inside a rolled-back transaction; tests
   tenant isolation, admin review, conflicts, permissions, child atomicity, published
   reads and archived-parent RLS. No AI calls or merchant communications.
+
+The onboarding directory currently uses noindex metadata along with private
+merchant/review pages. A dedicated public SEO configuration/sitemap should be
+enabled once genuine reviewed partner content is available, not for an empty page.
 
 ## Next slices
 

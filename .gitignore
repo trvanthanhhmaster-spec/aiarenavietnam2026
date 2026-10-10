@@ -18,3 +18,4 @@ build/
 coverage/
 artifacts/reference-generation-qa/
 artifacts/studio-intelligence-qa/
+artifacts/network-qa/
