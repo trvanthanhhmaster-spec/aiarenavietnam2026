@@ -1,4 +1,16 @@
-# Contextual Studio assistance and recipe feedback — 2026-10-10
+# Managed website identity and SEO — 2026-10-10
+
+- Active PHP/source release: `b4524b7`, `/opt/vremix/current` points to `/opt/vremix/releases/b4524b7`. Bridge remains `2cedf30`; no Edge function, provider credential or database schema change.
+- Admin → Nội dung now has Thương hiệu · Logo & icon and SEO & chia sẻ, with authenticated uploads, revision-safe saves and previews. Public metadata uses the saved values; private pages remain noindex.
+- Nginx routes for robots, sitemap, manifest, favicon and narrow public branding assets were installed, validated with `nginx -t`, and gracefully reloaded. Persistent uploaded assets live in `/var/lib/vremix/brand-assets`, separate from private lookbooks.
+- All JavaScript suites, targeted PHP tests and lint passed. Read-only production SEO checks verified real HTML, schema, canonical URLs, raster images, private-page noindex, sitemap, manifest sizes, favicon and protected admin endpoints. VPS security/media smoke passed.
+- Authenticated production UI successfully uploaded the existing public 1200×630 sharing image, saved SEO, saved unchanged brand defaults, then read the saved configuration. Public HTML references the uploaded hash asset with matching dimensions and actual MIME. No personal image, AI call or private collection was involved.
+- Only `vremix-php` was recreated. Previous `cb0f0bc` release, `/opt/vremix/release.env.pre-b4524b7` and `/opt/vremix/backups/nginx.pre-b4524b7.conf` remain for rollback.
+- Search Console/Bing account verification and sitemap submission were not performed. These are separate external steps, not implied by adding configuration fields.
+
+---
+
+# Contextual Studio assistance and recipe feedback — 2026-10-10 (historical)
 
 - Active PHP/source release: `cb0f0bc`, `/opt/vremix/current` points to `/opt/vremix/releases/cb0f0bc`. The bridge remains `2cedf30`; Edge functions were not changed by this UI follow-up.
 - The all-in-one advice block no longer precedes the four-step planner. Optional weather is in the time step; optional recipe/AI advice is after garment photos, with separate views. Event/people and review stay focused on their own tasks.
