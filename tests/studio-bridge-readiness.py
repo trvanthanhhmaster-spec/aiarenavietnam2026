@@ -55,8 +55,24 @@ async def test():
         await generate_ready(expired, {}, renew_available)
         assert calls == 1 and renewals == 2
 
+    async def session_lost(client, payload):
+        nonlocal calls
+        calls += 1
+        client.account_status = SimpleNamespace(name="UNAVAILABLE")
+        raise ProviderFailure("PROVIDER_SESSION_EXPIRED")
+
+    with patch("server.generate", session_lost):
+        try:
+            await generate_ready(available, {}, renew_available)
+        except ProviderFailure as error:
+            assert error.code == "PROVIDER_SESSION_EXPIRED"
+        else:
+            raise AssertionError("Submitted request was replayed")
+        assert calls == 2 and renewals == 2
+
     class TextClient:
         async def generate_content(self, *args, **kwargs):
+            assert kwargs['current_retry'] == 0, "Upstream generation retries must be disabled"
             return SimpleNamespace(images=[], text="private user prompt fixture")
 
     try:

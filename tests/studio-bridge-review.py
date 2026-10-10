@@ -9,7 +9,8 @@ from server import generate, ProviderFailure
 
 async def test():
     class Client:
-        async def generate_content(self, prompt, files, temporary):
+        async def generate_content(self, prompt, files, temporary, current_retry):
+            assert current_retry == 0
             assert prompt.startswith('Return JSON text only.')
             assert 'Generate an image' not in prompt
             assert temporary is True and files[0].read_bytes() == b'owned-generated-image'

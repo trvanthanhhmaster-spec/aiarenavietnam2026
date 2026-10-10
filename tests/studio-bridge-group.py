@@ -10,7 +10,8 @@ from server import generate
 
 
 class FakeClient:
-    async def generate_content(self, prompt, files, temporary):
+    async def generate_content(self, prompt, files, temporary, current_retry):
+        assert current_retry == 0
         assert "ONE new group photograph" in prompt
         assert "NOT the output composition" in prompt
         assert "Preserve all other visual details" not in prompt
@@ -34,7 +35,8 @@ async def test():
         raise AssertionError("No generated images must be a real failure, not a fallback")
     assert not client.temporary_path.exists(), "Source reference must be removed even on failure"
     class EditClient:
-        async def generate_content(self, prompt, files, temporary):
+        async def generate_content(self, prompt, files, temporary, current_retry):
+            assert current_retry == 0
             assert "first attachment is the previous photograph to edit" in prompt
             assert "Additional attachments are numbered face references" in prompt
             assert "ONE new group photograph" not in prompt

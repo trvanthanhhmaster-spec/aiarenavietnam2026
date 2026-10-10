@@ -13,7 +13,8 @@ def image(data):
 async def test():
     for operation in ['group', 'group-edit', 'review']:
         class Client:
-            async def generate_content(self, prompt, files, temporary):
+            async def generate_content(self, prompt, files, temporary, current_retry):
+                assert current_retry == 0
                 assert [p.read_bytes() for p in files] == [b'source',b'face-sheet',b'garment-one',b'garment-two']
                 assert 'final 2 attachments are garment samples' in prompt
                 assert 'Never copy sample faces' in prompt and temporary

@@ -51,10 +51,8 @@ def client_is_authenticated(value: GeminiClient) -> bool:
 async def generate_ready(client, payload, renew_client):
     """Fail closed if renewal remains unauthenticated; never replay a timeout."""
     active_client = client
-    renewed = False
     if not client_is_authenticated(active_client):
         active_client = await renew_client()
-        renewed = True
     if not client_is_authenticated(active_client):
         raise ProviderFailure("PROVIDER_SESSION_EXPIRED")
     try:
@@ -67,12 +65,9 @@ async def generate_ready(client, payload, renew_client):
         ) or not client_is_authenticated(active_client)
         if not is_expired:
             raise
-        if renewed:
-            raise ProviderFailure("PROVIDER_SESSION_EXPIRED") from None
-        active_client = await renew_client()
-        if not client_is_authenticated(active_client):
-            raise ProviderFailure("PROVIDER_SESSION_EXPIRED")
-        return await generate(active_client, payload)
+        # A submitted request may already have consumed quota. Renew only
+        # before submission, never replay after an ambiguous provider response.
+        raise ProviderFailure("PROVIDER_SESSION_EXPIRED") from None
 
 
 def load_dotenv(path: Path = Path(__file__).with_name(".env")) -> None:
@@ -267,7 +262,7 @@ async def generate(client: GeminiClient, payload: dict) -> dict:
     try:
         try:
             output = await asyncio.wait_for(
-                client.generate_content(full_prompt, files=files, temporary=True),
+                client.generate_content(full_prompt, files=files, temporary=True, current_retry=0),
                 timeout=40 if payload.get("operation") == "review" else int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")),
             )
         except asyncio.TimeoutError as error:
@@ -335,6 +330,9 @@ async def run() -> None:
             timeout=client_timeout,
             auto_close=False,
             auto_refresh=auto_refresh,
+            # The outer call deadline must fire before upstream's watchdog
+            # can restart a generation stream.
+            watchdog_timeout=max(client_timeout, int(env("GEMINI_WEB_GENERATION_TIMEOUT_SECONDS", "85")) + 10),
         )
         return fresh_client
 
