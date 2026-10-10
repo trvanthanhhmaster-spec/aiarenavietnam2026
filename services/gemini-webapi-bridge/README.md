@@ -38,3 +38,12 @@ Do not commit `.env`, browser cookies, or generated images. Do not expose this l
 ## Structured image review
 
 `operation: review` uses the same authenticated endpoint with the generated `sourceImage` and a review prompt. It requests JSON text only and returns `{text, provider}`, not a new image. Invalid JSON is a safe `PROVIDER_NO_TEXT` failure. The timeout is 40 seconds, temporary source files are removed, and timeouts are never automatically replayed. Edge validates the per-person findings before displaying any assessment. Review failures preserve the generated image and remain explicitly unassessed.
+
+Generation and review disable the upstream request retry decorator with
+`current_retry=0`. The upstream stream watchdog is longer than the bridge's
+call deadline. Session renewal can occur before a request is submitted; loss
+of authentication after submission fails without another generation call.
+`refresh_session.py --owner-authorized` reads only the configured Chrome
+database's two Google session cookies, verifies them without generation, and
+atomically updates the private local configuration. The VPS refresh still
+requires the private SSH stdin procedure in `deploy/vps/README.md`.

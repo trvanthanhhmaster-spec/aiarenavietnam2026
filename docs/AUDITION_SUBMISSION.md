@@ -23,33 +23,38 @@ phát triển tiếp theo; không phải điều kiện để người dùng t�
 | Hạng mục | Bằng chứng cần có | Trạng thái |
 | --- | --- | --- |
 | Bốn chức năng bắt buộc | Thao tác máy tính và điện thoại với thẻ bản phối | QA template cách ly đạt: dịp, áo tấc, màu ngà, thẻ và nguồn; chưa phải thử toàn bộ catalog production |
-| Tạo ảnh tham chiếu | Một lượt ảnh production, không ảnh mặt, không tự thử lại | Job 75fb5fce thất bại do provider timeout; không gửi lại |
-| Prompt và quy tắc | Unit test và metadata promptPolicy của job thật | Unit test đạt, Edge đã triển khai; job lỗi nên chưa có metadata ảnh hoàn tất |
-| Tiến trình bất đồng bộ | POST nhận sớm, GET cùng mã nhận trạng thái cuối | Lượt production nhận job sớm, chỉ GET tiếp và thấy failed; chưa có ca ảnh hoàn tất trên bản sửa |
+| Tạo ảnh tham chiếu | Một lượt ảnh production, không ảnh mặt, không tự thử lại | Đạt ngày 10/10 lúc 15:57–15:58: job 40b1715c, một ảnh 1376×768, Storage HTTP 200, mẫu áo tấc đính kèm; một lượt đánh giá hoàn tất |
+| Prompt và quy tắc | Unit test và metadata promptPolicy của job thật | Unit test đạt; job thật có versioned-group-v2, selected-catalog-only và garmentReferences=attached |
+| Tiến trình bất đồng bộ | POST nhận sớm, GET cùng mã nhận trạng thái cuối | Lượt mới nhận HTTP 202, chỉ GET cùng requestId tới completed; không gửi POST lại |
 | Thông tin văn hóa | Bốn hồ sơ có nguồn và phạm vi nhận định | Có dữ liệu biên tập, không phải chứng nhận chuyên gia |
 | URL demo và repository | Mở công khai, không cần tài khoản giám khảo | HTTPS/SEO smoke production đạt sau triển khai; repository đã push |
 | Video giới thiệu | Link xem công khai hoặc quyền xem phù hợp | Người dự thi xác nhận mới có thư mục, chưa có video |
 | Chia sẻ Gemini | Mở link trong cửa sổ chưa đăng nhập | Chưa xác minh quyền xem |
 | Cam kết và nộp bài | Trạng thái đã nộp trên cổng thi | Người dự thi thực hiện |
 
-Hai lần tạo ảnh gần nhất trước bản sửa và lượt thử ngày 10/10 lúc 14:16–14:18
-đều gặp timeout từ provider. Việc trả mã
-yêu cầu sớm giải quyết thời gian chờ gateway, không bảo đảm provider sẽ luôn trả
-ảnh. Chỉ nâng trạng thái sau khi có kết quả thực tế. Dữ liệu mạng lưới shop
-hiện chưa có shop/sản phẩm; các liên kết mua/thuê cũ không phải đối tác xác nhận.
+Các lượt trước, gồm job 75fb5fce lúc 14:16–14:18 và một yêu cầu hai người
+lúc 15:42, gặp provider timeout. Lượt kiểm chứng bổ sung được người vận hành
+cho phép đã thành công sau khi làm mới đúng hai cookie qua kênh riêng tư.
+Fresh auth probe trên VPS trả SESSION_AVAILABLE, rồi kiểm tra HTTPS/gateway
+đạt trước khi gửi ảnh. `/health` riêng lẻ vẫn không chứng minh khả năng tạo ảnh.
 
-Phép kiểm tra xác thực mới từ cấu hình đang lưu ở máy và VPS đều trả chưa xác
-thực, không tạo nội dung. `/health` của bridge chỉ nhìn trạng thái client đã
-khởi tạo và có thể cũ; không dùng HTTP 200 ở đây để kết luận tạo ảnh đang hoạt
-động. Đây là blocker vận hành cần nối lại phiên riêng tư. Chưa đủ bằng chứng
-để quy mọi timeout trước đây cho cùng nguyên nhân.
+Lượt ngày 10/10 lúc 15:57–15:58 dùng request
+`0c643f1a-3696-4743-8688-aa7c1ade84bf`, job
+`40b1715c-c6e4-4604-b67e-7595f87d962f`. Một người mặc áo tấc, không tải ảnh
+khuôn mặt, không thay đổi bộ sưu tập. Đã xem ảnh lưu thực tế: một người,
+áo đỏ tay rộng, quần trắng và sân gạch. AI review trả matched, một người,
+constructionChecks=match; đây là nhận định AI của một ca, không phải chứng
+nhận văn hóa hoặc độ chính xác cho toàn bộ catalog. Minh chứng riêng nằm ở
+`artifacts/reference-generation-qa/0c643f1a-3696-4743-8688-aa7c1ade84bf/`
+gồm `generated-image.png` và `evidence.json`; không commit ảnh hoặc cookie.
 
-Đã dùng hết quyền một lượt tạo ảnh của lần kiểm chứng này; không chạy lại
-script tạo ảnh, không phát sinh lượt đánh giá khi chưa có ảnh. Công cụ
-`services/gemini-webapi-bridge/check_session.py` chỉ thử xác thực mới từ cấu
-hình hiện có, xuất trạng thái an toàn và không gọi sinh nội dung, không đọc
-cookie trình duyệt hay xuất khóa. Sau khi người vận hành nối lại phiên bằng
-kênh riêng tư, chạy công cụ này trước khi xin phép một lượt tạo ảnh khác.
+Bridge production dùng image `vremix-bridge:dba0d31`: tắt retry của thư viện,
+đặt watchdog sau deadline của request và không gửi lại khi mất phiên sau
+submission. Mã yêu cầu được lưu trước POST; tải lại bằng GET không tạo job
+mới. Đã dùng quyền bổ sung một ảnh và một lượt đánh giá; không chạy thêm.
+Phiên Web có thể hết hạn; một ca thành công không bảo đảm vận hành lâu dài.
+Dữ liệu mạng lưới shop hiện chưa có shop/sản phẩm; các liên kết mua/thuê cũ
+không phải đối tác xác nhận.
 
 Bằng chứng UI ngày 10/10: `artifacts/audition-readiness/suggestion-desktop.png`
 và `suggestion-mobile.png` (390px). Catalog fixture, API bị vô hiệu hóa; không
@@ -81,7 +86,7 @@ cá nhân. Kiểm tra lại bốn chức năng trên production trước khi qua
 | 15–40s | Một người → chưa xác định ngày → áo tấc, chọn mẫu | Đây là hành trình chọn dịp và mẫu áo. Ảnh tham khảo có nguồn, không phải hàng shop đã xác nhận. |
 | 40–60s | Biến tấu màu, chọn ngà, không thêm phụ kiện → kiểm tra | Lựa chọn được giữ riêng cho từng người; phụ kiện không được tự thêm. |
 | 60–85s | Xem thẻ bản phối, cuộn xuống nguồn gốc/ý nghĩa | Thẻ hiển thị đúng lựa chọn và nội dung biên tập có nguồn. Ảnh mẫu vẫn giữ màu gốc; đây chưa phải ảnh AI tái hiện. |
-| 85–105s | Nếu phiên được khôi phục: trình bày kết quả AI đã kiểm chứng; nếu chưa: chỉ giới thiệu pipeline bằng mã nguồn | Gemini nhận mẫu áo và kế hoạch cấu trúc. Phiên provider hiện đang cần khôi phục; không khẳng định tạo ảnh đang thành công khi chưa kiểm chứng. |
+| 85–105s | Trình bày ảnh đã kiểm chứng của job 40b1715c; không cần gọi tạo ảnh mới khi quay | Lượt production ngày 10/10 nhận mẫu áo và kế hoạch cấu trúc, tạo ảnh thật và hoàn tất một lượt đánh giá. Đây là một ca kiểm chứng; phiên Web vẫn có thể hết hạn. |
 | 105–120s | Hiển thị URL demo và repository, hướng phát triển | Mạng lưới shop sẽ bổ sung dữ liệu được duyệt và quyền dùng ảnh; demo hiện chưa có đối tác xác nhận. |
 
 Quay bằng công cụ màn hình của máy, xem lại chữ và thao tác, rồi tải video

@@ -115,3 +115,16 @@ authorization for a quota-consuming test, `tests/vps-generation-once.php --live
 --allow-one-image` submits one fresh anonymous request with no face references or
 collection changes, and verifies the actual generated storage image. It never
 resubmits POST on timeout. Do not run this test as a deployment health check.
+With `--save-artifacts`, it records the request ID before submission and stores
+the image/result (or safe failure metadata) in a separate private ignored
+`artifacts/reference-generation-qa/<request-id>/` directory. Preserve this
+record across interrupted sessions and inspect the existing job before any
+new authorized test. A completed review is one additional text request.
+
+The bridge's single-attempt contract disables upstream generation retries and
+keeps the stream watchdog longer than the call deadline. Session recovery is
+allowed only before submission. A session failure after submission must not
+replay the generation. The 10/10/2026 verified bridge image is
+`vremix-bridge:dba0d31`, configured through
+`/opt/vremix/bridge-releases/dba0d31/deploy/vps/compose.bridge.yml` with compose
+project `vremix-bridge`. PHP continues to use release `98dc352`.

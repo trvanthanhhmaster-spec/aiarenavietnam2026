@@ -5,6 +5,8 @@ if (PHP_SAPI !== 'cli' || !in_array('--live', $argv, true) || !in_array('--allow
 $base = 'https://v-remix.vietnamsir.com';
 $h = curl_init();
 curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => 110, CURLOPT_COOKIEFILE => '']);
+$destination = null;
+$evidence = [];
 function onceRequest($h, string $url, ?array $payload = null, string $csrf = ''): array {
     curl_setopt_array($h, [CURLOPT_URL => $url, CURLOPT_CUSTOMREQUEST => $payload === null ? 'GET' : 'POST',
         CURLOPT_POSTFIELDS => $payload === null ? null : json_encode($payload, JSON_THROW_ON_ERROR),
@@ -31,7 +33,15 @@ try {
             'period' => ['kind' => 'unspecified', 'start' => '', 'end' => ''],
             'people' => [['id' => 1, 'name' => '', 'gender' => '', 'faceSupplied' => false,
                 'outfit' => ['garment' => $garment['slug'], 'garmentVariant' => $variant['slug'], 'accessories' => []]]]]];
-    echo "Submitting ONE authorized image through public Studio gateway; no faces or collections.\n";
+    if (in_array('--save-artifacts', $argv, true)) {
+        $destination = dirname(__DIR__) . '/artifacts/reference-generation-qa/' . $uuid;
+        if (!mkdir($destination, 0700, true)) throw new RuntimeException('Unable to create private test evidence. No image submitted.');
+        $evidence = ['status' => 'submitting', 'requestId' => $uuid, 'startedAtUtc' => gmdate('c'),
+            'maxImageRequests' => 1, 'maxReviewRequests' => 1, 'facesUploaded' => 0, 'collectionChanges' => 0];
+        if (file_put_contents($destination . '/evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)) === false)
+            throw new RuntimeException('Unable to save request evidence. No image submitted.');
+    }
+    echo "Submitting ONE authorized image through public Studio gateway; no faces or collections. Request: " . $uuid . "\n";
     [$status, $raw] = onceRequest($h, $base . '/generation-edge.php', $payload, $config['lookCsrf']);
     $job = json_decode($raw, true) ?: [];
     // Recover interrupted responses by request-ID GET, never another POST.
@@ -57,20 +67,28 @@ try {
     if ($assetStatus !== 200 || !$size || $size[0] < 256 || $size[1] < 256) throw new RuntimeException('Generated storage image could not be decoded.');
     if (($output['garmentReferences']['status'] ?? '') !== 'attached' || count($output['garmentReferences']['items'] ?? []) !== 1) throw new RuntimeException('Real garment sample was not attached.');
     if (($output['copyPolicy'] ?? '') !== 'selected-catalog-only' || !str_contains($output['story'] ?? '', 'không thêm phụ kiện')) throw new RuntimeException('Selected-only copy contract failed.');
-    $evidence = ['status' => 'completed', 'jobId' => $job['jobId'], 'imageCount' => 1,
+    $evidence = array_merge($evidence, ['status' => 'completed', 'requestId' => $uuid, 'jobId' => $job['jobId'], 'imageCount' => 1,
         'acceptedHttp' => $acceptedHttp, 'promptPolicy' => $output['promptPolicy'] ?? 'legacy',
         'narrativeSource' => $output['narrativeSource'] ?? null,
         'width' => $size[0], 'height' => $size[1], 'storageHttp' => $assetStatus,
         'facesUploaded' => 0, 'collectionChanges' => 0, 'garmentReferences'=>'attached', 'referenceCount'=>1,
         'reviewStatus'=>$output['reviewStatus'] ?? 'unavailable', 'assessment'=>$output['imageAssessment'] ?? null,
-        'culturalScore'=>$output['culturalScore'] ?? null, 'copyPolicy'=>$output['copyPolicy']];
-    if (in_array('--save-artifacts', $argv, true)) {
-        $destination = dirname(__DIR__).'/artifacts/reference-generation-qa';
-        if (!is_dir($destination)) mkdir($destination,0700,true);
+        'culturalScore'=>$output['culturalScore'] ?? null, 'copyPolicy'=>$output['copyPolicy']]);
+    if ($destination !== null) {
         file_put_contents($destination.'/generated-image.png', $bytes);
         file_put_contents($destination.'/evidence.json', json_encode($evidence,JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
     }
     echo json_encode($evidence, JSON_THROW_ON_ERROR) . "\n";
 } catch (Throwable $error) {
+    if ($destination !== null && $evidence) {
+        $evidence['status'] = 'test-failed';
+        $evidence['jobId'] = $job['jobId'] ?? null;
+        $evidence['jobStatus'] = $job['status'] ?? null;
+        $evidence['httpStatus'] = $status ?? null;
+        preg_match('/\bPROVIDER_[A-Z_]+\b/', (string) ($job['error'] ?? ''), $failure);
+        $evidence['providerCode'] = $failure[0] ?? null;
+        $evidence['finishedAtUtc'] = gmdate('c');
+        file_put_contents($destination . '/evidence.json', json_encode($evidence, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    }
     fwrite(STDERR, $error instanceof RuntimeException ? $error->getMessage() . "\n" : "One-image check failed; no private response printed.\n"); exit(1);
 } finally { curl_close($h); }
