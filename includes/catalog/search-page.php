@@ -71,7 +71,7 @@ $catalogParents = $entityType === 'garment' ? $garments : $accessories;
                 <form method="post" action="catalog-search.php" class="catalog-source-card__action">
                     <input type="hidden" name="csrf" value="<?= $escape($auth->csrfToken()) ?>"><input type="hidden" name="type" value="<?= $escape($entityType) ?>"><input type="hidden" name="q" value="<?= $escape($query) ?>">
                     <input type="hidden" name="candidate" value="<?= $escape(base64_encode(json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR))) ?>">
-                    <label><span>Nhập mẫu cho</span><select name="parent_id" required><?php foreach ($catalogParents as $parent): ?><option value="<?= $escape($parent['id']) ?>"<?= $parent['id'] === $selectedParent ? ' selected' : '' ?>><?= $escape($parent['name']) ?></option><?php endforeach; ?></select></label>
+                    <label><span>Nhập mẫu cho</span><select name="parent_id" required><option value="">Chọn loại áo / phụ kiện</option><?php foreach ($catalogParents as $parent): ?><option value="<?= $escape($parent['id']) ?>"<?= $parent['id'] === $selectedParent ? ' selected' : '' ?>><?= $escape($parent['name']) ?></option><?php endforeach; ?></select></label>
                     <a class="admin-button" href="<?= $escape($result['source_url']) ?>" target="_blank" rel="noopener noreferrer">Xem nguồn ↗</a>
                     <button class="admin-button admin-button--solid" type="submit" data-busy-label="Đang nhập bản nháp…">Nhập làm nháp</button>
                 </form>

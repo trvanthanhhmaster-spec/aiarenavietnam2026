@@ -10,6 +10,7 @@ $results = renderCatalogPreview('results');
 $assert(substr_count($results, 'name="candidate"') === 2 && substr_count($results, 'value="offline-csrf"') === 3, 'All mutations retain candidate and CSRF');
 $assert(str_contains($results, 'name="action" value="research"') && str_contains($results, ' disabled'), 'Research stays explicit and respects readiness');
 $assert(str_contains($results, 'CC BY-SA 4.0') && str_contains($results, 'noopener noreferrer') && str_contains($results, 'Nhập làm nháp'), 'Preserve attribution, source and draft workflow');
+$assert(substr_count($results, '<option value="">Chọn loại áo / phụ kiện</option>') === 2, 'Require deliberate parent selection instead of silently defaulting to first garment');
 $assert(!str_contains($results, '<script>alert(1)</script>') && !str_contains($results, '<img src=x onerror'), 'Query and metadata are escaped');
 $assert(str_contains($results, 'Áo tấc &lt;script&gt;'), 'Escaped query remains visible');
 $assert(str_contains(renderCatalogPreview('filtered'), 'Xem toàn bộ nguồn') && str_contains(renderCatalogPreview('filtered'), 'all=1'), 'Filtered state retains manual unfiltered route');
