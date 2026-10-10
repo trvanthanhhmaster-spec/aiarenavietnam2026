@@ -1,0 +1,78 @@
+.network-page { color: var(--admin-text, #172832); }
+.network-shell { max-width: 1300px; margin: 16px auto; padding: 0 36px 30px; background: #f0f8fc; border: 1px solid #dce8ef; border-radius: 34px; }
+.network-skip { position: fixed; top: -80px; left: 20px; z-index: 30; padding: 14px; background: white; }
+.network-skip:focus { top: 12px; }
+.network-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 1px solid #dce8ef; }
+.network-brand img { display: block; width: 56px; height: 56px; object-fit: contain; }
+.network-header nav, .network-actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+.network-header a, .network-actions a, .network-back { color: inherit; text-decoration: none; }
+.network-header nav a { padding: 12px 14px; border-radius: 12px; font-size: 14px; }
+.network-header [aria-current] { background: #e7edc6; color: #465018; }
+.network-intro { margin: 36px 0 30px; }
+.network-intro h1 { margin: 10px 0 16px; font-size: clamp(30px, 4vw, 46px); letter-spacing: -.04em; line-height: 1.12; font-weight: 600; text-wrap: balance; }
+.network-intro p:not(.admin-eyebrow), .network-footer p { max-width: 68ch; line-height: 1.8; color: #5b7180; }
+.network-search { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 18px; padding: 24px; background: white; border-radius: 22px; margin: 24px 0; }
+.network-page label { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.6; }
+.network-page input:not([type=checkbox]):not([type=hidden]), .network-page select, .network-page textarea { width: 100%; min-width: 0; border: 1px solid #c8d9e3; border-radius: 10px; padding: 13px 14px; min-height: 48px; background: white; color: #203845; font: inherit; }
+.network-page textarea { resize: vertical; }
+.network-page a:focus-visible, .network-page button:focus-visible, .network-page summary:focus-visible, .network-page input:focus-visible, .network-page select:focus-visible, .network-page textarea:focus-visible { outline: 3px solid #6b8194; outline-offset: 3px; }
+.network-page .admin-button { display: inline-flex; gap: 8px; justify-content: center; align-items: center; min-height: 48px; text-decoration: none; }
+.network-page .admin-button--solid { color: #eef8bd; background: #11191d; }
+.network-page .admin-button--solid:hover { background: #28353c; }
+.network-page button:disabled { opacity: .65; cursor: wait; }
+.network-notice { padding: 18px 22px; background: #e7efd9; color: #344524; border-radius: 14px; line-height: 1.7; }
+.network-notice.is-error { background: #fae9e5; color: #883629; }
+.network-shop-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.network-shop { display: flex; flex-direction: column; align-items: start; padding: 28px; background: white; border-radius: 24px; }
+.network-shop h2 { font-size: 24px; margin: 16px 0 8px; letter-spacing: -.02em; }
+.network-shop h2 a { color: inherit; text-decoration: none; }
+.network-shop p { line-height: 1.8; }
+.network-shop small { margin: 0 0 20px; color: #657b89; line-height: 1.7; }
+.network-shop .admin-button { margin-top: auto; }
+.network-location { font-size: 13px; color: #546122; }
+.network-muted { color: #5e7280; font-size: 14px; line-height: 1.8; }
+.network-empty { padding: 40px 24px; text-align: center; }
+.network-empty p { max-width: 58ch; margin: 16px auto 24px; line-height: 1.8; color: #5e7280; }
+.network-shop-heading { display: flex; gap: 24px; align-items: start; justify-content: space-between; margin-top: 26px; }
+.network-shop-heading h1 { font-size: 32px; margin: 12px 0; letter-spacing: -.025em; line-height: 1.3; }
+.network-shop-heading p { max-width: 62ch; line-height: 1.8; }
+.network-product-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.network-product { background: white; border-radius: 24px; overflow: hidden; min-width: 0; }
+.network-product-image { height: 330px; position: relative; margin: 12px; border-radius: 16px; background: #eaf1f5; overflow: hidden; display: grid; place-items: center; }
+.network-product-image img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.network-product-image img[hidden], .network-image-failure[hidden] { display: none; }
+.network-image-failure { padding: 24px; text-align: center; color: #5e7280; }
+.network-product-copy { padding: 12px 26px 28px; }
+.network-product-copy h3 { margin: 10px 0 14px; font-size: 25px; letter-spacing: -.025em; line-height: 1.3; }
+.network-product-copy > p { line-height: 1.8; }
+.network-specs { display: grid; gap: 12px; margin: 24px 0; font-size: 14px; }
+.network-specs div { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 16px; line-height: 1.7; }
+.network-specs dt { color: #5e7280; } .network-specs dd { margin: 0; }
+.network-offers { border-top: 1px solid #dce8ef; }
+.network-offers section { padding: 18px 0; border-bottom: 1px solid #dce8ef; }
+.network-offers p { margin: 10px 0; line-height: 1.7; font-size: 14px; }
+.network-offers small { color: #5e7280; line-height: 1.7; }
+.network-panel { margin: 24px 0; padding: 28px; border-radius: 24px; background: white; }
+.network-panel h2 { margin: 0 0 20px; font-size: 25px; letter-spacing: -.025em; }
+.network-page summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; cursor: pointer; padding: 16px 0; font-size: 18px; font-weight: 600; line-height: 1.6; }
+.network-page summary small { display: block; font-size: 13px; font-weight: 400; color: #5e7280; }
+.network-page details[open] > summary { margin-bottom: 16px; border-bottom: 1px solid #e5edf2; }
+.network-form { display: grid; gap: 24px; }
+.network-form > button { justify-self: start; }
+.network-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
+.network-wide { grid-column: 1/-1; }
+.network-page fieldset { min-width: 0; padding: 22px; border: 1px solid #dce8ef; border-radius: 16px; display: grid; gap: 20px; }
+.network-page legend { font-size: 17px; font-weight: 600; padding: 0 8px; }
+.network-page .network-check { display: flex; flex-direction: row; align-items: start; gap: 12px; }
+.network-check input { width: 19px; height: 19px; flex: 0 0 19px; margin: 3px 0 0; accent-color: #617123; }
+.network-offer-edit { display: grid; gap: 16px; padding-top: 20px; border-top: 1px solid #e5edf2; }
+.network-row { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding: 18px 0; border-top: 1px solid #e5edf2; }
+.network-row p { margin: 8px 0; font-size: 14px; line-height: 1.7; color: #5e7280; }
+.network-row a { flex-shrink: 0; padding: 8px 0; color: #465723; }
+.network-review-group { margin-top: 36px; }
+.network-review-group h2 small { font-size: 16px; color: #5e7280; }
+.network-footer { border-top: 1px solid #dce8ef; margin-top: 40px; padding-top: 20px; font-size: 13px; }
+.network-page p, .network-page h2, .network-page h3, .network-page dd, .network-page a, .network-page summary { overflow-wrap: anywhere; }
+@media(max-width:800px) { .network-shell { margin: 10px; padding: 0 22px 24px; } .network-search { grid-template-columns: 1fr 1fr; } .network-search button { grid-column: 1/-1; } .network-shop-heading { flex-direction: column; } }
+@media(max-width:560px) { .network-shell { margin: 8px; padding: 0 16px 20px; border-radius: 24px; } .network-header { flex-wrap: wrap; gap: 14px; } .network-header nav { gap: 6px; } .network-header nav a { padding: 10px; font-size: 13px; } .network-intro { margin: 28px 0; } .network-search, .network-fields, .network-product-grid, .network-shop-grid { grid-template-columns: minmax(0,1fr); } .network-search { padding: 20px; } .network-panel,.network-shop { padding: 22px 18px; } .network-row { flex-direction: column; gap: 4px; } .network-product-image { height: 280px; } .network-product-copy { padding: 12px 20px 24px; } .network-page fieldset { padding: 18px 14px; } }
+@media(prefers-reduced-motion:no-preference) { .network-page .admin-button { transition: background .2s,transform .2s; } .network-page .admin-button:active { transform: translateY(1px); } }

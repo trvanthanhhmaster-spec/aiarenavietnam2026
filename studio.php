@@ -429,6 +429,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     </section>
                     <section class="studio-insight studio-sourcing">
                         <div class="studio-insight__head"><span>Nơi mua / thuê</span><small>04</small></div>
+                        <a class="studio-search-link" href="shops.php">Mẫu thật từ mạng lưới cửa hàng <span aria-hidden="true">→</span></a>
                         <div class="studio-recommendation-list" id="studioListings">
                             <p class="studio-recommendation-empty">Chọn trang phục hoặc phụ kiện để xem gợi ý đã xác minh.</p>
                         </div>

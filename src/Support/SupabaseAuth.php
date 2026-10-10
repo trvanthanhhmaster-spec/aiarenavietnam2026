@@ -295,7 +295,7 @@ final class SupabaseAuth
             return 'studio.php';
         }
         $path = ltrim((string) ($parts['path'] ?? ''), '/');
-        if (!in_array($path, ['studio.php', 'admin.php', 'index.php'], true)) {
+        if (!in_array($path, ['studio.php', 'admin.php', 'index.php', 'shops.php'], true)) {
             return 'studio.php';
         }
         $query = isset($parts['query']) ? '?' . $parts['query'] : '';

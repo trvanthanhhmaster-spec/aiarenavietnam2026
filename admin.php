@@ -120,6 +120,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <button data-resource="accessories"><span>04</span>Phụ kiện</button>
                 <button data-resource="accessory-variants"><span>04A</span>Mẫu phụ kiện</button>
                 <a class="admin-nav__link" href="catalog-search.php"><span>04B</span>Tìm & nhập nguồn</a>
+                <a class="admin-nav__link" href="shops.php?mode=review"><span>04C</span>Mạng lưới cửa hàng</a>
                 <button data-resource="options"><span>05</span>Màu, họa tiết & phong cách</button>
                 <button data-resource="marketplace"><span>05A</span>Nơi mua / thuê</button>
                 <button data-resource="locations"><span>05B</span>Địa điểm chụp</button>
