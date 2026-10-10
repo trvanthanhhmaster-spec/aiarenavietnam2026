@@ -22,20 +22,40 @@ phát triển tiếp theo; không phải điều kiện để người dùng t�
 
 | Hạng mục | Bằng chứng cần có | Trạng thái |
 | --- | --- | --- |
-| Bốn chức năng bắt buộc | Thao tác máy tính và điện thoại với thẻ bản phối | Đang kiểm chứng bản sửa |
-| Tạo ảnh tham chiếu | Một lượt ảnh production, không ảnh mặt, không tự thử lại | Đã được phép, chưa chạy bản sửa |
-| Prompt và quy tắc | Unit test và metadata promptPolicy của job thật | Unit test đạt, chờ triển khai |
-| Tiến trình bất đồng bộ | POST nhận 202, GET cùng mã nhận kết quả | Chờ kiểm chứng production |
+| Bốn chức năng bắt buộc | Thao tác máy tính và điện thoại với thẻ bản phối | QA template cách ly đạt: dịp, áo tấc, màu ngà, thẻ và nguồn; chưa phải thử toàn bộ catalog production |
+| Tạo ảnh tham chiếu | Một lượt ảnh production, không ảnh mặt, không tự thử lại | Job 75fb5fce thất bại do provider timeout; không gửi lại |
+| Prompt và quy tắc | Unit test và metadata promptPolicy của job thật | Unit test đạt, Edge đã triển khai; job lỗi nên chưa có metadata ảnh hoàn tất |
+| Tiến trình bất đồng bộ | POST nhận sớm, GET cùng mã nhận trạng thái cuối | Lượt production nhận job sớm, chỉ GET tiếp và thấy failed; chưa có ca ảnh hoàn tất trên bản sửa |
 | Thông tin văn hóa | Bốn hồ sơ có nguồn và phạm vi nhận định | Có dữ liệu biên tập, không phải chứng nhận chuyên gia |
-| URL demo và repository | Mở công khai, không cần tài khoản giám khảo | Repository mở công khai; demo cần smoke sau triển khai |
-| Video giới thiệu | Link xem công khai hoặc quyền xem phù hợp | Cần người dự thi xác nhận link thực tế |
+| URL demo và repository | Mở công khai, không cần tài khoản giám khảo | HTTPS/SEO smoke production đạt sau triển khai; repository đã push |
+| Video giới thiệu | Link xem công khai hoặc quyền xem phù hợp | Người dự thi xác nhận mới có thư mục, chưa có video |
 | Chia sẻ Gemini | Mở link trong cửa sổ chưa đăng nhập | Chưa xác minh quyền xem |
 | Cam kết và nộp bài | Trạng thái đã nộp trên cổng thi | Người dự thi thực hiện |
 
-Hai lần tạo ảnh gần nhất trước bản sửa đã gặp timeout từ provider. Việc trả mã
+Hai lần tạo ảnh gần nhất trước bản sửa và lượt thử ngày 10/10 lúc 14:16–14:18
+đều gặp timeout từ provider. Việc trả mã
 yêu cầu sớm giải quyết thời gian chờ gateway, không bảo đảm provider sẽ luôn trả
 ảnh. Chỉ nâng trạng thái sau khi có kết quả thực tế. Dữ liệu mạng lưới shop
 hiện chưa có shop/sản phẩm; các liên kết mua/thuê cũ không phải đối tác xác nhận.
+
+Phép kiểm tra xác thực mới từ cấu hình đang lưu ở máy và VPS đều trả chưa xác
+thực, không tạo nội dung. `/health` của bridge chỉ nhìn trạng thái client đã
+khởi tạo và có thể cũ; không dùng HTTP 200 ở đây để kết luận tạo ảnh đang hoạt
+động. Đây là blocker vận hành cần nối lại phiên riêng tư. Chưa đủ bằng chứng
+để quy mọi timeout trước đây cho cùng nguyên nhân.
+
+Đã dùng hết quyền một lượt tạo ảnh của lần kiểm chứng này; không chạy lại
+script tạo ảnh, không phát sinh lượt đánh giá khi chưa có ảnh. Công cụ
+`services/gemini-webapi-bridge/check_session.py` chỉ thử xác thực mới từ cấu
+hình hiện có, xuất trạng thái an toàn và không gọi sinh nội dung, không đọc
+cookie trình duyệt hay xuất khóa. Sau khi người vận hành nối lại phiên bằng
+kênh riêng tư, chạy công cụ này trước khi xin phép một lượt tạo ảnh khác.
+
+Bằng chứng UI ngày 10/10: `artifacts/audition-readiness/suggestion-desktop.png`
+và `suggestion-mobile.png` (390px). Catalog fixture, API bị vô hiệu hóa; không
+lấy ảnh này làm bằng chứng AI production. Ảnh mẫu tải được, không tràn ngang,
+đóng dialog trả focus về nút mở; thẻ hiển thị ngà ấm nhưng giải thích ảnh mẫu
+đỏ không được tái tạo theo lựa chọn.
 
 ## Kịch bản demo ngắn
 
@@ -48,6 +68,26 @@ hiện chưa có shop/sản phẩm; các liên kết mua/thuê cũ không phải
    Đối chiếu tay rộng, số người, màu và việc không tự thêm phụ kiện.
 6. Khi thành công, tải ảnh gốc; phân biệt thẻ xuất 9:16 với tạo ảnh dọc mới.
    Nếu provider lỗi, tiếp tục dùng thẻ gợi ý, không nhận ảnh mẫu là ảnh Gemini.
+
+## Quay video minh chứng 90–120 giây
+
+Video chưa được tạo. Các mốc dưới đây là kịch bản quay, không phải minh chứng
+đã có. Chỉ quay trang công khai; tránh Admin, DevTools, email, khóa và ảnh mặt
+cá nhân. Kiểm tra lại bốn chức năng trên production trước khi quay.
+
+| Mốc | Thao tác màn hình | Lời giới thiệu gợi ý |
+| --- | --- | --- |
+| 0–15s | Trang Khám phá, chọn Dự lễ → Studio | V-Remix giúp người trẻ chọn và phối Việt phục, kèm thông tin văn hóa có nguồn. |
+| 15–40s | Một người → chưa xác định ngày → áo tấc, chọn mẫu | Đây là hành trình chọn dịp và mẫu áo. Ảnh tham khảo có nguồn, không phải hàng shop đã xác nhận. |
+| 40–60s | Biến tấu màu, chọn ngà, không thêm phụ kiện → kiểm tra | Lựa chọn được giữ riêng cho từng người; phụ kiện không được tự thêm. |
+| 60–85s | Xem thẻ bản phối, cuộn xuống nguồn gốc/ý nghĩa | Thẻ hiển thị đúng lựa chọn và nội dung biên tập có nguồn. Ảnh mẫu vẫn giữ màu gốc; đây chưa phải ảnh AI tái hiện. |
+| 85–105s | Nếu phiên được khôi phục: trình bày kết quả AI đã kiểm chứng; nếu chưa: chỉ giới thiệu pipeline bằng mã nguồn | Gemini nhận mẫu áo và kế hoạch cấu trúc. Phiên provider hiện đang cần khôi phục; không khẳng định tạo ảnh đang thành công khi chưa kiểm chứng. |
+| 105–120s | Hiển thị URL demo và repository, hướng phát triển | Mạng lưới shop sẽ bổ sung dữ liệu được duyệt và quyền dùng ảnh; demo hiện chưa có đối tác xác nhận. |
+
+Quay bằng công cụ màn hình của máy, xem lại chữ và thao tác, rồi tải video
+thực tế lên Drive/YouTube. Người dự thi chọn quyền xem thích hợp, mở thử khi
+chưa đăng nhập và dán **link xem video**, không dùng link thư mục. Không chờ
+xây xong mạng lưới shop mới quay; cũng không che trạng thái AI bằng ảnh mẫu.
 
 ## Nội dung thay trong form
 
@@ -107,6 +147,6 @@ Kết quả tạo là một ảnh cho cả nhóm. Lượt đánh giá riêng tr�
 
 - Demo: https://v-remix.vietnamsir.com/
 - Mã nguồn: https://github.com/trvanthanhhmaster-spec/aiarenavietnam2026
-- Video đang ghi trong form: `https://drive.google.com/drive/project/1FZpNS97RrNoP1h56GL2iCs_hxcb9ueJw?usp=sharing`. Chưa xác minh được trang video; cần link xem thực tế và kiểm tra quyền người chưa đăng nhập.
+- Video đang ghi trong form: `https://drive.google.com/drive/project/1FZpNS97RrNoP1h56GL2iCs_hxcb9ueJw?usp=sharing`. Người dự thi xác nhận đây mới là thư mục, chưa có video. Cần quay/tải video thật và thay bằng link xem đã kiểm tra quyền.
 - Gemini đang ghi trong form: `https://share.gemini.google/rGQwr4srgbg1`. Chưa xác minh được nội dung công khai; đội kiểm tra quyền xem và nội dung được phép chia sẻ.
 - Người dự thi rà soát quyền ảnh, cam kết nguyên gốc, thay nội dung form, nộp và lưu xác nhận. Không coi autosave bản nháp là đã nộp.

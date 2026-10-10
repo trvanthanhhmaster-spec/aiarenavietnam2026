@@ -35,7 +35,11 @@ redirect allowlist before using OAuth or email confirmation from this domain.
    **new** release directory. Never unpack over an existing release.
 2. Supply secrets privately; source stays read-only to PHP workers. Give only
    runtime/cache/session/log directories write access to UID 10001. The release
-   has an empty mode-000 `.env` placeholder; Docker mounts the private file.
+   needs an empty `.env` mount target **before** switching `current` and
+   recreating the container. `git archive` omits this ignored file; create it
+   explicitly in the new release. Docker mounts the private file over it.
+   Do not copy secrets into the release. A missing target on the read-only
+   source mount prevents PHP from starting and makes the gateway return 502.
 3. Build the release's Dockerfile, then run PHP lint, validators and the
    transport unit test inside the image/container. Record the base image digest.
 4. Validate the isolated FPM config and compose file before starting.

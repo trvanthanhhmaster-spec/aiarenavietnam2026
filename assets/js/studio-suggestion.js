@@ -5,7 +5,7 @@
 })(typeof window !== 'undefined' ? window : this, function () {
   'use strict';
   function find(rows, slug) { return (rows || []).find(function (r) { return r.slug === slug; }); }
-  function safeUrl(value) { return /^(?:https:\/\/|assets\/)/.test(String(value || '')) ? value : ''; }
+  function safeUrl(value) { return /^(?:https:\/\/|assets\/|http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/)/.test(String(value || '')) ? value : ''; }
   function build(selection, catalog) {
     var plan = selection.planning;
     if (!selection.event || !plan || !plan.count || plan.people.length !== plan.count) throw new Error('Hoàn tất dịp mặc và số người trước.');
@@ -18,6 +18,10 @@
       var variant = find(catalog.garmentVariants, o.garmentVariant);
       if (o.garmentVariant && (!variant || variant.garment_id !== garment.id)) throw new Error('Mẫu trang phục không còn khả dụng.');
       var facts = ((catalog.intelligence || {}).heritage || {})[o.garment] || {};
+      var recipe = ((catalog.intelligence || {}).lookbooks || []).find(function (r) {
+        return r.garment === o.garment && variant && r.source === variant.source_url;
+      });
+      var referenceSource = (catalog.sources || []).find(function (s) { return variant && s.id === variant.source_id; });
       var choices = [];
       ['color','pattern','style','scene'].forEach(function (key) {
         var row = find(catalog[{color:'colors',pattern:'patterns',style:'styles',scene:'scenes'}[key]], o[key]);
@@ -32,6 +36,7 @@
       return { personId:person.id, garment:garment.name, sample:variant && variant.name || '',
         image:safeUrl(variant && (variant.thumbnail_url || variant.image_url) || garment.thumbnail_url || garment.image_url),
         imageSource:safeUrl(variant && variant.source_url || ''),
+        imageCredit:recipe && recipe.credit || referenceSource && (referenceSource.title + ' · ' + referenceSource.license) || '',
         choices:choices, origin:facts.origin || garment.origin_note || '', meaning:facts.meaning || garment.significance_note || '',
         structure:facts.structure || '', sources:(facts.sources || []).map(function (s) { return {title:s.publisher || s.title, url:safeUrl(s.url)}; }) };
     }) };
@@ -58,6 +63,7 @@
             var choices = node('ul'); p.choices.forEach(function (choice) { choices.append(node('li',choice)); }); article.append(choices);
             article.append(node('p','Ảnh mẫu không đổi màu, nền hoặc phụ kiện theo lựa chọn. Muốn xem hình tái hiện, hãy tạo ảnh AI.', 'studio-suggestion__note'));
             if (p.imageSource) article.append(link(p.imageSource,'Nguồn ảnh mẫu'));
+            if (p.imageCredit) article.append(node('p',p.imageCredit,'studio-suggestion__note'));
             if (p.origin) article.append(node('h4','Nguồn gốc'),node('p',p.origin));
             if (p.meaning) article.append(node('h4','Ý nghĩa'),node('p',p.meaning));
             if (p.structure) article.append(node('p',p.structure));

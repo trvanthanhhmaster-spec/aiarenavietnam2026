@@ -13,6 +13,11 @@ assert.deepEqual(model.people[0].choices,['Màu: Xanh','Phụ kiện: Không th�
 assert.deepEqual(model.people[1].choices,['Phụ kiện: Tote']);
 assert.equal(JSON.stringify(s),before,'read-only result never changes the plan');
 assert.ok(!JSON.stringify(model).includes('private'));
+assert.equal(build(s,{...c,garments:[{...c.garments[0],image_url:'http://127.0.0.1:9098/assets/tac.png'}]}).people[0].image,'http://127.0.0.1:9098/assets/tac.png');
+for (const image_url of ['javascript:alert(1)','http://localhost.attacker.test/tac.png','http://localhost@attacker.test/tac.png']) {
+  assert.equal(build(s,{...c,garments:[{...c.garments[0],image_url}]}).people[0].image,'');
+}
+assert.equal(build(s,{...c,intelligence:{...c.intelligence,lookbooks:[{garment:'tac',source:'https://example.com/source',credit:'Author · CC BY-SA 4.0'}]}}).people[0].imageCredit,'Author · CC BY-SA 4.0');
 assert.throws(()=>build({...s,event:''},c));
 assert.throws(()=>build(s,{...c,garments:[]}));
 assert.throws(()=>build(s,{...c,garmentVariants:[{slug:'sample',garment_id:'wrong'}]}));
