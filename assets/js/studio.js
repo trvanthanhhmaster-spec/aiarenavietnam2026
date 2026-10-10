@@ -1341,6 +1341,9 @@
 
   function humanizeGenerationError(message) {
     var text = String(message || '');
+    if (/GENERATION_REQUEST_NOT_FOUND/.test(text)) {
+      return 'Yêu cầu trước chưa được tiếp nhận hoặc không còn truy cập được.';
+    }
     if (/CATALOG_REFERENCE_UNAVAILABLE/.test(text)) {
       return 'Ảnh mẫu trang phục chưa tải được. Chưa gọi AI tạo ảnh; hãy chọn mẫu khác hoặc báo quản trị viên kiểm tra ảnh mẫu.';
     }
@@ -1395,8 +1398,13 @@
       });
       var body = await response.json();
       if (!response.ok) {
-        if (response.status === 404 && !activeJob.jobId && attempt < 10) continue;
-        if (response.status === 404 && activeJob.jobId) clearActiveJob();
+        if (response.status === 404) {
+          // Allow a newly submitted request time to become visible. A stale
+          // request with no job must not trap every explicit retry in GET.
+          if (!activeJob.jobId && attempt < 10 && Date.now() - Number(activeJob.startedAt) < 120000) continue;
+          clearActiveJob();
+          throw new Error('GENERATION_REQUEST_NOT_FOUND');
+        }
         throw new Error(body.error || 'Unable to read generation job.');
       }
       if (body.jobId && !activeJob.jobId) {
