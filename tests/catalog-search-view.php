@@ -1,0 +1,22 @@
+<?php
+declare(strict_types=1);
+require __DIR__ . '/catalog-search-preview.php';
+$assert = static function (bool $value, string $message): void { if (!$value) throw new RuntimeException($message); };
+$idle = renderCatalogPreview('idle');
+$assert(str_contains($idle, 'admin-dashboard.css') && !str_contains($idle, 'fonts.googleapis.com'), 'Use shared admin theme, not old serif fonts');
+$assert(str_contains($idle, 'content="noindex,follow"') && str_contains($idle, 'v-remix-leaf-logo.png'), 'Keep private SEO and current brand image');
+$assert(str_contains($idle, 'Bắt đầu từ một mẫu bạn cần.') && !str_contains($idle, 'name="action"'), 'Idle state has no automatic AI action');
+$results = renderCatalogPreview('results');
+$assert(substr_count($results, 'name="candidate"') === 2 && substr_count($results, 'value="offline-csrf"') === 3, 'All mutations retain candidate and CSRF');
+$assert(str_contains($results, 'name="action" value="research"') && str_contains($results, ' disabled'), 'Research stays explicit and respects readiness');
+$assert(str_contains($results, 'CC BY-SA 4.0') && str_contains($results, 'noopener noreferrer') && str_contains($results, 'Nhập làm nháp'), 'Preserve attribution, source and draft workflow');
+$assert(!str_contains($results, '<script>alert(1)</script>') && !str_contains($results, '<img src=x onerror'), 'Query and metadata are escaped');
+$assert(str_contains($results, 'Áo tấc &lt;script&gt;'), 'Escaped query remains visible');
+$assert(str_contains(renderCatalogPreview('filtered'), 'Xem toàn bộ nguồn') && str_contains(renderCatalogPreview('filtered'), 'all=1'), 'Filtered state retains manual unfiltered route');
+$assert(str_contains(renderCatalogPreview('empty'), 'Chưa tìm thấy ảnh phù hợp.'), 'No results feedback');
+$assert(str_contains(renderCatalogPreview('error'), 'role="alert"') && str_contains(renderCatalogPreview('error'), 'Chưa tải được tư liệu.'), 'Error feedback');
+$accessory = renderCatalogPreview('accessory');
+$assert(str_contains($accessory, 'Khăn vấn</option>') && !str_contains($accessory, 'Áo tấc</option>'), 'Parent choices scoped to entity type');
+$controller = file_get_contents($root . '/catalog-search.php');
+$assert(str_contains($controller, "'/includes/catalog/search-page.php'"), 'Controller renders tested template');
+echo "Catalog search view contracts passed.\n";

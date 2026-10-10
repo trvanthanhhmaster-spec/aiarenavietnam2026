@@ -1,4 +1,4 @@
-/* Admin-only Vitalis-inspired theme. The source-import desk keeps its own layout. */
+/* Shared Vitalis-inspired admin theme; source search has its own compact layout. */
 :root {
   --admin-paper: #f0f8fc;
   --admin-paper-bright: #fff;
