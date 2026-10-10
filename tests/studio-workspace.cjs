@@ -74,7 +74,7 @@ const document = {
   addEventListener() {}
 };
 let mobile = false;
-const window = { matchMedia: query => ({ matches: query.includes('1023px') && mobile }), setTimeout() {} };
+const window = { location: {hash:''}, addEventListener(name,fn) { this[name]=fn; }, matchMedia: query => ({ matches: query.includes('1023px') && mobile }), setTimeout() {} };
 class UIEvent { constructor(type, options = {}) { this.type = type; Object.assign(this, options); } }
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../assets/js/studio-workspace.js'), 'utf8'), { document, window, Event: UIEvent });
 function clickPanel(name) {
@@ -87,11 +87,17 @@ assert.equal(ids.workspaceFullscreen.hidden, true, 'unsupported fullscreen must 
 clickPanel('heritage');
 assert.equal(ids.workspaceCatalog.hidden, true);
 assert.equal(ids.workspaceInsights.hidden, false);
-assert.deepEqual(sections.map(section => section.hidden), [false, false, false, true, true]);
+assert.deepEqual(sections.map(section => section.hidden), [false, false, true, true, true]);
 assert.equal(panelButtons[1].attributes['aria-pressed'], 'true');
 clickPanel('places');
-assert.deepEqual(sections.map(section => section.hidden), [true, true, true, false, false]);
+assert.deepEqual(sections.map(section => section.hidden), [true, true, false, false, false]);
 assert.equal(ids.workspacePanelTitle.textContent, 'Mang bản phối ra đời thật');
+window.location.hash = '#studioExample'; window.hashchange();
+assert.equal(panelButtons[1].attributes['aria-pressed'], 'true', 'old sample links open garment information');
+assert.equal(ids.workspaceCatalog.hidden, true);
+assert.deepEqual(sections.map(section => section.hidden), [false, false, true, true, true]);
+window.location.hash = '#workspaceInsights'; window.hashchange();
+assert.equal(panelButtons[1].attributes['aria-pressed'], 'true');
 mobile = true;
 clickPanel('catalog');
 assert.equal(panelHeader.scrolled, true);

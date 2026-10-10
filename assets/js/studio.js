@@ -2023,7 +2023,12 @@
     var snapshot = currentResultSelection;
     var assessmentPanel = document.getElementById('resultAssessment');
     if (assessmentPanel) { assessmentPanel.replaceChildren(); assessmentPanel.hidden = true; }
-    if (!snapshot) return;
+    if (!snapshot) {
+      var outputTip = document.getElementById('resultGenZTip');
+      outputTip.textContent = '';
+      outputTip.parentElement.hidden = true;
+      return;
+    }
     var rows = resultChoiceRows(snapshot);
     rows.forEach(function (row) {
       if (!row[1]) return;

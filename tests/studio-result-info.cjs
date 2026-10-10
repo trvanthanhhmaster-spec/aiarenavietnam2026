@@ -57,4 +57,5 @@ context.renderResultInfo();
 assert.match(ids.resultVerification.textContent,/chưa xác định/,'incomplete legacy pass is downgraded consistently in summary and table');
 assert.equal(ids.repairGeneration.hidden,true);assert.ok(ids.resultAssessment.children.length>0);
 context.currentResultSelection=null;context.renderResultInfo();
+assert.equal(ids.resultGenZTip.parentElement.hidden,true,'cleared image cannot retain a suggestion in the places tab');
 assert.equal(ids.resultAssessment.hidden,true);assert.equal(ids.resultAssessment.children.length,0,'cleared snapshot cannot retain previous person checks');

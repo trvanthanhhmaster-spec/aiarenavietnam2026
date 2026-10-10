@@ -10,10 +10,11 @@
   Dữ liệu cũ thiếu nguồn đánh giá hoặc lượt đánh giá thất bại là chưa đối chiếu.
 - Phần cấu trúc cho biết đặc trưng cần giữ và nguồn của từng dáng áo. Phân biệt
   nguồn ảnh mẫu với nguồn thông tin văn hóa. Cảnh báo không thay thẩm định chuyên gia.
-- `studio.php#studioExample` chứa bản phối mẫu ngay trong Studio, mở qua link
-  ở phần giới thiệu hoặc mục thu gọn bên dưới. Mẫu được ghi nhãn rõ và không thay
-  lựa chọn hay kết quả của người dùng. `/minh-chung.php` chuyển hướng vào mục này.
-  Dữ liệu mẫu không truy vấn DB; ảnh gốc không chỉnh sửa, có SHA-256 trong JSON.
+- Studio giữ một ảnh bản phối ở vùng xem trước. Tab “Về trang phục” chứa nguồn,
+  cấu trúc áo và lựa chọn/đối chiếu của ảnh đang xem; tab “Mua & chụp” chứa gợi ý
+  phối/chụp và nơi mua/thuê. Không chèn ảnh QA hoặc link mẫu vào luồng người dùng.
+  `/minh-chung.php` và hash cũ `#studioExample` mở tab “Về trang phục”.
+  Ca QA lưu riêng trong `assets/data/audition-proof.json`; ảnh nguyên byte có SHA-256.
 - Nhật ký các lượt QA mới lưu lựa chọn và metadata mẫu trước POST. Test này vẫn
   yêu cầu quyền riêng cho mỗi lượt AI; không chạy để kiểm tra triển khai.
 

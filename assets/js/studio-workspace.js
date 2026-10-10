@@ -36,7 +36,7 @@
     catalog.hidden = name !== 'catalog';
     insights.hidden = name === 'catalog';
     insights.querySelectorAll('.studio-insight').forEach(function (section) {
-      var place = section.classList.contains('studio-sourcing') || section.classList.contains('studio-places');
+      var place = section.classList.contains('studio-sourcing') || section.classList.contains('studio-places') || section.classList.contains('studio-tips');
       section.hidden = name === 'places' ? !place : place;
     });
     var copy = name === 'catalog' ? guideCopy[guideStep] : panelCopy[name];
@@ -206,4 +206,11 @@
   experience.addEventListener('studio:visit', function (event) { visitGuide(event.detail); });
   showPanel('catalog', false);
   renderGuide(false);
+  // Keep old shared evidence links useful without inserting a separate sample.
+  function openLinkedPanel() {
+    var hash = window.location.hash;
+    if (hash === '#studioExample' || hash === '#workspaceInsights') showPanel('heritage', true);
+  }
+  window.addEventListener('hashchange', openLinkedPanel);
+  openLinkedPanel();
 })();

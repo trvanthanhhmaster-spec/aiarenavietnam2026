@@ -121,7 +121,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <link rel="stylesheet" href="assets/css/studio-designer.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-designer.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-workspace.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-workspace.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-assessment.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-assessment.css') ?>">
-    <link rel="stylesheet" href="assets/css/studio-example.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-example.css') ?>">
 </head>
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
@@ -132,7 +131,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <p class="studio-kicker" id="projectKicker">Không gian của bạn</p>
                     <h1 id="projectTitle">Việt phục, theo cách bạn.</h1>
                     <p class="studio-intro__note" id="projectContext" hidden></p>
-                    <a class="studio-proof-link" href="#studioExample" data-studio-example-link>Xem bản phối mẫu đã tạo ↓</a>
                 </div>
             </div>
             <button type="button" class="workspace-new-collection" id="newStudioCollection" disabled>＋ Bộ sưu tập mới</button>
@@ -405,8 +403,14 @@ require __DIR__ . '/includes/components/studio-icon.php';
                 </section>
 
                 <aside class="studio-insights" id="workspaceInsights" aria-label="Thông tin văn hoá và kiểm tra" hidden>
+                    <section class="studio-insight studio-output-insight">
+                        <div class="studio-insight__head"><span>Ảnh đang xem</span><small>01</small></div>
+                        <p class="studio-insight-empty">Sau khi tạo hoặc mở một bản phối, bạn có thể xem lựa chọn đã dùng và chi tiết AI đã đối chiếu tại đây.</p>
+                        <p class="studio-result-note" id="resultVerification" role="status">Ảnh chưa được AI đối chiếu với lựa chọn.</p>
+                        <?php require __DIR__ . '/includes/studio/output-details.php'; ?>
+                    </section>
                     <section class="studio-insight studio-passport">
-                        <div class="studio-insight__head"><span>Về trang phục</span><small>01</small></div>
+                        <div class="studio-insight__head"><span>Trang phục đang chọn</span><small>02</small></div>
                         <div class="studio-passport__visual" id="passportVisual" aria-hidden="true"><span>V</span></div>
                         <h2 id="passportTitle">Chưa chọn Việt phục</h2>
                         <dl>
@@ -418,7 +422,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         </dl>
                     </section>
                     <section class="studio-insight studio-check">
-                        <div class="studio-insight__head"><span>Kiểm tra bản phối</span><small>02</small></div>
+                        <div class="studio-insight__head"><span>Lưu ý cho lựa chọn hiện tại</span><small>03</small></div>
                         <ul id="culturalCheckList">
                             <li data-check="color">○ Chưa chọn màu</li>
                             <li data-check="event">○ Chưa chọn dịp mặc</li>
@@ -428,13 +432,14 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <p id="culturalWarning">Hệ thống sẽ hiển thị quy tắc văn hoá đã được duyệt.</p>
                     </section>
                     <section class="studio-insight studio-tips">
-                        <div class="studio-insight__head"><span>Gợi ý chụp & phối</span><small>03</small></div>
+                        <div class="studio-insight__head"><span>Gợi ý chụp & phối</span><small>01</small></div>
                         <div><span>Địa điểm</span><strong id="tipLocation">Khuôn viên · Phố cổ · Văn Miếu</strong></div>
                         <div><span>Góc chụp</span><strong>Chính diện · 3/4 người · Đang bước</strong></div>
                         <div><span>Phối đồ</span><strong id="tipStyling">Chọn một điểm nhấn hiện đại vừa đủ.</strong></div>
+                        <div class="studio-output-tip" hidden><span>Gợi ý cho ảnh đang xem</span><p id="resultGenZTip"></p></div>
                     </section>
                     <section class="studio-insight studio-sourcing">
-                        <div class="studio-insight__head"><span>Nơi mua / thuê</span><small>04</small></div>
+                        <div class="studio-insight__head"><span>Nơi mua / thuê</span><small>02</small></div>
                         <a class="studio-search-link" href="shops.php">Mẫu thật từ mạng lưới cửa hàng <span aria-hidden="true">→</span></a>
                         <div class="studio-recommendation-list" id="studioListings">
                             <p class="studio-recommendation-empty">Chọn trang phục hoặc phụ kiện để xem gợi ý đã xác minh.</p>
@@ -442,7 +447,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <a class="studio-search-link" id="listingSearchLink" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Tìm quanh vị trí của bạn <span aria-hidden="true">↗</span></a>
                     </section>
                     <section class="studio-insight studio-places">
-                        <div class="studio-insight__head"><span>Nơi chụp thật</span><small>05</small></div>
+                        <div class="studio-insight__head"><span>Nơi chụp thật</span><small>03</small></div>
                         <div class="studio-recommendation-list" id="studioLocations">
                             <p class="studio-recommendation-empty">Chọn bối cảnh để xem địa điểm phù hợp trên bản đồ.</p>
                         </div>
@@ -452,42 +457,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
             </div>
         </section>
 
-        <details class="workspace-output-details" id="outputDetails" hidden>
-        <summary>Thông tin bản phối</summary>
-        <dl class="result-selection" id="resultSelectionInfo"></dl>
-        <p class="studio-result-note" id="resultVerification" role="status">Ảnh chưa được AI đối chiếu với lựa chọn.</p>
-        <p class="studio-result-note" id="resultCopySource"></p>
-        <p class="studio-result-note" id="resultReferenceSource"></p>
-        <section class="studio-assessment" id="resultAssessment" aria-label="Đối chiếu ảnh theo từng người" hidden></section>
-        <section class="studio-result" id="studioResult" hidden>
-            <div class="studio-result__backdrop" aria-hidden="true"></div>
-            <div class="studio-result__header">
-                <div>
-                    <p class="studio-kicker">Bản phối / <span id="resultState">Chuẩn bị</span></p>
-                    <h2 id="resultTitle">Đang chuẩn bị một dáng Việt mới.</h2>
-                </div>
-                <button class="icon-button icon-button--light" id="resultClose" type="button" aria-label="Thu gọn chi tiết bản phối">×</button>
-            </div>
-            <div class="studio-result__grid">
-                <div class="studio-result__visual">
-                    <span class="result-orb" id="resultPlaceholderVisual"></span>
-                    <span class="result-orb__label" id="resultVisualLabel">BẢN PHỐI / ĐANG CHUẨN BỊ</span>
-                    <div class="studio-result__images" id="resultImages" hidden></div>
-                    <video class="studio-result__video" id="resultVideo" controls playsinline preload="metadata" hidden></video>
-                </div>
-                <div class="studio-result__copy">
-                    <p id="resultProgress">Mình đang chuẩn bị bản phối cho bạn.</p>
-                    <div class="result-story"><span>Câu chuyện trang phục</span><p id="resultStory">—</p></div>
-                    <div class="result-story"><span>Lưu ý văn hóa</span><p id="resultGuardrail">—</p></div>
-                    <div class="result-story result-score" hidden><span>Điểm gợi ý AI về lựa chọn</span><p id="resultCulturalScore">—</p></div>
-                    <div class="result-story"><span>Gợi ý chụp & phối</span><p id="resultGenZTip">—</p></div>
-                    <div class="result-video-branches" id="resultVideoBranches" hidden aria-label="Các video chuyển cảnh"></div>
-                </div>
-            </div>
-        </section>
-        </details>
-
-        <?php require __DIR__ . '/includes/studio/proof-example.php'; ?>
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
     <?php require __DIR__ . '/includes/studio/collections.php'; ?>
@@ -515,7 +484,6 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-lookbook-card.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-lookbook-card.js') ?>" defer></script>
     <script src="assets/js/studio-catalog-choices.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-catalog-choices.js') ?>" defer></script>
     <script src="assets/js/studio-assessment.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-assessment.js') ?>" defer></script>
-    <script src="assets/js/studio-example.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-example.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>

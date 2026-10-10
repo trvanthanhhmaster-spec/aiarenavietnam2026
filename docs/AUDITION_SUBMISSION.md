@@ -150,8 +150,9 @@ Kết quả tạo là một ảnh cho cả nhóm. Lượt đánh giá riêng tr�
 
 ## Minh chứng và thao tác cuối
 
-- Bản phối mẫu trong Studio: https://v-remix.vietnamsir.com/studio.php#studioExample — ca production
-  đã ghi nhận, bảng đối chiếu từng mục, nguồn văn hóa và giới hạn kiểm thử.
+- Studio: https://v-remix.vietnamsir.com/studio.php — tab “Về trang phục” hiển thị
+  nguồn văn hóa và đối chiếu từng mục của ảnh đang xem; tab “Mua & chụp” có gợi ý thực tế.
+  Ca production đã ghi nhận: https://v-remix.vietnamsir.com/assets/data/audition-proof.json.
   Xem `AUDITION_RELIABILITY.md` để phân biệt ca chạy thật với dữ liệu mô phỏng.
 
 - Demo: https://v-remix.vietnamsir.com/
