@@ -1,4 +1,14 @@
-# Managed website identity and SEO — 2026-10-10
+# Branding asset previews and discoverable sharing-image editor — 2026-10-10
+
+- Active PHP/source release: `ce53b2d`; bridge remains `2cedf30`. Only the PHP container was recreated; no Nginx, Edge, credentials or settings data was changed by this follow-up.
+- Removed duplicate text below the rail wordmark. Brand entry now shows the current logo and saved sharing image, with a guarded shortcut to the existing SEO editor. Every upload control includes an image preview; local file previews are labelled not uploaded, pending files block silent saves, and uploading one image retains other selected files.
+- All CJS suites, website-settings PHP checks and affected lints passed. The account-profile fixture now supplies offline page metadata in a disposable isolated cache instead of depending on an expired shared metadata cache. Browser QA verified current/selected previews, pending-file save feedback, real SEO navigation and a 390px layout with no horizontal overflow; guard cancellation is covered by the VM test.
+- Authenticated production browser verified the empty rail caption, current logo, the owner's saved sharing image, the shortcut opening the real SEO resource, and successful raster decoding (1672×941). No owner configuration was overwritten or real upload/AI call made in this follow-up. Read-only production SEO and VPS security/media smoke passed.
+- Prior `b4524b7` release and `/opt/vremix/release.env.pre-ce53b2d` are retained for rollback. Local ignored proof: `artifacts/website-settings-qa/production-brand-assets.png`.
+
+---
+
+# Managed website identity and SEO — 2026-10-10 (historical)
 
 - Active PHP/source release: `b4524b7`, `/opt/vremix/current` points to `/opt/vremix/releases/b4524b7`. Bridge remains `2cedf30`; no Edge function, provider credential or database schema change.
 - Admin → Nội dung now has Thương hiệu · Logo & icon and SEO & chia sẻ, with authenticated uploads, revision-safe saves and previews. Public metadata uses the saved values; private pages remain noindex.

@@ -2,6 +2,8 @@
 
 Admin → Nội dung → **Thương hiệu · Logo & icon** / **SEO & chia sẻ**.
 
+Thương hiệu opens with the current logo and saved default sharing image. **Thay ảnh chia sẻ →** opens SEO through the normal guarded resource switch. Each image field displays its current selection; choose a file to preview it, click **Tải ảnh lên**, then **Lưu cấu hình**. Pending files cannot be silently omitted by Save. Asset paths remain available under **Đường dẫn ảnh** rather than occupying the primary image controls.
+
 Public settings live in `pages.ui.website`; there is no schema migration or credential in this object. The dedicated editor preserves UI copy and the other section, and uses `updated_at` compare-and-swap. Generic page/UI-copy edits preserve this object rather than overwriting it. Admin authentication and CSRF checks cover reads, uploads and saves.
 
 ## What is connected
