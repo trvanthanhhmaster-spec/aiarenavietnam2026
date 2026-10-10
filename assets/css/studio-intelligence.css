@@ -28,6 +28,16 @@
 .studio-intelligence__lookbook p { margin: 6px 0; font-size: 12px; }
 .studio-intelligence__lookbook a { display: block; font-size: 11px; line-height: 1.6; margin: 8px 0; }
 .studio-intelligence__lookbook button { margin-top: 4px; }
+.studio-intelligence--contextual { margin: 18px 0 0; border: 0; border-top: 1px solid #e3dee4; border-radius: 0; background: transparent; }
+.studio-intelligence--contextual > summary { padding: 16px 0 8px; }
+.studio-intelligence--contextual .studio-intelligence__body { padding: 12px 0 4px; }
+.studio-intelligence__switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+.studio-intelligence__switch button[aria-pressed="true"] { background: #19181d; color: #fff; border-color: #19181d; }
+.studio-intelligence__reference { margin: 10px 0; }
+.studio-intelligence__reference > summary { cursor: pointer; font-size: 12px; line-height: 1.6; color: #656271; }
+.studio-intelligence__reference p { margin-top: 10px; }
+.studio-intelligence__lookbook .studio-intelligence__reference { margin: 5px 0; }
+.studio-intelligence__body > section[hidden] { display: none; }
 .studio-intelligence__apply-feedback { margin-top: 10px; padding: 10px 12px; border-left: 3px solid #b45435; background: #fff4ef; border-radius: 0 10px 10px 0; }
 .studio-recipe-notice { margin: 12px 14px 18px; padding: 16px; scroll-margin-top: 16px; border: 1px solid #abc6b7; border-radius: 14px; background: #f3f8f4; color: #202025; }
 .studio-recipe-notice strong { font-size: 14px; line-height: 1.5; }
@@ -36,4 +46,4 @@
 .studio-recipe-notice button { min-height: 44px; padding: 10px 12px; border: 1px solid #b8c8be; border-radius: 10px; background: #fff; color: #25232a; font: inherit; font-size: 13px; cursor: pointer; }
 .studio-recipe-notice button:focus-visible { outline: 2px solid #535b69; outline-offset: 3px; }
 #passportSource small { display: block; margin-top: 8px; line-height: 1.6; }
-@media (max-width: 480px) { .studio-intelligence { margin-inline: 12px; } .studio-intelligence__lookbook { grid-template-columns: 86px minmax(0, 1fr); } .studio-intelligence__lookbook img { width: 86px; height: 128px; } }
+@media (max-width: 480px) { .studio-intelligence { margin-inline: 12px; } .studio-intelligence--contextual { margin-inline: 0; } .studio-intelligence__lookbook { grid-template-columns: 86px minmax(0, 1fr); } .studio-intelligence__lookbook img { width: 86px; height: 128px; } }

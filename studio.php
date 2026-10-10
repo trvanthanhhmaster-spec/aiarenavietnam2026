@@ -163,7 +163,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <strong>Bạn muốn mặc gì hôm nay?</strong>
                         <p class="studio-collection-heading__note">Chọn dịp trước. Sau đó chọn một dáng Việt phục và thêm điểm nhấn theo cách của bạn.</p>
                     </div>
-                    <?php require __DIR__ . '/includes/studio/intelligence.php'; ?>
+                    <?php require __DIR__ . '/includes/studio/recipe-notice.php'; ?>
                     <?php require __DIR__ . '/includes/studio/planner-steps.php'; ?>
 
                     <section class="studio-catalog-card studio-catalog-card--garment" data-guide-card="garment" aria-labelledby="catalogGarmentTitle" hidden>
@@ -174,6 +174,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <?php require __DIR__ . '/includes/studio/planner-person.php'; ?>
                         <p class="guide-card-note">Chọn theo ảnh bạn thích. Nhãn “Gợi ý” không thay cho lựa chọn của bạn.</p>
                         <div class="studio-catalog-grid studio-catalog-grid--garment" id="catalogGarments"></div>
+                        <?php require __DIR__ . '/includes/studio/intelligence.php'; ?>
                     </section>
                     <section class="studio-catalog-card studio-catalog-card--variant" id="garmentVariantSection" aria-labelledby="catalogGarmentVariantTitle" hidden>
                         <div class="studio-catalog-card__head">

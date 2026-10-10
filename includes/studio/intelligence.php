@@ -1,37 +1,27 @@
 <?php declare(strict_types=1); ?>
-<details class="studio-intelligence" id="studioIntelligence">
-    <summary><span><strong>Gợi ý cho bạn</strong><small>Thời tiết · AI Stylist · Lookbook</small></span><span class="studio-intelligence__chevron" aria-hidden="true">›</span></summary>
+<details class="studio-intelligence studio-intelligence--contextual" id="studioIntelligence">
+    <summary><span><strong>Cần gợi ý cách phối?</strong><small>Mẫu phối sẵn hoặc AI tư vấn · tùy chọn</small></span><span class="studio-intelligence__chevron" aria-hidden="true">›</span></summary>
     <div class="studio-intelligence__body">
-        <section aria-labelledby="adviceAreaTitle">
-            <h3 id="adviceAreaTitle">Bạn sẽ mặc ở đâu?</h3>
-            <label for="adviceCity">Khu vực</label>
-            <select id="adviceCity"><option value="">Chọn khu vực</option><?php foreach (($intelligence['cities'] ?? []) as $city): ?><option value="<?= $escape($city['id']) ?>"><?= $escape($city['name']) ?></option><?php endforeach; ?></select>
-            <div class="studio-intelligence__actions"><button type="button" id="adviceWeather">Xem thời tiết</button><button type="button" id="adviceLocate">Nhận diện khu vực</button></div>
-            <p class="studio-intelligence__note">Không tự lấy vị trí. Nếu bạn đồng ý nhận diện, chỉ gửi tọa độ làm tròn khoảng 10 km để lấy thời tiết; không lưu vào bản phối.</p>
-            <div id="adviceContext" aria-live="polite"></div>
+        <div class="studio-intelligence__switch" role="group" aria-label="Cách nhận gợi ý">
+            <button type="button" data-advice-pane="lookbooks" aria-pressed="true">Mẫu phối sẵn</button>
+            <button type="button" data-advice-pane="stylist" aria-pressed="false">AI tư vấn</button>
+        </div>
+        <p id="adviceStatus" role="status"></p>
+        <section id="adviceLookbookPane" aria-labelledby="adviceLookbookTitle">
+            <h3 id="adviceLookbookTitle">Chọn mẫu để bắt đầu</h3>
+            <p class="studio-intelligence__note">Chỉ đổi lựa chọn của người đang chỉnh, không tự tạo ảnh. Ảnh bên dưới là tư liệu có nguồn, không phải kết quả AI.</p>
+            <div class="studio-intelligence__lookbooks" id="adviceLookbooks"></div>
         </section>
-        <section aria-labelledby="adviceStylistTitle">
-            <h3 id="adviceStylistTitle">Phối theo cách của bạn</h3>
+        <section id="adviceStylistPane" aria-labelledby="adviceStylistTitle" hidden>
+            <h3 id="adviceStylistTitle">Tư vấn cho lựa chọn của bạn</h3>
             <label for="adviceIntent">Mục đích</label>
             <select id="adviceIntent"><option value="remix">Remix hiện đại</option><option value="historical">Hướng tới phục dựng lịch sử</option></select>
-            <label for="advicePreference">Sở thích cho AI tư vấn · không bắt buộc</label>
+            <label for="advicePreference">Sở thích · không bắt buộc</label>
             <textarea id="advicePreference" rows="2" maxlength="240" placeholder="Ví dụ: thích tối giản, dễ đi lại, không muốn thêm phụ kiện"></textarea>
             <p class="studio-intelligence__note">Không nhập thông tin cá nhân. AI chỉ nhận lựa chọn trang phục, sở thích và bối cảnh; không nhận ảnh khuôn mặt, tên, giới tính hay số đo.</p>
             <div class="studio-intelligence__actions"><button type="button" id="adviceRecommend">Gợi ý biên tập</button><button type="button" id="adviceAI">AI tư vấn · 1 lượt</button></div>
-            <p id="adviceStatus" role="status"></p>
             <div id="adviceText"></div>
-            <div id="adviceGuards" aria-live="polite"></div>
-        </section>
-        <section aria-labelledby="adviceLookbookTitle">
-            <h3 id="adviceLookbookTitle">Lookbook cảm hứng</h3>
-            <p class="studio-intelligence__note">Bản phối biên tập từ ảnh có nguồn, không phải ảnh AI. Áp dụng chỉ khi bạn chọn; không tự tạo ảnh hoặc thêm phụ kiện trong tư liệu.</p>
-            <div class="studio-intelligence__lookbooks" id="adviceLookbooks"></div>
+            <details class="studio-intelligence__reference"><summary>Lưu ý văn hóa và nguồn</summary><div id="adviceGuards" aria-live="polite"></div></details>
         </section>
     </div>
 </details>
-<section id="recipeAppliedNotice" class="studio-recipe-notice" hidden tabindex="-1" aria-labelledby="recipeAppliedTitle" aria-describedby="recipeAppliedChoices recipeAppliedHint">
-    <strong id="recipeAppliedTitle"></strong>
-    <p id="recipeAppliedChoices"></p>
-    <p id="recipeAppliedHint" class="studio-recipe-notice__hint">Đây là lựa chọn cho ảnh mới, chưa phải ảnh đã tạo. Ảnh đang hiển thị (nếu có) vẫn là bản trước. Kiểm tra rồi bấm “Tạo ảnh bản phối” khi bạn muốn.</p>
-    <button type="button" data-guide-step="garment">Tùy chỉnh trang phục</button>
-</section>

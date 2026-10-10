@@ -49,5 +49,6 @@
         <label class="planner-field">Ngày kết thúc <small>Không bắt buộc</small><input type="date" id="periodEnd"></label>
         <button type="button" class="planner-secondary" id="applyCustomPeriod">Dùng ngày đã chọn</button>
     </details>
+    <?php require __DIR__ . '/weather-advice.php'; ?>
 </section>
 <p id="plannerError" class="planner-error" role="alert" hidden></p>

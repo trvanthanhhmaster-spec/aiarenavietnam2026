@@ -4,6 +4,8 @@ This adds the five annotated gaps to the existing PHP Studio without replacing i
 
 ## Recipe application feedback — 2026-10-10
 
+UX follow-up: the large all-in-one disclosure no longer precedes the planner. Weather is an optional, closed disclosure inside step 3 (time). In step 4, garment photos come first; “Cần gợi ý cách phối?” follows as an optional closed disclosure with separate “Mẫu phối sẵn” and “AI tư vấn” views. Reference notes and cultural-source detail use nested progressive disclosure; image credits remain visible. Weather loading/error messages stay beside the weather controls. Event and people steps have no location/AI/lookbook fields. Existing selection, consent and quota contracts remain unchanged; switching views never calls AI.
+
 “Dùng làm bản phối” changes the active person's selections, not the displayed generated image. After confirmation, the current/default sample is captured into the actual plan (not only the visual mirror); other people remain unchanged. A visible notice lists the selected sample, color/style/scene and accessories, then opens review or the next incomplete planner step. It distinguishes a repeated, unchanged choice from a newly applied sample. Missing count/other failures appear immediately under the clicked recipe with a next-step action; cancellation does not change the draft. The notice is cleared on a later selection change. No AI request is triggered by applying, reviewing or customizing a recipe.
 
 Synthetic real-template browser QA covers missing count, guided next step, successful áo tấc application, repeated selection, changed tứ thân selection and 390px layout with no captured warning/error. Unit tests cover sample capture, independent group application, cancellation and generation-pending rejection. Production smoke verifies asset delivery separately; no live user's draft was altered to test application.
@@ -60,4 +62,4 @@ deno check supabase/functions/generate-look/index.ts supabase/functions/studio-a
 php tests/studio-intelligence-live.php --live
 ```
 
-Production PHP release: `cd0941f`; separate `studio-advisor` and `generate-look` Edge functions deployed, using route-bound HMAC. All 30 JavaScript suites, affected PHP tests/lints and 34 Deno tests passed; production weather/security smoke and browser panel rendering passed. The existing provider bridge remains unchanged and session-based: this successful run does not guarantee future availability.
+Initial intelligence PHP release: `cd0941f`; separate `studio-advisor` and `generate-look` Edge functions deployed, using route-bound HMAC. Subsequent contextual UI/application-feedback release is recorded in `deploy/vps/DEPLOYMENT.md`. All JavaScript suites, affected PHP tests/lints and 34 Deno tests passed; production weather/security smoke and browser panel rendering passed. The existing provider bridge remains unchanged and session-based: this successful run does not guarantee future availability.

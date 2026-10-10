@@ -43,6 +43,12 @@
     var planner = experience.plannerApi, context = null, contextId = '', busy = false;
     var get = function (id) { return doc.getElementById(id); };
     var status = get('adviceStatus'), books = get('adviceLookbooks'), text = get('adviceText'), contextView = get('adviceContext');
+    function showAdvicePane(name) {
+      get('adviceLookbookPane').hidden = name !== 'lookbooks';
+      get('adviceStylistPane').hidden = name !== 'stylist';
+      panel.querySelectorAll('[data-advice-pane]').forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.advicePane === name)); });
+    }
+    panel.querySelectorAll('[data-advice-pane]').forEach(function (button) { button.addEventListener('click', function () { showAdvicePane(button.dataset.advicePane); }); });
     function node(tag, value, className) { var e = doc.createElement(tag); if (value) e.textContent = value; if (className) e.className = className; return e; }
     function source(url, title) { var a = node('a', title + ' ↗'); if (/^https:\/\//.test(url)) a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; }
     function current() { return privateSelection(planner.selection()); }
@@ -62,7 +68,9 @@
       rows.forEach(function (r) {
         var article = node('article', '', 'studio-intelligence__lookbook'), img = node('img'), body = node('div');
         img.src = r.image; img.alt = r.title + ' · ảnh tư liệu'; img.loading = 'lazy';
-        body.append(node('h4', r.title), node('p', r.note));
+        body.append(node('h4', r.title));
+        var notes = node('details', '', 'studio-intelligence__reference');
+        notes.append(node('summary', 'Lưu ý về mẫu'), node('p', r.note)); body.append(notes);
         if (r.reasons) body.append(node('p', r.reasons.join(' '), 'studio-intelligence__note'));
         body.append(source(r.source, r.credit));
         var apply = node('button', 'Dùng làm bản phối'); apply.type = 'button';
@@ -114,12 +122,13 @@
     async function request(action, extra) {
       if (busy) return;
       var selection = current(), stamp = JSON.stringify(selection);
-      setBusy(true); status.textContent = action === 'stylist' ? 'AI đang tư vấn bằng văn bản… Không tạo ảnh.' : 'Đang lấy gợi ý…';
+      var requestStatus = action === 'context' ? get('adviceWeatherStatus') : status;
+      setBusy(true); requestStatus.textContent = action === 'stylist' ? 'AI đang tư vấn bằng văn bản… Không tạo ảnh.' : 'Đang lấy gợi ý…';
       try {
         var response = await win.fetch(catalog.advisorEndpoint, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-VRemix-CSRF': catalog.lookCsrf || ''}, body: JSON.stringify(Object.assign({action: action, selection: selection, intent: get('adviceIntent').value, contextId: samePeriod() ? contextId : ''}, extra || {}))});
         var body = await response.json(); if (!response.ok) throw new Error(body.error || 'Tư vấn chưa sẵn sàng.');
-        if (stamp !== JSON.stringify(current())) { status.textContent = 'Lựa chọn đã đổi trong lúc tư vấn. Không áp dụng câu trả lời cũ; không tự gọi AI lại.'; return; }
-        if (action === 'context') { context = body.context; contextId = body.contextId; renderContext(); status.textContent = 'Đã cập nhật bối cảnh. Bản phối không bị thay đổi.'; }
+        if (stamp !== JSON.stringify(current())) { requestStatus.textContent = 'Lựa chọn đã đổi trong lúc tư vấn. Không áp dụng câu trả lời cũ; không tự gọi AI lại.'; return; }
+        if (action === 'context') { context = body.context; contextId = body.contextId; renderContext(); requestStatus.textContent = 'Đã cập nhật bối cảnh. Bản phối không bị thay đổi.'; }
         else {
           renderBooks(body.recommendations); renderGuards(body.guards); text.replaceChildren();
           (body.tips || []).forEach(function (tip) { text.append(node('p', tip)); });
@@ -130,16 +139,16 @@
           }
           status.textContent = body.ai ? 'AI đã tư vấn. Chỉ áp dụng khi bạn chọn một bản phối.' : 'Gợi ý theo catalog và lựa chọn của bạn; chưa gọi AI.';
         }
-      } catch (error) { status.textContent = error.message; } finally { setBusy(false); }
+      } catch (error) { requestStatus.textContent = error.message; } finally { setBusy(false); }
     }
-    get('adviceWeather').addEventListener('click', function () { var city = get('adviceCity').value; if (!city) { status.textContent = 'Chọn khu vực trước khi xem thời tiết.'; return; } request('context', {city: city}); });
+    get('adviceWeather').addEventListener('click', function () { var city = get('adviceCity').value; if (!city) { get('adviceWeatherStatus').textContent = 'Chọn khu vực trước khi xem thời tiết.'; return; } request('context', {city: city}); });
     get('adviceCity').addEventListener('change', function () { context = null; contextId = ''; renderContext(); text.replaceChildren(); });
     get('adviceLocate').addEventListener('click', function () {
       if (busy) return;
-      if (!win.navigator.geolocation) { status.textContent = 'Trình duyệt chưa hỗ trợ vị trí. Hãy chọn khu vực thủ công.'; return; }
+      if (!win.navigator.geolocation) { get('adviceWeatherStatus').textContent = 'Trình duyệt chưa hỗ trợ vị trí. Hãy chọn khu vực thủ công.'; return; }
       if (!win.confirm('Bạn đồng ý lấy vị trí rồi làm tròn khoảng 10 km, gửi khu vực gần đúng cho máy chủ V-Remix và Open-Meteo để lấy thời tiết? Không gửi tọa độ chính xác, không lưu vào bản phối.')) return;
-      setBusy(true); status.textContent = 'Đang nhận diện khu vực…';
-      win.navigator.geolocation.getCurrentPosition(function (position) { setBusy(false); request('context', {locationConsent: true, latitude: Math.round(position.coords.latitude * 10) / 10, longitude: Math.round(position.coords.longitude * 10) / 10}); }, function () { setBusy(false); status.textContent = 'Không nhận được vị trí. Bạn có thể chọn khu vực thủ công.'; }, {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000});
+      setBusy(true); get('adviceWeatherStatus').textContent = 'Đang nhận diện khu vực…';
+      win.navigator.geolocation.getCurrentPosition(function (position) { setBusy(false); request('context', {locationConsent: true, latitude: Math.round(position.coords.latitude * 10) / 10, longitude: Math.round(position.coords.longitude * 10) / 10}); }, function () { setBusy(false); get('adviceWeatherStatus').textContent = 'Không nhận được vị trí. Bạn có thể chọn khu vực thủ công.'; }, {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000});
     });
     get('adviceRecommend').addEventListener('click', function () { request('recommend'); });
     get('adviceAI').addEventListener('click', function () {
