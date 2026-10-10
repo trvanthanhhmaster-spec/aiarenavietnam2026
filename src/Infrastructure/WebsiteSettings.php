@@ -30,7 +30,7 @@ final class WebsiteSettings
         $settings = WebsiteMetadata::normalize($ui['website'] ?? []);
         $settings[$section] = $value;
         $ui['website'] = $settings;
-        $saved = $this->client->update('pages', ['id' => 'eq.' . $row['id'], 'updated_at' => 'eq.' . $revision], ['ui' => $ui, 'updated_at' => gmdate('Y-m-d\TH:i:s.uP')]);
+        $saved = $this->client->update('pages', ['id' => 'eq.' . $row['id'], 'updated_at' => 'eq.' . $revision], ['ui' => $ui, 'updated_at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.uP')]);
         if (!$saved) throw new RuntimeException('Có thay đổi đồng thời. Làm mới để giữ dữ liệu mới nhất.', 409);
         self::invalidate($this->cacheFile);
         return $this->read();

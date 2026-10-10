@@ -458,6 +458,7 @@ try {
             unset($payload['ui']['website']);
             if (isset($currentPage[0]['ui']['website'])) $payload['ui']['website'] = $currentPage[0]['ui']['website'];
             $pageRevision = $currentPage[0]['updated_at'];
+            $payload['updated_at'] = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.uP');
         }
         if ($resourceKey === 'prompts' && !empty($payload['is_active']) && !empty($payload['slug'])) {
             $client->update('studio_prompt_versions', [

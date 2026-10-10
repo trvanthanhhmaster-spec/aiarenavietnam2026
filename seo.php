@@ -5,7 +5,7 @@ use App\Support\WebsiteMetadata;
 if (!in_array($_SERVER['REQUEST_METHOD'], ['GET', 'HEAD'], true)) { http_response_code(405); header('Allow: GET, HEAD'); exit; }
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: public, max-age=30');
-$kind = (string) ($_GET['kind'] ?? '');
+$kind = ['robots.txt' => 'robots', 'sitemap.xml' => 'sitemap', 'site.webmanifest' => 'manifest', 'favicon.ico' => 'favicon'][basename((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH))] ?? (string) ($_GET['kind'] ?? '');
 $base = $websiteSettings['seo']['base_url'];
 if ($kind === 'favicon') {
     header('Cache-Control: public, max-age=30');
