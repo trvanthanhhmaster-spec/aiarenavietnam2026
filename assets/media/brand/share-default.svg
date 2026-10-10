@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f2eef3"/>
+  <path d="M914 0H1200V630H736Z" fill="#e5dfdd"/>
+  <path d="M979 0H1200V630H975Z" fill="#d9d0c7"/>
+  <text x="72" y="110" fill="#1e2022" font-size="39" font-family="Georgia,serif" font-style="italic">V-Remix</text>
+  <text x="72" y="280" fill="#1e2022" font-size="74" font-family="Arial,sans-serif" font-weight="700">Việt phục,</text>
+  <text x="72" y="365" fill="#1e2022" font-size="74" font-family="Arial,sans-serif" font-weight="700">theo cách bạn.</text>
+  <text x="76" y="452" fill="#4f655d" font-size="26" font-family="Arial,sans-serif">Khám phá · Phối đồ · Câu chuyện văn hóa</text>
+  <text x="76" y="564" fill="#616268" font-size="23" font-family="Arial,sans-serif">v-remix.vietnamsir.com</text>
+  <g transform="translate(892 195) scale(4)" fill="#1e2022"><path d="M0 0C22 0 33 19 32 48C12 37 8 15 0 0Z"/><path d="M68 0C46 0 35 19 36 48C56 37 60 15 68 0Z"/><path d="M34 63C23 52 18 46 10 46C26 44 32 49 34 63Z"/></g>
+</svg>

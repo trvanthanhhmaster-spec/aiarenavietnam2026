@@ -50,13 +50,13 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f0f8fc">
-    <title>Quản trị — V-Remix</title>
-    <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
+    <?php $websitePage = 'private'; $websitePrivateTitle = 'Quản trị — V-Remix'; require __DIR__ . '/includes/partials/website-meta.php'; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/admin.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/admin.css') ?>">
     <link rel="stylesheet" href="assets/css/admin-dashboard.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/admin-dashboard.css') ?>">
+    <link rel="stylesheet" href="assets/css/admin-website.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/admin-website.css') ?>">
 </head>
 <body class="admin-page">
 <?php if (!$authenticated): ?>
@@ -129,6 +129,8 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                 <button data-resource="sources"><span>08</span>Nguồn văn hoá</button>
                 <button data-resource="prompts"><span>09</span>Prompt versions</button>
                 <button data-resource="pages"><span>10</span>Trang chủ</button>
+                <button data-resource="brand"><span>10D</span>Thương hiệu · Logo & icon</button>
+                <button data-resource="seo"><span>10E</span>SEO & chia sẻ</button>
                 <p class="admin-nav__label">Accounts</p>
                 <button data-resource="users"><span>10A</span>Người dùng</button>
                 <button data-resource="roles"><span>10B</span>Phân quyền</button>
@@ -166,6 +168,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
                     </div>
                 </section>
                 <?php require __DIR__ . '/includes/admin/google-auth.php'; ?>
+                <?php require __DIR__ . '/includes/admin/website-settings.php'; ?>
                 <div class="admin-table-wrap" id="adminTableWrap">
                     <table class="admin-table">
                         <thead id="adminTableHead"></thead>
@@ -198,6 +201,7 @@ $serviceReady = (string) getenv('SUPABASE_URL') !== '' && (string) getenv('SUPAB
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?>;
     </script>
     <script src="assets/js/admin-google-auth.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/admin-google-auth.js') ?>" defer></script>
+    <script src="assets/js/admin-website.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/admin-website.js') ?>" defer></script>
     <script src="assets/js/admin.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/admin.js') ?>" defer></script>
     <script src="assets/js/admin-shell.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/admin-shell.js') ?>" defer></script>
 <?php endif; ?>

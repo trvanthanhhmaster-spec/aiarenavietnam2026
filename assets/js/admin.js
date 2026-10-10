@@ -28,6 +28,8 @@
     sources: { kicker: 'Editorial / 08', title: 'Nguồn văn hoá', columns: ['title', 'review_status', 'source_url'] },
     prompts: { kicker: 'Editorial / 09', title: 'Prompt versions', columns: ['slug', 'version', 'model', 'is_active'] },
     pages: { kicker: 'Editorial / 10', title: 'Trang chủ', columns: ['slug', 'brand_name', 'title', 'media_url'] },
+    brand: { kicker: 'Website / 10D', title: 'Thương hiệu', columns: [] },
+    seo: { kicker: 'Website / 10E', title: 'SEO & chia sẻ', columns: [] },
     users: { kicker: 'Accounts / 10A', title: 'Người dùng', columns: ['email', 'display_name', 'created_at'] },
     roles: { kicker: 'Accounts / 10B', title: 'Phân quyền', columns: ['user_id', 'role', 'created_at'] },
     'google-auth': { kicker: 'Accounts / 10C', title: 'Đăng nhập Google', columns: [] },
@@ -276,9 +278,16 @@
     document.getElementById('adminResourceKicker').textContent = metadata.kicker;
     document.getElementById('adminResourceTitle').textContent = metadata.title;
     createButton.hidden = resourceKey === 'jobs' || resourceKey === 'pages' || resourceKey === 'users'
-      || resourceKey === 'ai-settings' || resourceKey === 'studio-generation' || resourceKey === 'google-auth';
+      || resourceKey === 'ai-settings' || resourceKey === 'studio-generation' || resourceKey === 'google-auth' || resourceKey === 'brand' || resourceKey === 'seo';
     renderMetrics();
-    document.getElementById('adminTableWrap').hidden = resourceKey === 'google-auth';
+    document.getElementById('adminTableWrap').hidden = ['google-auth', 'brand', 'seo'].includes(resourceKey);
+    if (resourceKey === 'brand' || resourceKey === 'seo') {
+      window.VRemixGoogleAuth.leave();
+      var websiteResult = await window.VRemixWebsite.load(resourceKey);
+      if (current === loadSerial && websiteResult) setStatus(websiteResult);
+      return;
+    }
+    window.VRemixWebsite.leave();
     if (resourceKey === 'google-auth') {
       var result = await window.VRemixGoogleAuth.load();
       if (current === loadSerial && result) setStatus(result);
@@ -476,6 +485,7 @@
   nav.querySelectorAll('[data-resource]').forEach(function (button) {
     button.addEventListener('click', function () {
       if (resourceKey === 'google-auth' && !window.VRemixGoogleAuth.canLeave()) return;
+      if ((resourceKey === 'brand' || resourceKey === 'seo') && !window.VRemixWebsite.canLeave()) return;
       nav.querySelectorAll('[data-resource]').forEach(function (item) { item.classList.remove('is-active'); });
       nav.querySelectorAll('[data-resource]').forEach(function (item) { item.removeAttribute('aria-current'); });
       button.classList.add('is-active');
@@ -486,6 +496,7 @@
   });
   refreshButton.addEventListener('click', function () {
     if (resourceKey === 'google-auth' && !window.VRemixGoogleAuth.canLeave()) return;
+    if ((resourceKey === 'brand' || resourceKey === 'seo') && !window.VRemixWebsite.canLeave()) return;
     loadResource();
   });
   createButton.addEventListener('click', function () { openEditor(null); });

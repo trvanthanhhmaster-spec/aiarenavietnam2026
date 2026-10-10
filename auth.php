@@ -112,7 +112,10 @@ if ($user !== null) {
     <meta name="theme-color" content="#f3efe7">
     <title>Tài khoản — V-Remix</title>
     <meta name="description" content="Đăng nhập hoặc tạo tài khoản V-Remix để lưu và quản lý lookbook Việt phục.">
-    <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
+    <meta name="robots" content="noindex,follow">
+    <?php require __DIR__ . '/includes/website-bootstrap.php'; ?>
+    <link rel="icon" href="<?= $escape($websiteSettings['brand']['favicon'] ?: 'assets/media/favicon.svg') ?>">
+    <link rel="apple-touch-icon" href="<?= $escape($websiteSettings['brand']['apple_icon'] ?: 'assets/media/brand/apple-touch-icon.png') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">

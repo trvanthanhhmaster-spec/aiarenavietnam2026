@@ -40,6 +40,33 @@ if ($supabaseUrl === '' || $serviceRoleKey === '') {
     $respond(['error' => 'Thiếu SUPABASE_SERVICE_ROLE_KEY trong cấu hình server.'], 503);
 }
 
+if (in_array($_GET['resource'] ?? '', ['brand', 'seo'], true)) {
+    require __DIR__ . '/src/Support/WebsiteMetadata.php';
+    require __DIR__ . '/src/Infrastructure/WebsiteSettings.php';
+    require __DIR__ . '/src/Infrastructure/BrandAssets.php';
+    $websiteDb = require __DIR__ . '/config/database.php';
+    try {
+        $website = new App\Infrastructure\WebsiteSettings(new SupabaseAdminClient($supabaseUrl, $serviceRoleKey), $websiteDb['site_slug'], $websiteDb['cache_file']);
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') $respond($website->read());
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Allow: GET, POST'); $respond(['error' => 'Chỉ hỗ trợ GET và POST.'], 405); }
+        if (str_starts_with((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data')) {
+            $file = $_FILES['asset'] ?? [];
+            if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '') || ($file['size'] ?? 0) > 5_000_000) $respond(['error' => 'Tải ảnh không thành công. Chọn ảnh tối đa 5 MB.'], 422);
+            $respond(['asset' => App\Infrastructure\BrandAssets::store((string) file_get_contents($file['tmp_name']), (string) ($_POST['purpose'] ?? ''))]);
+        }
+        $raw = file_get_contents('php://input', false, null, 0, 32769);
+        if ($raw === false || strlen($raw) > 32768) $respond(['error' => 'Cấu hình quá lớn.'], 413);
+        $input = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
+        if (!is_array($input) || ($input['action'] ?? '') !== 'save') $respond(['error' => 'Thao tác không hợp lệ.'], 422);
+        $respond($website->save((string) $_GET['resource'], $input['values'] ?? null, (string) ($input['revision'] ?? '')));
+    } catch (InvalidArgumentException|JsonException $error) {
+        $respond(['error' => $error instanceof JsonException ? 'Cấu hình JSON không hợp lệ.' : $error->getMessage()], 422);
+    } catch (Throwable $error) {
+        error_log('[V-Remix] Website configuration failed (' . get_class($error) . ').');
+        $respond(['error' => $error->getCode() === 409 ? $error->getMessage() : 'Chưa lưu được cấu hình. Làm mới để kiểm tra trước khi thử lại.'], $error->getCode() === 409 ? 409 : 502);
+    }
+}
+
 // Provider configuration is not a database resource. The shared admin and CSRF
 // checks above also apply to reads; never expose the Management API response.
 if (($_GET['resource'] ?? '') === 'google-auth') {
@@ -423,6 +450,15 @@ try {
             $respond(['error' => 'Không có dữ liệu để lưu.'], 422);
         }
 
+        if ($resourceKey === 'pages' && isset($payload['ui'])) {
+            // Dedicated editor owns website settings; raw UI-copy edits cannot overwrite them.
+            if (!is_array($payload['ui'])) $respond(['error' => 'UI copy cần là JSON object.'], 422);
+            $currentPage = $client->select('pages', ['id' => 'eq.' . $id, 'select' => 'ui,updated_at', 'limit' => '1']);
+            if (!$currentPage) $respond(['error' => 'Không tìm thấy trang.'], 404);
+            unset($payload['ui']['website']);
+            if (isset($currentPage[0]['ui']['website'])) $payload['ui']['website'] = $currentPage[0]['ui']['website'];
+            $pageRevision = $currentPage[0]['updated_at'];
+        }
         if ($resourceKey === 'prompts' && !empty($payload['is_active']) && !empty($payload['slug'])) {
             $client->update('studio_prompt_versions', [
                 'slug' => 'eq.' . (string) $payload['slug'],
@@ -459,7 +495,10 @@ try {
                     }
                 }
             }
-            $saved = $client->update((string) $resource['table'], ['id' => 'eq.' . $id], $payload);
+            $filters = ['id' => 'eq.' . $id];
+            if (isset($pageRevision)) $filters['updated_at'] = 'eq.' . $pageRevision;
+            $saved = $client->update((string) $resource['table'], $filters, $payload);
+            if (isset($pageRevision) && !$saved) $respond(['error' => 'Trang vừa được sửa ở nơi khác. Làm mới trước khi lưu.'], 409);
         } else {
             if (!empty($resource['no_create'])) {
                 $respond(['error' => 'Resource này không cho phép tạo mới.'], 403);
@@ -467,6 +506,11 @@ try {
             $saved = $client->insert((string) $resource['table'], $payload);
         }
         $savedItem = $saved[0] ?? null;
+        if ($resourceKey === 'pages') {
+            require_once __DIR__ . '/src/Infrastructure/WebsiteSettings.php';
+            $websiteDb = require __DIR__ . '/config/database.php';
+            App\Infrastructure\WebsiteSettings::invalidate($websiteDb['cache_file']);
+        }
         if ($resourceKey === 'ai-settings' && is_array($savedItem)) {
             unset($savedItem['encrypted_gemini_api_key']);
             $savedItem['gemini_api_key_configured'] = isset($payload['encrypted_gemini_api_key'])

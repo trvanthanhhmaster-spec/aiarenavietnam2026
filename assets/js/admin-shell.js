@@ -12,7 +12,7 @@
   var groups = {
     ai: ['ai-settings', 'studio-generation'],
     catalog: ['events', 'garments', 'garment-variants', 'accessories', 'accessory-variants', 'options', 'marketplace', 'locations', 'rules'],
-    editorial: ['branches', 'sources', 'prompts', 'pages'],
+    editorial: ['branches', 'sources', 'prompts', 'pages', 'brand', 'seo'],
     accounts: ['users', 'roles', 'google-auth'],
     operations: ['looks', 'discovery', 'jobs']
   };

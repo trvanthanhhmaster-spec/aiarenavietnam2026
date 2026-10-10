@@ -17,7 +17,7 @@ $adminIcon = static function (string $name): string {
 $adminGroups = ['ai' => 'AI & chi phí', 'catalog' => 'Catalog', 'editorial' => 'Nội dung', 'accounts' => 'Tài khoản', 'operations' => 'Vận hành'];
 ?>
 <nav class="admin-rail" aria-label="Nhóm quản trị">
-    <a class="admin-rail__brand" href="index.php#stage" aria-label="V-Remix — Khám phá"><img src="assets/media/favicon.svg" width="44" height="44" alt=""><span>V-Remix</span></a>
+    <a class="admin-rail__brand" href="index.php#stage" aria-label="<?= $escape($websiteSettings['brand']['name'] ?? 'V-Remix') ?> — Khám phá"><img src="<?= $escape($websiteSettings['brand']['logo_light'] ?? 'assets/images/v-remix-leaf-logo.png') ?>" width="44" height="44" alt=""><span><?= $escape($websiteSettings['brand']['name'] ?? 'V-Remix') ?></span></a>
     <div class="admin-rail__groups">
         <?php foreach ($adminGroups as $key => $label): ?>
             <button class="admin-rail__button<?= $key === 'ai' ? ' is-active' : '' ?>" type="button" data-admin-group="<?= $key ?>" aria-label="<?= $label ?>" aria-pressed="<?= $key === 'ai' ? 'true' : 'false' ?>" title="<?= $label ?>"><?= $adminIcon($key) ?><span><?= $label ?></span></button>

@@ -11,7 +11,7 @@
     <a class="workspace-sidebar__home" data-workspace-tooltip href="index.php#stage" aria-label="Trở về Khám phá"><?= $studioIcon('house') ?></a>
 </nav>
 <header class="studio-masthead">
-    <a class="workspace-logo" href="index.php#stage" aria-label="<?= $escape($brandAccessibleName) ?>"><img src="assets/images/v-remix-leaf-logo.png" alt="" width="1280" height="1280"></a>
+    <a class="workspace-logo" href="index.php#stage" aria-label="<?= $escape($websiteSettings['brand']['name']) ?> — Khám phá"><img src="<?= $escape($websiteSettings['brand']['logo_light'] ?: 'assets/images/v-remix-leaf-logo.png') ?>" alt="" width="1280" height="1280"></a>
     <nav class="workspace-topnav" aria-label="Điều hướng V-Remix">
         <a href="index.php#stage" aria-label="Khám phá" title="Khám phá"><?= $studioIcon('house') ?><span class="workspace-topnav__label">Khám phá</span></a>
         <span aria-current="page" aria-label="Studio" title="Studio"><?= $studioIcon('palette') ?><span class="workspace-topnav__label">Studio</span></span>

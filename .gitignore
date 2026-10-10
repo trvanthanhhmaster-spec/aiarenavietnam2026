@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 storage/cache/*.json
+storage/cache/*.website
+storage/brand-assets/
+artifacts/website-settings-qa/
 !storage/cache/.gitkeep
 storage/admin-auth.json
 node_modules/

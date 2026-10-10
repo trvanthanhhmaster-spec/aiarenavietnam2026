@@ -1,4 +1,8 @@
 RewriteEngine On
+RewriteRule ^robots\.txt$ seo.php?kind=robots [L,QSD]
+RewriteRule ^sitemap\.xml$ seo.php?kind=sitemap [L,QSD]
+RewriteRule ^site\.webmanifest$ seo.php?kind=manifest [L,QSD]
+RewriteRule ^favicon\.ico$ seo.php?kind=favicon [L,QSD]
 
 # Never expose Git metadata or other hidden files from the web root.
 RewriteRule (^|/)\.git(?:/|$) - [F,L]

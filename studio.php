@@ -111,10 +111,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#f2f0f8">
-    <title>Studio — <?= $escape($site['title'] ?? 'V-Remix') ?></title>
-    <meta name="description" content="Studio phối Việt phục V-Remix theo bối cảnh, dáng áo và điểm nhấn cá nhân.">
-    <link rel="icon" href="assets/media/favicon.svg" type="image/svg+xml">
+    <?php $websitePage = 'studio'; require __DIR__ . '/includes/partials/website-meta.php'; ?>
     <link rel="stylesheet" href="assets/css/studio-intelligence.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-intelligence.css') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
