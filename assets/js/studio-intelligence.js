@@ -81,7 +81,7 @@
             panel.open = false;
             experience.dispatchEvent(new win.Event('studio:recipe-applied'));
             get('recipeAppliedNotice').focus({preventScroll:true});
-            get('recipeAppliedNotice').scrollIntoView({behavior:'auto', block:'start'});
+            get('recipeAppliedNotice').scrollIntoView({behavior:'instant', block:'start'});
           } catch (error) {
             status.textContent = error.message;
             feedback.append(node('p', error.message));
@@ -92,7 +92,7 @@
               feedback.append(next);
             }
             feedback.hidden = false; feedback.focus({preventScroll:true});
-            feedback.scrollIntoView({behavior:'auto', block:'nearest'});
+            feedback.scrollIntoView({behavior:'instant', block:'nearest'});
           }
         });
         body.append(apply, feedback); article.append(img, body); books.append(article);

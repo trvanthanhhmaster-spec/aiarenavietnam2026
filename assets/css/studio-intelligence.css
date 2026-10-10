@@ -29,7 +29,7 @@
 .studio-intelligence__lookbook a { display: block; font-size: 11px; line-height: 1.6; margin: 8px 0; }
 .studio-intelligence__lookbook button { margin-top: 4px; }
 .studio-intelligence__apply-feedback { margin-top: 10px; padding: 10px 12px; border-left: 3px solid #b45435; background: #fff4ef; border-radius: 0 10px 10px 0; }
-.studio-recipe-notice { margin: 12px 14px 18px; padding: 16px; border: 1px solid #abc6b7; border-radius: 14px; background: #f3f8f4; color: #202025; }
+.studio-recipe-notice { margin: 12px 14px 18px; padding: 16px; scroll-margin-top: 16px; border: 1px solid #abc6b7; border-radius: 14px; background: #f3f8f4; color: #202025; }
 .studio-recipe-notice strong { font-size: 14px; line-height: 1.5; }
 .studio-recipe-notice p { margin: 8px 0; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 .studio-recipe-notice__hint { color: #656271; }
