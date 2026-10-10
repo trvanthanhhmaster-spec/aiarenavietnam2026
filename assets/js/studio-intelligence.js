@@ -24,6 +24,17 @@
     });
     return result;
   }
+  function recipeFeedback(before, after, catalog) {
+    var plan = after.planning, person = plan.people[plan.activePerson - 1], outfit = person.outfit;
+    function label(rows, slug) { var row = (rows || []).find(function (r) { return r.slug === slug; }); return row && (row.name || row.label); }
+    var previous = before.planning.people[person.id - 1];
+    return {
+      title: (previous && JSON.stringify(previous.outfit) === JSON.stringify(outfit) ? 'Đang dùng mẫu này' : 'Đã áp dụng mẫu') + ' · Người ' + person.id,
+      choices: [label(catalog.garmentVariants, outfit.garmentVariant) || label(catalog.garments, outfit.garment),
+        label(catalog.colors, outfit.color), label(catalog.patterns, outfit.pattern), label(catalog.styles, outfit.style),
+        label(catalog.scenes, outfit.scene), outfit.accessories.length ? outfit.accessories.map(function (slug) { return label(catalog.accessories, slug) || slug; }).join(', ') : 'Không thêm phụ kiện'].filter(Boolean).join(' · ')
+    };
+  }
   function init(win) {
     var doc = win.document, panel = doc.getElementById('studioIntelligence'), experience = doc.getElementById('studioExperience');
     if (!panel || !experience || !experience.plannerApi) return;
@@ -55,8 +66,36 @@
         if (r.reasons) body.append(node('p', r.reasons.join(' '), 'studio-intelligence__note'));
         body.append(source(r.source, r.credit));
         var apply = node('button', 'Dùng làm bản phối'); apply.type = 'button';
-        apply.addEventListener('click', function () { try { if (busy) throw new Error('Chờ tư vấn xong trước khi đổi lựa chọn.'); if (planner.applyRecipe(r.id)) status.textContent = 'Đã áp dụng cho người đang chỉnh. Bạn có thể tùy biến rồi tạo ảnh.'; } catch (error) { status.textContent = error.message; } });
-        body.append(apply); article.append(img, body); books.append(article);
+        var feedback = node('div', '', 'studio-intelligence__apply-feedback'); feedback.hidden = true; feedback.setAttribute('role', 'status'); feedback.tabIndex = -1;
+        apply.addEventListener('click', function () {
+          feedback.hidden = true; feedback.replaceChildren();
+          try {
+            if (busy) throw new Error('Chờ tư vấn xong trước khi đổi lựa chọn.');
+            var before = planner.selection();
+            if (!planner.applyRecipe(r.id)) return;
+            var result = recipeFeedback(before, planner.selection(), catalog);
+            get('recipeAppliedTitle').textContent = result.title;
+            get('recipeAppliedChoices').textContent = result.choices;
+            get('recipeAppliedNotice').hidden = false;
+            status.textContent = result.title + '. Chưa tạo ảnh mới.';
+            panel.open = false;
+            experience.dispatchEvent(new win.Event('studio:recipe-applied'));
+            get('recipeAppliedNotice').focus({preventScroll:true});
+            get('recipeAppliedNotice').scrollIntoView({behavior:'auto', block:'start'});
+          } catch (error) {
+            status.textContent = error.message;
+            feedback.append(node('p', error.message));
+            var guide = experience.studioGuide;
+            if (!busy && guide && !guide.ready) {
+              var next = node('button', {event:'Chọn dịp mặc', people:'Chọn số người', time:'Chọn thời gian', garment:'Chọn trang phục'}[guide.next] || 'Hoàn tất lựa chọn'); next.type = 'button';
+              next.addEventListener('click', function () { panel.open = false; experience.dispatchEvent(new win.Event('studio:recipe-applied')); });
+              feedback.append(next);
+            }
+            feedback.hidden = false; feedback.focus({preventScroll:true});
+            feedback.scrollIntoView({behavior:'auto', block:'nearest'});
+          }
+        });
+        body.append(apply, feedback); article.append(img, body); books.append(article);
       });
     }
     function renderContext() {
@@ -107,11 +146,11 @@
       if (!win.confirm('Gửi một lượt AI tư vấn văn bản từ lựa chọn, sở thích và thời tiết đã xác nhận? Không tạo ảnh, không gửi tên, ảnh khuôn mặt hoặc số đo; có thể tiêu tốn một lượt AI.')) return;
       request('stylist', {aiConsent: true, requestId: win.crypto.randomUUID(), preference: get('advicePreference').value.trim()});
     });
-    function changed() { text.replaceChildren(); renderGuards(guards(current(), get('adviceIntent').value, knowledge)); renderContext(); }
+    function changed() { get('recipeAppliedNotice').hidden = true; text.replaceChildren(); renderGuards(guards(current(), get('adviceIntent').value, knowledge)); renderContext(); }
     get('adviceIntent').addEventListener('change', changed);
     experience.addEventListener('studio:selection', changed);
     renderBooks(knowledge.lookbooks); changed();
     experience.adviceContextId = function () { return samePeriod() ? contextId : ''; };
   }
-  return { privateSelection: privateSelection, guards: guards, init: init };
+  return { privateSelection: privateSelection, guards: guards, recipeFeedback: recipeFeedback, init: init };
 });

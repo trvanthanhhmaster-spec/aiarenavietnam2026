@@ -2,6 +2,12 @@
 
 This adds the five annotated gaps to the existing PHP Studio without replacing its four-step planner. No feature silently generates an image or text advice.
 
+## Recipe application feedback — 2026-10-10
+
+“Dùng làm bản phối” changes the active person's selections, not the displayed generated image. After confirmation, the current/default sample is captured into the actual plan (not only the visual mirror); other people remain unchanged. A visible notice lists the selected sample, color/style/scene and accessories, then opens review or the next incomplete planner step. It distinguishes a repeated, unchanged choice from a newly applied sample. Missing count/other failures appear immediately under the clicked recipe with a next-step action; cancellation does not change the draft. The notice is cleared on a later selection change. No AI request is triggered by applying, reviewing or customizing a recipe.
+
+Synthetic real-template browser QA covers missing count, guided next step, successful áo tấc application, repeated selection, changed tứ thân selection and 390px layout with no captured warning/error. Unit tests cover sample capture, independent group application, cancellation and generation-pending rejection. Production smoke verifies asset delivery separately; no live user's draft was altered to test application.
+
 ## Implemented contract
 
 | Feature | Current scope | Important boundary |

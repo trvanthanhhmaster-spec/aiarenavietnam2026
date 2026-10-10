@@ -2118,7 +2118,7 @@
       p.outfit = Planner.clone(recipe.outfit); p.customized = true;
       if (planning.count > 1) planning.shared = false;
       if (!state.event && lookup(catalog.events, recipe.event).slug) state.event = recipe.event;
-      Planner.load(planning, state); syncVariantSelections(); renderCatalogPanels(); updateSummary('garment'); selectionChanged();
+      Planner.load(planning, state); syncVariantSelections(); Planner.capture(planning, state); renderCatalogPanels(); updateSummary('garment'); selectionChanged();
       return true;
     },
     count: function (count) {

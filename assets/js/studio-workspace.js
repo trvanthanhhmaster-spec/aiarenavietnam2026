@@ -119,6 +119,9 @@
     guideStep = canVisit(event.detail) ? event.detail : guide.next;
     renderGuide(false);
   });
+  // Recipe application changes selections only. Bring their actual review (or
+  // the next incomplete step) into view, never trigger provider generation.
+  experience.addEventListener('studio:recipe-applied', function () { visitGuide(guide.next); });
   guideContinue.addEventListener('click', function () {
     if (guideContinue.disabled) return;
     if (guideStep === 'garment' && !guide.ready) {
