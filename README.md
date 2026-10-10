@@ -1,5 +1,11 @@
 # AI Arena Vietnam 2026
 
+Checklist chốt bài ngày 10/10/2026 và nội dung đăng ký đúng kiến trúc hiện tại:
+[V-Remix hoàn thiện bài nộp Audition](docs/AUDITION_SUBMISSION.md).
+Luồng Studio có thẻ lựa chọn không dùng AI, ảnh mẫu tham chiếu, prompt phiên bản
+và job bất đồng bộ; giới hạn kiểm chứng được ghi trong checklist, không suy ra
+mọi tính năng đã chạy production chỉ từ test offline.
+
 Landing page V-Remix chạy bằng PHP trên XAMPP.
 
 Studio đã có mô-đun **Gợi ý cho bạn**: thời tiết thật theo khu vực, lịch lễ hội có nguồn,

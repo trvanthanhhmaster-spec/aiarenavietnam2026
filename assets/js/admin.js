@@ -43,7 +43,7 @@
       ['image_provider', 'Provider tạo ảnh', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['gemini', 'Gemini Developer API'], ['vertex', 'Vertex AI'], ['webapi', 'Gemini Web bridge']]],
       ['video_provider', 'Provider video', 'select', true, [['env', 'Theo Edge Function secret hiện tại'], ['vertex', 'Vertex AI / Cloud Run bridge'], ['gemini', 'Gemini Developer API']]],
       ['text_model', 'Model văn bản', 'text', true], ['image_model', 'Model tạo ảnh', 'text', true],
-      ['video_model', 'Model tạo video', 'text', true], ['image_variants', 'Số frame ảnh (A + B/C/D/E)', 'number', true],
+      ['video_model', 'Model tạo video', 'text', true], ['image_variants', 'Số frame luồng cũ (Studio luôn 1 ảnh)', 'number', true],
       ['image_unit_cost_vnd', 'Ước tính chi phí / ảnh (VND)', 'number', true],
       ['video_unit_cost_vnd', 'Ước tính chi phí / video (VND)', 'number', true],
       ['daily_budget_vnd', 'Ngân sách ngày (0 = không giới hạn)', 'number', true],
@@ -53,12 +53,12 @@
     'studio-generation': [
       ['canvas_aspect_ratio', 'Khung ảnh', 'select', true, [['16:9', '16:9 ngang'], ['1:1', '1:1 vuông'], ['9:16', '9:16 dọc']]],
       ['target_resolution', 'Chất lượng mục tiêu', 'select', true, [['720', '720p'], ['1080', '1080p'], ['2160', '2160p']]],
-      ['default_generation_mode', 'Chế độ mặc định', 'select', true, [['text-to-image', 'Text to image'], ['image-to-image', 'Image to image']]],
-      ['default_output_type', 'Đầu ra mặc định', 'select', true, [['image', 'Ảnh'], ['video', 'Video'], ['both', 'Ảnh + video']]],
+      ['default_generation_mode', 'Chế độ mặc định của luồng cũ', 'select', true, [['text-to-image', 'Text to image'], ['image-to-image', 'Image to image']]],
+      ['default_output_type', 'Đầu ra luồng cũ (Studio chỉ tạo ảnh)', 'select', true, [['image', 'Ảnh'], ['video', 'Video'], ['both', 'Ảnh + video']]],
       ['preview_media_url', 'Video minh họa khi Studio chưa có kết quả', 'text', false],
       ['preview_poster_url', 'Ảnh hiển thị trước khi video tải xong', 'text', false],
-      ['base_prompt', 'Prompt ảnh gốc A', 'textarea', true],
-      ['frame_plan', 'Frame plan A → B/C/D/E', 'json', true]
+      ['base_prompt', 'Prompt ảnh gốc A — chỉ cho luồng cũ', 'textarea', true],
+      ['frame_plan', 'Frame plan A → B/C/D/E — chỉ cho luồng cũ', 'json', true]
     ],
     events: [
       ['slug', 'Branch key', 'text', true], ['label', 'Tên hiển thị', 'text', true],
@@ -429,6 +429,12 @@
       var help = key === 'gemini_api_key'
         ? keyPreview + '<small class="admin-field__help">Dùng chung cho text, ảnh và video khi provider là Gemini Developer API. Để trống để giữ key hiện tại; key không được hiển thị lại.</small>'
         : '';
+      if (resourceKey === 'studio-generation' && ['base_prompt','frame_plan','default_output_type','default_generation_mode'].indexOf(key) >= 0) {
+        help = '<small class="admin-field__help">Không điều khiển luồng bản phối nhóm hiện tại. Studio tạo một ảnh từ lựa chọn đã xác nhận; chỉnh hướng dẫn tại Nội dung → Prompt versions → outfit-image. Ảnh khuôn mặt quyết định chế độ tham chiếu.</small>';
+      }
+      if (resourceKey === 'prompts' && key === 'system_prompt') {
+        help = '<small class="admin-field__help">Bản outfit-image đang hoạt động được đưa vào prompt ảnh nhóm như hướng dẫn bổ sung. Số người, lựa chọn, cấu trúc áo và quy tắc đã duyệt luôn được ưu tiên; yêu cầu JSON/video/A–E cũ không thay đổi đầu ra một ảnh.</small>';
+      }
       return '<label class="admin-field"><span>' + escapeHtml(label) + '</span>' + control + help + '</label>';
     }).join('');
     dialog.showModal();

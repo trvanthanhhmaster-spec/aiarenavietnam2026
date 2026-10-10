@@ -8,6 +8,8 @@ import { providerError } from "./provider-error.ts";
 import { imageDimensions, parseImageAssessment, reviewPrompt, type ImageAssessment } from './image-assessment.ts';
 import { loadGarmentReferences, garmentReferenceInstructions, type GarmentReference } from './garment-references.ts';
 import { selectionCopy } from './selection-copy.ts';
+import { groupImagePrompt } from './group-prompt.ts';
+import { runClaimedJob } from './job-runner.ts';
 import knowledge from '../_shared/studio-knowledge.json' with { type: 'json' };
 
 const corsHeaders = {
@@ -782,7 +784,7 @@ async function processLook(
   promptVersion: PromptVersion,
   settings: RuntimeSettings,
 ) {
-  await updateJob(job.id, "processing", {});
+  await updateJob(job.id, "processing", { stage: 'catalog' });
   const [event, garment, garmentVariant, accessories, accessoryVariants, options, rules] = await Promise.all([
     input.eventSlug === 'custom' && input.planning?.customOccasion
       ? Promise.resolve([{ slug: 'custom', label: input.planning.customOccasion, description: 'User preference only; not reviewed cultural knowledge. Do not claim this occasion or outfit suitability is culturally verified.', cultural_context: 'Dịp tự nhập; cần kiểm tra độ phù hợp.', review_status: 'user-input', preset: {} }])
@@ -820,7 +822,7 @@ async function processLook(
       : rule.garment_id === garment[0].id)),
   };
   // Resolve every person's approved selection before calling any AI provider.
-  const groupPrompt = input.planning ? planPrompt(input.planning, catalog) : '';
+  const groupPrompt = input.planning ? groupImagePrompt(input.planning, catalog, promptVersion.system_prompt) : '';
   // Resolve binary samples server-side, before any quota-consuming provider call.
   let garmentReferences: GarmentReference[] = [];
   if (input.planning) {
@@ -858,6 +860,7 @@ async function processLook(
   let reviewStatus = 'not-requested';
   if (generationType === "image" || generationType === "video" || generationType === "both") {
     try {
+      await updateJob(job.id, 'processing', { stage: 'generating' });
       const generated = await generateImages(
         imagePrompt,
         input.inputImage,
@@ -869,6 +872,7 @@ async function processLook(
       assets = await storeLookbook(job.id, generated);
       if (input.planning && generated[0]) {
         try {
+          await updateJob(job.id, 'processing', { stage: 'reviewing' });
           const review = await reviewImage(input, catalog, generated[0], settings, garmentReferences);
           copy = review.copy; copySource = 'gemini'; copyWarning = undefined;
           imageAssessment = review.assessment;
@@ -910,6 +914,7 @@ async function processLook(
     ...copy,
     generationType,
     copySource,
+    ...(input.planning ? { narrativeSource: 'selected-catalog', promptPolicy: 'versioned-group-v2' } : {}),
     culturalScoreSource: copySource === "gemini" ? "gemini-selection-assessment" : "not-assessed",
     ...(copyWarning ? { copyWarning } : {}),
     imageSource,
@@ -1147,6 +1152,19 @@ Deno.serve(async (request) => {
       const resumed = current ? await refreshVideoJob(current, settings) : null;
       if (!resumed) throw new Error("Existing generation job could not be loaded.");
       return json(jobResponse(resumed), resumed.status === "processing" || resumed.status === "queued" ? 202 : 200);
+    }
+    // Supabase keeps this promise alive after the HTTP 202. The PHP gateway no
+    // longer has to wait for image creation plus review inside its 110s timeout.
+    const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (work: Promise<unknown>) => void } }).EdgeRuntime;
+    if (input.planning && runtime?.waitUntil) {
+      const current = await getJob(job.id);
+      if (!current) throw new Error('Generation job could not be loaded.');
+      const claimed = job;
+      runtime.waitUntil(runClaimedJob(
+        () => processLook(claimed, input, promptVersion, settings),
+        (status, output, error) => updateJob(claimed.id, status, output, error),
+      ));
+      return json(jobResponse(current), 202);
     }
     const output = await processLook(job, input, promptVersion, settings);
     if (output.providerOperation) {

@@ -35,7 +35,8 @@ try {
     [$status, $raw] = onceRequest($h, $base . '/generation-edge.php', $payload, $config['lookCsrf']);
     $job = json_decode($raw, true) ?: [];
     // Recover interrupted responses by request-ID GET, never another POST.
-    for ($i = 0; $i < 12 && !in_array($job['status'] ?? '', ['completed', 'failed'], true); $i++) {
+    $acceptedHttp = $status;
+    for ($i = 0; $i < 40 && !in_array($job['status'] ?? '', ['completed', 'failed'], true); $i++) {
         [$status, $raw] = onceRequest($h, $base . '/generation-edge.php?requestId=' . $uuid, null, $config['lookCsrf']);
         $job = json_decode($raw, true) ?: [];
         if (!in_array($job['status'] ?? '', ['completed', 'failed'], true)) { echo "Waiting on same request (GET only).\n"; sleep(5); }
@@ -57,6 +58,8 @@ try {
     if (($output['garmentReferences']['status'] ?? '') !== 'attached' || count($output['garmentReferences']['items'] ?? []) !== 1) throw new RuntimeException('Real garment sample was not attached.');
     if (($output['copyPolicy'] ?? '') !== 'selected-catalog-only' || !str_contains($output['story'] ?? '', 'không thêm phụ kiện')) throw new RuntimeException('Selected-only copy contract failed.');
     $evidence = ['status' => 'completed', 'jobId' => $job['jobId'], 'imageCount' => 1,
+        'acceptedHttp' => $acceptedHttp, 'promptPolicy' => $output['promptPolicy'] ?? 'legacy',
+        'narrativeSource' => $output['narrativeSource'] ?? null,
         'width' => $size[0], 'height' => $size[1], 'storageHttp' => $assetStatus,
         'facesUploaded' => 0, 'collectionChanges' => 0, 'garmentReferences'=>'attached', 'referenceCount'=>1,
         'reviewStatus'=>$output['reviewStatus'] ?? 'unavailable', 'assessment'=>$output['imageAssessment'] ?? null,

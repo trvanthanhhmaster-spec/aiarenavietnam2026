@@ -1407,7 +1407,11 @@
       if (body.status === 'completed' || body.status === 'failed' || body.status === 'cancelled') return body;
       setResultState('processing', body.output && body.output.lookbook && body.output.lookbook.items && body.output.lookbook.items.length
         ? 'Ảnh đã sẵn sàng; video đang được hoàn thiện.'
-        : 'Đang tạo ảnh bản phối theo thông tin đã xác nhận…');
+        : body.output && body.output.stage === 'reviewing'
+          ? 'Ảnh đã tạo xong; đang đối chiếu trang phục và lựa chọn…'
+          : body.output && body.output.stage === 'catalog'
+            ? 'Đang kiểm tra lựa chọn và tải ảnh mẫu trang phục…'
+            : 'Đang tạo ảnh bản phối theo thông tin đã xác nhận…');
     }
     throw new Error('Bản phối vẫn đang được xử lý. Hãy mở lại sau ít phút để xem kết quả.');
   }
@@ -1789,6 +1793,8 @@
     if (busy) media.pause();
     var retry = document.getElementById('retryGeneration');
     if (retry) retry.hidden = value !== 'failed';
+    var suggestion = document.getElementById('viewSuggestionFallback');
+    if (suggestion) suggestion.hidden = value !== 'failed' || Planner.missing(planning, state.event) !== 'review';
     ['repairGeneration','generatePortrait'].forEach(function (id) {
       var button = document.getElementById(id);
       if (button) button.disabled = busy || draftEdited;

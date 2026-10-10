@@ -1,5 +1,10 @@
 # V-Remix - Kế hoạch Audition đã định hình lại
 
+**Phạm vi chốt bài ngày 10/10/2026 và nội dung form hiện tại:**
+[Hoàn thiện bài nộp Audition](AUDITION_SUBMISSION.md). Checklist mới ưu tiên
+bốn chức năng bắt buộc, ảnh tham chiếu Gemini và mô tả kỹ thuật trung thực.
+Các milestone/provider bên dưới là lịch sử, không phải trạng thái triển khai mới nhất.
+
 Cập nhật chức năng: 2026-10-10. Kế hoạch nền dưới đây giữ lại làm tham chiếu;
 phạm vi triển khai/kiểm chứng mới nhất nằm tại [Studio intelligence](STUDIO_INTELLIGENCE.md)
 và [luồng tham chiếu trang phục](garment-reference-pipeline.md). Không dùng các

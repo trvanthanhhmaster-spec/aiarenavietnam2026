@@ -195,6 +195,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                         <button type="button" data-guide-step="garment"><span><small>Trang phục</small><strong id="guideGarmentValue"></strong></span><span>Đổi ›</span></button>
                         <div id="plannerReviewPeople"></div>
                         <button type="button" class="guide-view-preview" id="plannerGenerate">Tạo ảnh bản phối <?= $studioIcon('chevron-right') ?></button>
+                        <button type="button" class="planner-secondary" data-show-suggestion>Xem thẻ bản phối · không dùng AI</button>
                     </section>
                     <div class="guide-navigation" id="guideNavigation" hidden>
                         <button type="button" id="guideBack">‹ Quay lại</button>
@@ -348,6 +349,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                                 </div>
                             </div>
                             <p id="selectionSummary" hidden></p>
+                            <button type="button" class="planner-secondary" id="viewSuggestionFallback" data-show-suggestion hidden>Xem thẻ bản phối ngay · không dùng AI</button>
                         </div>
                         <label class="studio-upload" for="inputImage" hidden>
                             <span class="studio-upload__icon" aria-hidden="true"><?= $studioIcon('upload') ?></span>
@@ -483,6 +485,12 @@ require __DIR__ . '/includes/components/studio-icon.php';
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
     <?php require __DIR__ . '/includes/studio/collections.php'; ?>
+    <dialog id="studioSuggestion" class="studio-suggestion" aria-labelledby="suggestionTitle">
+        <header><div><span>Gợi ý từ catalog</span><h2 id="suggestionTitle">Bản phối bạn đã chọn</h2></div><button type="button" id="closeSuggestion" aria-label="Đóng thẻ bản phối">×</button></header>
+        <p id="suggestionStatus" role="status"></p>
+        <p class="studio-suggestion__note">Đây là thẻ lựa chọn với ảnh mẫu có nguồn, không phải ảnh AI hay sản phẩm shop đang có sẵn. Không có điểm đánh giá AI.</p>
+        <div id="suggestionPeople"></div>
+    </dialog>
     <dialog class="studio-auth-dialog" id="studioAuthDialog" aria-labelledby="studioAuthTitle">
         <button type="button" class="studio-auth-close" aria-label="Đóng đăng nhập" id="studioAuthClose">×</button>
         <h2 id="studioAuthTitle"><?= $authUser !== null ? 'Tài khoản của bạn' : 'Đăng nhập hoặc đăng ký' ?></h2>
@@ -505,6 +513,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>
     <script src="assets/js/studio-planner-ui.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-planner-ui.js') ?>" defer></script>
     <script src="assets/js/studio-intelligence.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-intelligence.js') ?>" defer></script>
+    <script src="assets/js/studio-suggestion.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-suggestion.js') ?>" defer></script>
     <script src="assets/js/studio-auth-modal.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-auth-modal.js') ?>" defer></script>
     <script src="assets/js/studio-collections.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-collections.js') ?>" defer></script>
 </body>
