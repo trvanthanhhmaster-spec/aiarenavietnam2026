@@ -121,6 +121,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <link rel="stylesheet" href="assets/css/studio-designer.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-designer.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-workspace.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-workspace.css') ?>">
     <link rel="stylesheet" href="assets/css/studio-assessment.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-assessment.css') ?>">
+    <link rel="stylesheet" href="assets/css/studio-example.css?v=<?= (int) filemtime(__DIR__ . '/assets/css/studio-example.css') ?>">
 </head>
 <body class="studio-page">
     <main class="studio-experience" id="studioExperience" aria-busy="false">
@@ -131,7 +132,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
                     <p class="studio-kicker" id="projectKicker">Không gian của bạn</p>
                     <h1 id="projectTitle">Việt phục, theo cách bạn.</h1>
                     <p class="studio-intro__note" id="projectContext" hidden></p>
-                    <a class="studio-proof-link" href="minh-chung.php">Xem bản phối đã kiểm chứng ↗</a>
+                    <a class="studio-proof-link" href="#studioExample" data-studio-example-link>Xem bản phối mẫu đã tạo ↓</a>
                 </div>
             </div>
             <button type="button" class="workspace-new-collection" id="newStudioCollection" disabled>＋ Bộ sưu tập mới</button>
@@ -486,6 +487,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
         </section>
         </details>
 
+        <?php require __DIR__ . '/includes/studio/proof-example.php'; ?>
         <p class="studio-sr-only" id="studioSrStatus" role="status" aria-live="polite">Studio đã sẵn sàng.</p>
     </main>
     <?php require __DIR__ . '/includes/studio/collections.php'; ?>
@@ -513,6 +515,7 @@ require __DIR__ . '/includes/components/studio-icon.php';
     <script src="assets/js/studio-lookbook-card.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-lookbook-card.js') ?>" defer></script>
     <script src="assets/js/studio-catalog-choices.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-catalog-choices.js') ?>" defer></script>
     <script src="assets/js/studio-assessment.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-assessment.js') ?>" defer></script>
+    <script src="assets/js/studio-example.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-example.js') ?>" defer></script>
     <script src="assets/js/studio.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio.js') ?>" defer></script>
     <script src="assets/js/studio-history.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-history.js') ?>" defer></script>
     <script src="assets/js/studio-workspace.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/studio-workspace.js') ?>" defer></script>

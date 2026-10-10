@@ -13,7 +13,7 @@ function smokeRequest(string $route,array $headers=[]): array {
     smokeCheck($body!==false,'HTTPS request failed for '.$route);
     return ['status'=>$status,'body'=>$body,'headers'=>implode('',$received)];
 }
-foreach(['/','/studio.php','/minh-chung.php','/auth.php','/admin.php','/assets/css/studio-workspace.css','/assets/css/studio-assessment.css','/assets/js/studio-assessment.js','/assets/data/audition-proof.json','/assets/media/evidence/ao-tac-production-20261010.jpg','/assets/js/studio-collection-store.js','/assets/media/studio-atelier-poster.png'] as $route) {
+foreach(['/','/studio.php','/auth.php','/admin.php','/assets/css/studio-workspace.css','/assets/css/studio-assessment.css','/assets/css/studio-example.css','/assets/js/studio-assessment.js','/assets/js/studio-example.js','/assets/data/audition-proof.json','/assets/media/evidence/ao-tac-production-20261010.jpg','/assets/js/studio-collection-store.js','/assets/media/studio-atelier-poster.png'] as $route) {
     $r=smokeRequest($route);smokeCheck($r['status']===200,$route.' HTTP '.$r['status']);
     if($route==='/assets/data/audition-proof.json') {
         $proof=json_decode($r['body'],true);
@@ -21,6 +21,7 @@ foreach(['/','/studio.php','/minh-chung.php','/auth.php','/admin.php','/assets/c
         $image=smokeRequest('/'.$proof['image']);smokeCheck(hash('sha256',$image['body'])===$proof['imageSha256'],'Public evidence image differs from recorded original');
     }
     if($route==='/studio.php') {
+        smokeCheck(str_contains($r['body'],'id="studioExample"') && str_contains($r['body'],'href="#studioExample"'),'Example must be embedded inside Studio');
         preg_match('/window.VREMIX_STUDIO = (\{.*?\});/s',$r['body'],$m);$c=json_decode($m[1]??'',true);
         smokeCheck(($c['generationEndpoint']??'')==='generation-edge.php','Public Studio selected a local-only provider');
         smokeCheck(($c['collectionEndpoint']??'')==='studio-collections-api.php','Collection endpoint missing');
@@ -28,6 +29,8 @@ foreach(['/','/studio.php','/minh-chung.php','/auth.php','/admin.php','/assets/c
         foreach(['; secure','; HttpOnly','; SameSite=Lax'] as $flag)smokeCheck(stripos($cookie[0]??'',$flag)!==false,'Session cookie missing '.$flag);
     }
 }
+$legacy=smokeRequest('/minh-chung.php');
+smokeCheck($legacy['status']===302 && str_contains($legacy['headers'],'studio.php#studioExample'),'Legacy evidence URL must redirect into Studio');
 foreach(['/.env','/.git/config','/src/Support/Env.php','/config/database.php','/tests/studio-collections-live.php','/deploy/vps/compose.yml','/supabase/config.toml'] as $route) {
     $r=smokeRequest($route);smokeCheck($r['status']===404,'Private route not hidden: '.$route);
 }

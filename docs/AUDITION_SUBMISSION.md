@@ -150,7 +150,7 @@ Kết quả tạo là một ảnh cho cả nhóm. Lượt đánh giá riêng tr�
 
 ## Minh chứng và thao tác cuối
 
-- Trang minh chứng: https://v-remix.vietnamsir.com/minh-chung.php — ca production
+- Bản phối mẫu trong Studio: https://v-remix.vietnamsir.com/studio.php#studioExample — ca production
   đã ghi nhận, bảng đối chiếu từng mục, nguồn văn hóa và giới hạn kiểm thử.
   Xem `AUDITION_RELIABILITY.md` để phân biệt ca chạy thật với dữ liệu mô phỏng.
 
