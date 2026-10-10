@@ -10,6 +10,11 @@ assert.match(source, /state = null; message\(error.message \+ ' Làm mới/);
 assert.match(source, /revision:state.revision/); assert.match(source, /fields.disabled = !state/);
 assert.match(source, /FormData/); assert.match(source, /X-CSRF-Token/); assert.match(source, /credentials:'same-origin'/);
 assert.match(source, /textContent = title/); assert.match(source, /escape\(value\)/);
+assert.match(source, /data-asset-path/); assert.match(source, /websiteCurrentLogo/);
+assert.match(source, /data-open-website="seo"/);
+assert.match(source, /document.querySelector\('#adminNavigation \[data-resource="seo"\]'\).click\(\)/);
+const navigation = fs.readFileSync('includes/admin/navigation.php', 'utf8');
+assert.doesNotMatch(navigation.match(/<a class="admin-rail__brand"[\s\S]*?<\/a>/)[0], /<span>/, 'No duplicate text under wordmark');
 assert.doesNotMatch(source, /localStorage|sessionStorage|eval\(/);
 assert.match(admin, /VRemixWebsite\.canLeave\(\)/); assert.match(shell, /'pages', 'brand', 'seo'/);
 assert.ok(api.indexOf("!$auth->isAdmin()") < api.indexOf("['brand', 'seo']"));
@@ -18,14 +23,17 @@ assert.match(api, /is_uploaded_file/); assert.match(api, /unset\(\$payload\['ui'
 async function runBehavior() {
   const data = JSON.parse(require('node:child_process').execFileSync('/Applications/XAMPP/xamppfiles/bin/php', ['-r', "require 'src/Support/WebsiteMetadata.php'; echo json_encode(['settings'=>App\\Support\\WebsiteMetadata::defaults(),'home'=>['title'=>'Home','description'=>'Description'],'revision'=>'v1']);"], {encoding:'utf8'}));
   const nodes = {};
-  function node(id) { return nodes[id] ||= {id,hidden:false,disabled:false,value:'home',textContent:'',events:{},classList:{toggle(){}},scrollIntoView(){},addEventListener(key, fn){this.events[key]=fn;}}; }
+  function node(id) { return nodes[id] ||= {id,hidden:false,disabled:false,value:'home',textContent:'',events:{},classList:{toggle(){},remove(){},add(){}},scrollIntoView(){},addEventListener(key, fn){this.events[key]=fn;},querySelectorAll(){return Array.from(this.innerHTML.matchAll(/id="(website-asset-[^"]+)" data-asset-path="([^"]+)" data-asset-purpose="([^"]+)"/g), match => {const image=node(match[1]);image.dataset={assetPath:match[2],assetPurpose:match[3]};return image;});}}; }
   let fail = false, delay = null, confirmCount = 0;
   const requests = [], events = {};
   const window = {VREMIX_ADMIN:{endpoint:'admin-api.php',csrf:'test-csrf'},confirm(){confirmCount++;return false;},addEventListener(key, fn){events[key]=fn;}};
-  vm.runInNewContext(source, {window,document:{getElementById:node},FormData:class{},fetch:async(url,options)=>{
+  let navigationPromise, navigationClicks = 0; const revoked = [];
+  class FixtureFormData { append(){} }
+  vm.runInNewContext(source, {window,document:{getElementById:node,querySelector(selector){assert.equal(selector,'#adminNavigation [data-resource="seo"]');return {click(){navigationClicks++;if(window.VRemixWebsite.canLeave()) navigationPromise=window.VRemixWebsite.load('seo');}};}},URL:{createObjectURL(){return 'blob:selected-test';},revokeObjectURL(url){revoked.push(url);}},FormData:FixtureFormData,fetch:async(url,options)=>{
     requests.push({url,options});
     if (delay) return delay;
     if (fail) throw new Error('uncertain write');
+    if (options.body instanceof FixtureFormData) return {ok:true,json:async()=>({asset:{url:'assets/media/brand/favicon.png',width:48,height:48}})};
     if (options.method === 'POST') { const body = JSON.parse(options.body); assert.equal(body.revision,'v1'); const key = url.split('=').at(-1); data.settings[key] = body.values; data.revision = 'v2'; }
     return {ok:true,json:async()=>JSON.parse(JSON.stringify(data))};
   }});
@@ -48,10 +56,40 @@ async function runBehavior() {
   const count = requests.length; await node('websiteForm').events.submit({preventDefault(){}}); assert.equal(requests.length,count,'No replay of uncertain writes');
   fail = false; await window.VRemixWebsite.load('brand');
   assert.equal(node('websiteFields').disabled,false,'Refresh restores authoritative state');
+  assert.equal(node('websiteCurrentLogo').src,data.settings.brand.logo_light,'Current logo visible on entry');
+  assert.equal(node('websiteBrandShareImage').src,data.settings.seo.share_image,'Brand links actual shared image');
+  assert.equal(node('website-asset-favicon').src,data.settings.brand.favicon,'Every asset shows current image');
+  node('websiteInputs').events.change({target:{id:'website-file-logo_light',files:[{name:'new-logo.png'}]}});
+  assert.equal(node('website-asset-logo_light').src,'blob:selected-test','Selected file preview before upload');
+  assert.match(node('website-asset-caption-logo_light').textContent,/chưa tải lên/);
+  const beforePendingSave = requests.length;
+  await node('websiteForm').events.submit({preventDefault(){}});
+  assert.equal(requests.length,beforePendingSave,'Pending file cannot be silently omitted by save');
+  node('adminWebsiteSettings').events.click({target:{closest(){return {dataset:{openWebsite:'seo'}};}}});
+  assert.equal(navigationClicks,1); assert.equal(navigationPromise,undefined,'Shortcut retains dirty-navigation protection');
+  await window.VRemixWebsite.load('brand');
+  assert.deepEqual(revoked,['blob:selected-test'],'Release temporary preview on fresh read');
+  node('website-file-logo_light').files = [{name:'logo.png',size:50}];
+  node('website-file-favicon').files = [{name:'favicon.png',size:50}];
+  node('websiteInputs').events.change({target:node('website-file-logo_light')});
+  node('websiteInputs').events.change({target:node('website-file-favicon')});
+  await node('websiteInputs').events.click({target:{closest(){return {dataset:{upload:'favicon',path:'favicon'}};}}});
+  assert.equal(node('website-asset-favicon').src,'assets/media/brand/favicon.png','Upload updates its current preview');
+  assert.equal(node('website-asset-logo_light').src,'blob:selected-test','Uploading one asset retains another selected file');
+  assert.equal(node('website-file-logo_light').files[0].name,'logo.png');
+  const beforeOtherPendingSave = requests.length;
+  await node('websiteForm').events.submit({preventDefault(){}});
+  assert.equal(requests.length,beforeOtherPendingSave,'Other pending files still prevent silent save');
+  await window.VRemixWebsite.load('brand');
+  node('adminWebsiteSettings').events.error({target:node('website-asset-logo_light')});
+  assert.match(node('website-asset-caption-logo_light').textContent,/Không tải được ảnh/);
+  node('adminWebsiteSettings').events.click({target:{closest(){return {dataset:{openWebsite:'seo'}};}}});
+  await navigationPromise;
+  assert.equal(requests.at(-1).url,'admin-api.php?resource=seo','Shortcut opens real SEO resource');
   let resolve; delay = new Promise(r=>{resolve=r;});
   const pending = window.VRemixWebsite.load('seo'); window.VRemixWebsite.leave();
   resolve({ok:true,json:async()=>data}); await pending;
   assert.equal(node('adminWebsiteSettings').hidden,true,'Late response cannot reopen a left panel');
   assert.ok(events.beforeunload);
 }
-runBehavior().then(()=>console.log('Admin website: CSRF, dirty cancel, live preview/noindex, section isolation, revision, uncertain writes and stale response handling passed offline.')).catch(error=>{console.error(error);process.exitCode=1;});
+runBehavior().then(()=>console.log('Admin website: CSRF, guarded SEO shortcut, current/selected asset previews, pending-file save protection, dirty cancel, noindex, section isolation, revision, uncertain writes and stale response handling passed offline.')).catch(error=>{console.error(error);process.exitCode=1;});

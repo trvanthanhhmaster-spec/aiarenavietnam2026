@@ -24,7 +24,7 @@ body.admin-page::after { content: none; }
 .admin-skip:focus { top: 20px; }
 .admin-rail { position: absolute; inset: 0 auto 0 0; width: 96px; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 28px 16px; background: white; border-radius: 40px 0 0 40px; }
 .admin-rail__brand { display: grid; justify-items: center; gap: 4px; text-decoration: none; }
-.admin-rail__brand span { font-size: 10px; font-weight: 700; }
+.admin-rail__brand img { object-fit: contain; }
 .admin-rail__groups { position: sticky; top: 28px; display: grid; gap: 20px; }
 .admin-rail__button { display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #7f848c; transition: background 180ms, color 180ms, transform 180ms; }
 .admin-rail__button svg { width: 25px; height: 25px; }

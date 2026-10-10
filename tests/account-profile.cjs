@@ -2,7 +2,10 @@
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const path = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
 const { spawn } = require('node:child_process');
+const cacheDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'vremix-profile-test-'));
 const requests = [];
 let mode = 'ok';
 const server = http.createServer((req, res) => {
@@ -11,6 +14,10 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     requests.push({ method: req.method, url: req.url, bearer: req.headers.authorization, body: body ? JSON.parse(body) : null });
     res.setHeader('Content-Type', 'application/json');
+    if (req.url.startsWith('/rest/v1/pages')) {
+      res.end(JSON.stringify([{title:'Fixture home',description:'Offline fixture',ui:{}}]));
+      return;
+    }
     if (req.url.startsWith('/rest/v1/user_roles')) {
       res.end(JSON.stringify(mode === 'admin' ? [{ user_id: 'test-user' }] : []));
       return;
@@ -59,7 +66,7 @@ async function renderAccount() {
       $_SERVER['REQUEST_METHOD'] = 'GET'; $_GET['embed'] = '1'; $_REQUEST['embed'] = '1';
       require getenv('PROFILE_AUTH_PAGE');
       session_destroy();
-    `], { env: { ...process.env, SUPABASE_URL: `http://127.0.0.1:${server.address().port}`, SUPABASE_ANON_KEY: 'fixture-anon', SUPABASE_SERVICE_ROLE_KEY: 'fixture-service', PROFILE_AUTH_PAGE: path.resolve('auth.php') } });
+    `], { env: { ...process.env, SUPABASE_URL: `http://127.0.0.1:${server.address().port}`, SUPABASE_ANON_KEY: 'fixture-anon', SUPABASE_SERVICE_ROLE_KEY: 'fixture-service', SUPABASE_CACHE_FILE: path.join(cacheDirectory, 'site-content.json'), PROFILE_AUTH_PAGE: path.resolve('auth.php') } });
     let output = '', errors = '';
     child.stdout.on('data', chunk => { output += chunk; });
     child.stderr.on('data', chunk => { errors += chunk; });
@@ -93,5 +100,5 @@ async function renderAccount() {
     assert.ok(admin.includes('href="admin.php" target="_top"'), 'approved admins can open the existing guarded admin page');
     console.log('Account profile: own-user token, name validation, session update and wrong-user rejection passed offline.');
     console.log('Account UI: member/admin gating, embedded forms and escaped profile data passed offline.');
-  } finally { server.close(); }
+  } finally { server.close(); fs.rmSync(cacheDirectory, {recursive:true,force:true}); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

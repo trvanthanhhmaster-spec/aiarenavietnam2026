@@ -5,7 +5,7 @@
         <fieldset id="websiteFields" disabled>
             <div class="admin-website__layout">
                 <div id="websiteInputs" class="admin-website__inputs"></div>
-                <aside class="admin-website__preview" aria-label="Xem trước cấu hình">
+                <aside id="websitePreview" class="admin-website__preview" aria-label="Xem trước cấu hình">
                     <p class="admin-eyebrow">Xem trước · chưa phải kết quả Google</p>
                     <div id="websiteBrandPreview" hidden><img id="websiteLogoPreview" alt="Logo xem trước"><strong id="websiteBrandName"></strong><img id="websiteIconPreview" alt="Favicon xem trước" width="32" height="32"></div>
                     <div id="websiteSeoPreview">
