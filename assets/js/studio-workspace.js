@@ -29,12 +29,14 @@
 
   function showPanel(name, scroll) {
     if (!panelCopy[name]) return;
+    var changed = activePanel !== name;
     activePanel = name;
     var close = document.getElementById('dockClose');
     var dock = document.getElementById('studioDock');
     if (name !== 'catalog' && dock.classList.contains('is-open')) close.click();
     catalog.hidden = name !== 'catalog';
     insights.hidden = name === 'catalog';
+    if (changed && name !== 'catalog') insights.scrollTop = 0;
     insights.querySelectorAll('.studio-insight').forEach(function (section) {
       var place = section.classList.contains('studio-sourcing') || section.classList.contains('studio-places') || section.classList.contains('studio-tips');
       section.hidden = name === 'places' ? !place : place;
