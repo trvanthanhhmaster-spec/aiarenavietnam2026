@@ -1,4 +1,16 @@
-# Garment-reference upgrade — 2026-10-10
+# Contextual Studio assistance and recipe feedback — 2026-10-10
+
+- Active PHP/source release: `cb0f0bc`, `/opt/vremix/current` points to `/opt/vremix/releases/cb0f0bc`. The bridge remains `2cedf30`; Edge functions were not changed by this UI follow-up.
+- The all-in-one advice block no longer precedes the four-step planner. Optional weather is in the time step; optional recipe/AI advice is after garment photos, with separate views. Event/people and review stay focused on their own tasks.
+- Applying a recipe captures its resolved sample into the actual plan, keeps other people unchanged, and opens review/next incomplete step with explicit selected-choice feedback. Repeated choices, cancellation, pending generation and missing-count cases are handled. Application/navigation do not generate an image.
+- All JavaScript suites and affected PHP/plan/intelligence tests/lints passed. Browser QA verified the real template with provider/write stubs, contextual placement, repeated/different recipe application, inline failure, separate advice views and 390px layout without horizontal overflow.
+- Production browser verified weather/style parent steps, collapsed defaults, the actual optional-garment disclosure and no captured warning/error. No live user's outfit was changed to test application; no AI request was made. HTTPS, private route/cookie/media and real weather/consent/negative-rule smoke passed.
+- Only `vremix-php` was recreated. `release.env.pre-cb0f0bc` and the previous `cd0941f` release are retained for rollback. No secrets, unrelated containers, database schema or provider credentials changed.
+- Local ignored evidence: `artifacts/studio-intelligence-qa/production-contextual-advice.png`; additional synthetic mobile screenshots are labelled QA evidence, not production AI results.
+
+---
+
+# Garment-reference upgrade — 2026-10-10 (historical)
 
 - Active source release: `2cedf30`, `/opt/vremix/current` points to
   `/opt/vremix/releases/2cedf30`. PHP and bridge containers both use this tag.

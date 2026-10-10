@@ -1,6 +1,10 @@
 # VPS Gemini bridge readiness and recovery — 2026-10-09
 
-## Current Studio intelligence deployment — 2026-10-10
+## Current UI follow-up — 2026-10-10
+
+PHP/source release `cb0f0bc` is active. The recipe-feedback and contextual assistance layout are deployed; bridge `2cedf30` and both Edge functions remain unchanged. Production weather/security smoke and actual 390px rendering passed, without another AI request. See [deployment record](../deploy/vps/DEPLOYMENT.md) and [Studio intelligence](STUDIO_INTELLIGENCE.md).
+
+## Initial Studio intelligence deployment — 2026-10-10
 
 PHP release `cd0941f` is active; the bridge image remains `2cedf30` (no credential refresh or bridge change). `generate-look` and the new `studio-advisor` Edge functions were deployed with independent, route-bound HMAC authentication. Nginx explicitly allows the new public PHP advice gateway; syntax validation and reload passed. Release/env and site-config backups are retained as `pre-cd0941f`; the previous application release remains available. Only this app's PHP container was recreated; unrelated VPS services were untouched.
 
